@@ -1,0 +1,31 @@
+{
+  "name": "lab-report-generator-web",
+  "version": "1.0.0",
+  "description": "AI-assisted lab report generator web app",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "postinstall": "python3 -m venv .venv && .venv/bin/pip install --upgrade pip && .venv/bin/pip install -r requirements.txt || echo 'WARN: python venv setup failed — hwpx output will be unavailable, docx still works'"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.30.1",
+    "@supabase/supabase-js": "^2.45.0",
+    "chart.js": "^4.5.1",
+    "chartjs-node-canvas": "^5.0.0",
+    "docx": "^9.0.2",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "express-session": "^1.18.1",
+    "fast-xml-parser": "^5.7.2",
+    "image-size": "^1.2.0",
+    "jszip": "^3.10.1",
+    "multer": "^2.0.0",
+    "sharp": "^0.33.5",
+    "xlsx": "^0.18.5"
+  }
+}

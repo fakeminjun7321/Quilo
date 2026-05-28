@@ -1,0 +1,1548 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>보고서 작성 툴</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <p class="topbar">
+        <span id="user"></span>
+        <a href="/admin" id="adminLink" style="display: none">관리자</a>
+        <a href="#" id="logout">로그아웃</a>
+      </p>
+
+      <h1>보고서 작성 툴</h1>
+
+      <div class="notice compliance-notice">
+        <strong>학습 보조 초안 생성 도구입니다.</strong>
+        본인이 이용 권한을 가진 파일만 업로드하고, 학교·교사 기준에서 AI 사용이 허용되는 범위인지 확인한 뒤 사용하세요.
+        생성 결과는 그대로 제출하지 말고 반드시 직접 검토·수정하세요.
+        업로드 파일은 AI 처리 과정에서 외부 처리업체로 전송될 수 있으며, 생성 파일은 24시간만 보관됩니다.
+      </div>
+    </header>
+
+    <nav class="page-tabs" aria-label="화면 전환">
+      <button type="button" class="active" data-tab="reports">보고서 작성</button>
+      <button type="button" data-tab="files">내 파일</button>
+      <button type="button" data-tab="feedback">건의사항</button>
+      <button type="button" data-tab="settings">개인 설정</button>
+    </nav>
+
+    <section id="reportsPanel" class="tab-panel active" data-tab-panel="reports">
+    <div class="report-toolbar">
+      <div id="balanceBox" class="balance-box" style="display: none">
+        <strong>내 잔액</strong>
+        <span id="balPre">사전: ...</span>
+        <span id="balResult">결과: ...</span>
+      </div>
+
+      <div id="reportTypeFieldset" role="radiogroup" aria-labelledby="reportTypeLegend">
+        <div id="reportTypeLegend" class="report-type-title">보고서 종류</div>
+        <label>
+          <input type="radio" name="reportType" value="chem-pre" checked />
+          화학 사전보고서
+        </label>
+        <label>
+          <input type="radio" name="reportType" value="chem-result" />
+          화학 결과보고서
+        </label>
+        <label>
+          <input type="radio" name="reportType" value="phys-result" />
+          물리 결과보고서
+        </label>
+      </div>
+    </div>
+
+    <div id="comingSoon" class="notice" hidden>
+      이 보고서 종류는 아직 준비 중입니다.<br>
+      <small>곧 사용 가능해질 예정입니다.</small>
+    </div>
+
+    <!-- ── 화학 결과보고서 폼 (Phase 2 진행 중) ─────────────────────────── -->
+    <form id="chemResultForm" class="report-form" data-report-form="chem-result" hidden>
+      <p>
+        <label>사전보고서 (PDF 권장, docx 가능) <strong>*</strong>:
+          <input id="crPreReport" name="preReport" type="file" accept=".pdf,.docx" required />
+        </label>
+      </p>
+      <p>
+        <label>실험 데이터 (엑셀·CSV·텍스트·사진, 선택):
+          <input id="crData" name="data" type="file" accept=".xlsx,.xls,.csv,.txt,.png,.jpg,.jpeg" />
+        </label>
+        <br>
+        <small>엑셀로 정리할 정도의 데이터가 없으면 AI 참고 메모에 관찰값·판단 근거를 적어도 됩니다.</small>
+      </p>
+      <p>
+        <label>실험 사진 (여러 장 가능, 선택):
+          <input id="crPhotos" name="photos" type="file" accept=".png,.jpg,.jpeg" multiple />
+        </label>
+      </p>
+      <p>
+        <label>실험 매뉴얼 PDF (선택):
+          <input id="crManual" name="manual" type="file" accept="application/pdf" />
+        </label>
+      </p>
+      <p class="user-notes-field">
+        <label>AI 참고 메모 / 내 의견 (선택):
+          <textarea id="crUserNotes" name="userNotes" rows="4" maxlength="12000" placeholder="예: 색 변화가 예상보다 늦게 나타났고, 마지막 적정값은 종말점 판단이 애매해서 오차 분석에 반영하고 싶음"></textarea>
+          <br>
+          <small>.md/.txt 파일로 길게 작성한 메모도 함께 첨부할 수 있습니다.</small><br>
+          <input id="crUserNotesFile" name="userNotesFile" type="file" accept=".md,.txt,text/markdown,text/plain" />
+        </label>
+      </p>
+      <p class="policy-check">
+        <label>
+          <input type="checkbox" required />
+          본인이 이용 권한을 가진 파일만 업로드하며, 학교·교사·평가기준의 AI 사용 규정을 확인했고,
+          생성물은 학습 보조 초안으로만 사용합니다. 그대로 제출하지 않습니다.
+        </label>
+      </p>
+      <p>
+        <label>날짜:
+          <input id="crDate" name="date" type="date" required />
+        </label>
+      </p>
+      <p>
+        <label>실험 온도 (°C):
+          <input id="crTemp" name="temperature" type="number" step="0.1" placeholder="예: 22.5" style="width: 100px" />
+        </label>
+        &nbsp;
+        <label>기압 (hPa):
+          <input id="crPressure" name="pressure" type="number" step="0.1" placeholder="예: 1013.2" style="width: 110px" />
+        </label>
+      </p>
+      <!-- Sonnet 비활성화 — Opus 고정. 복구 시 주석 해제.
+      <p>
+        <strong>모델 선택:</strong><br />
+        <label>
+          <input type="radio" name="crModel" value="claude-sonnet-4-6" checked />
+          Sonnet 4.6
+        </label><br />
+        <label>
+          <input type="radio" name="crModel" value="claude-opus-4-7" />
+          Opus 4.7
+        </label>
+      </p>
+      -->
+      <input type="hidden" name="crModel" value="claude-opus-4-7" />
+      <p>
+        <strong>출력 형식:</strong>
+        <label style="margin-left: 8px;">
+          <input type="radio" name="crFormat" value="docx" checked />
+          .docx (MS Word)
+        </label>
+        <label style="margin-left: 8px;">
+          <input type="radio" name="crFormat" value="hwpx" />
+          .hwpx (한글)
+        </label>
+      </p>
+      <p>
+        <strong>보고서 스타일:</strong><br />
+        <label>
+          <input type="radio" name="crStyle" value="default" checked />
+          기본 양식
+        </label><br />
+        <label>
+          <input type="radio" name="crStyle" value="minimal" />
+          간단 양식
+        </label>
+      </p>
+      <p>
+        <label>글꼴:
+          <select id="crFontFace" name="fontFace">
+            <option value="malgun-gothic" selected>맑은 고딕</option>
+            <option value="nanum-myeongjo">나눔명조</option>
+            <option value="hamchorom-batang" data-hwpx-only="true" hidden disabled>함초롬바탕</option>
+          </select>
+        </label>
+      </p>
+      <p>
+        <button type="submit" id="crBtn">결과보고서 생성</button>
+      </p>
+      <p class="hint">생성에는 보통 2~4분 정도 걸립니다.</p>
+    </form>
+
+    <!-- ── 물리 결과보고서 폼 (Phase 3) ─────────────────────────── -->
+    <form id="physResultForm" class="report-form" data-report-form="phys-result" hidden>
+      <p class="notice">
+        <strong>.cap, 엑셀/CSV/텍스트, 데이터표·그래프 스크린샷 중 하나는 필수</strong>. 여러 자료가 있으면 모두 사용합니다.<br>
+        엑셀로 측정한 실험은 매뉴얼 PDF도 같이 첨부 권장.
+      </p>
+      <p>
+        <label>PASCO Capstone 파일 (.cap):
+          <input id="prCap" name="cap" type="file" accept=".cap" />
+        </label>
+      </p>
+      <p>
+        <label>엑셀/CSV/텍스트 데이터 (여러 개 가능):
+          <input id="prData" name="data" type="file" accept=".xlsx,.xls,.csv,.txt,.md,text/plain,text/markdown" multiple />
+        </label>
+      </p>
+      <p>
+        <label>실험 매뉴얼 PDF (엑셀 사용 시 권장):
+          <input id="prManual" name="manual" type="file" accept="application/pdf" />
+        </label>
+      </p>
+      <p>
+        <label>실험 사진 / 데이터표·그래프 스크린샷 (여러 장 가능, 선택):
+          <input id="prPhotos" name="photos" type="file" accept=".png,.jpg,.jpeg" multiple />
+        </label>
+      </p>
+      <p class="user-notes-field">
+        <label>AI 참고 메모 / 내 의견 (선택):
+          <textarea id="prUserNotes" name="userNotes" rows="4" maxlength="12000" placeholder="예: 예비 시행 1회는 포토게이트가 흔들려 제외했고, 재측정에서는 트랙 이음새를 지나며 카트가 살짝 튀는 현상이 있었음"></textarea>
+          <br>
+          <small>.md/.txt 파일로 길게 작성한 메모도 함께 첨부할 수 있습니다.</small><br>
+          <input id="prUserNotesFile" name="userNotesFile" type="file" accept=".md,.txt,text/markdown,text/plain" />
+        </label>
+      </p>
+      <p class="policy-check">
+        <label>
+          <input type="checkbox" required />
+          본인이 이용 권한을 가진 파일만 업로드하며, 학교·교사·평가기준의 AI 사용 규정을 확인했고,
+          생성물은 학습 보조 초안으로만 사용합니다. 그대로 제출하지 않습니다.
+        </label>
+      </p>
+      <p>
+        <label>날짜:
+          <input id="prDate" name="date" type="date" required />
+        </label>
+      </p>
+      <!-- Sonnet 비활성화 — Opus 고정. 복구 시 주석 해제.
+      <p>
+        <strong>모델 선택:</strong><br />
+        <label>
+          <input type="radio" name="prModel" value="claude-sonnet-4-6" checked />
+          Sonnet 4.6
+        </label><br />
+        <label>
+          <input type="radio" name="prModel" value="claude-opus-4-7" />
+          Opus 4.7
+        </label>
+      </p>
+      -->
+      <input type="hidden" name="prModel" value="claude-opus-4-7" />
+      <p>
+        <strong>출력 형식:</strong>
+        <label style="margin-left: 8px;">
+          <input type="radio" name="prFormat" value="docx" checked />
+          .docx (MS Word)
+        </label>
+        <label style="margin-left: 8px;">
+          <input type="radio" name="prFormat" value="hwpx" />
+          .hwpx (한글)
+        </label>
+      </p>
+      <p>
+        <label>글꼴:
+          <select id="prFontFace" name="fontFace">
+            <option value="malgun-gothic" selected>맑은 고딕</option>
+            <option value="nanum-gothic">나눔고딕</option>
+            <option value="nanum-myeongjo">나눔명조</option>
+            <option value="hamchorom-batang">함초롬바탕</option>
+          </select>
+        </label>
+      </p>
+      <p>
+        <button type="submit" id="prBtn">물리 결과보고서 생성</button>
+      </p>
+      <p class="hint">생성에는 보통 2~3분 정도 걸립니다. 첨부가 많으면 조금 더 걸릴 수 있습니다.</p>
+    </form>
+
+    <form id="form" class="report-form" data-report-form="chem-pre">
+      <p>
+        <label>실험 매뉴얼 PDF:
+          <input id="manual" name="manual" type="file" accept="application/pdf" required />
+        </label>
+      </p>
+      <p class="user-notes-field">
+        <label>AI 참고 메모 / 내 의견 (선택):
+          <textarea id="preUserNotes" name="userNotes" rows="4" maxlength="12000" placeholder="예: 선생님이 안전 주의와 수율 계산을 특히 강조했고, 실험 과정에서 왜 ice bath를 쓰는지 자세히 설명하고 싶음"></textarea>
+          <br>
+          <small>.md/.txt 파일로 길게 작성한 메모도 함께 첨부할 수 있습니다.</small><br>
+          <input id="preUserNotesFile" name="userNotesFile" type="file" accept=".md,.txt,text/markdown,text/plain" />
+        </label>
+      </p>
+      <p class="policy-check">
+        <label>
+          <input type="checkbox" required />
+          본인이 이용 권한을 가진 파일만 업로드하며, 학교·교사·평가기준의 AI 사용 규정을 확인했고,
+          생성물은 학습 보조 초안으로만 사용합니다. 그대로 제출하지 않습니다.
+        </label>
+      </p>
+      <p>
+        <label>날짜:
+          <input id="date" name="date" type="date" required />
+        </label>
+      </p>
+      <p>
+        <label>이름 (선택):
+          <input id="studentName" name="studentName" type="text" maxlength="20" placeholder="예: 홍길동" style="width: 130px" />
+        </label>
+      </p>
+      <p>
+        <label>실험 온도 (°C, 선택):
+          <input id="temperature" name="temperature" type="text" placeholder="22.5" style="width: 90px" />
+        </label>
+        &nbsp;
+        <label>기압 (hPa, 선택):
+          <input id="pressure" name="pressure" type="text" placeholder="1013.2" style="width: 110px" />
+        </label>
+      </p>
+      <!-- Sonnet 모델 비활성화 — Opus 4.7 고정 사용. 복구하려면 아래 주석 해제하고 hidden input 제거.
+      <p>
+        <strong>모델 선택:</strong><br />
+        <label>
+          <input type="radio" name="model" value="claude-sonnet-4-6" checked />
+          Sonnet 4.6
+        </label><br />
+        <label>
+          <input type="radio" name="model" value="claude-opus-4-7" />
+          Opus 4.7
+        </label>
+      </p>
+      -->
+      <input type="hidden" name="model" value="claude-opus-4-7" />
+      <p>
+        <strong>출력 형식:</strong>
+        <label style="margin-left: 8px;">
+          <input type="radio" name="format" value="docx" checked />
+          .docx (MS Word)
+        </label>
+        <label style="margin-left: 8px;">
+          <input type="radio" name="format" value="hwpx" />
+          .hwpx (한글)
+        </label>
+      </p>
+      <p>
+        <strong>보고서 스타일:</strong><br />
+        <label>
+          <input type="radio" name="style" value="default" checked />
+          기본 양식
+        </label><br />
+        <label>
+          <input type="radio" name="style" value="minimal" />
+          간단 양식
+        </label>
+      </p>
+      <p>
+        <label>글꼴:
+          <select id="fontFace" name="fontFace">
+            <option value="malgun-gothic" selected>맑은 고딕</option>
+            <option value="nanum-myeongjo">나눔명조</option>
+            <option value="hamchorom-batang" data-hwpx-only="true" hidden disabled>함초롬바탕</option>
+          </select>
+        </label>
+      </p>
+      <p>
+        <button type="submit" id="btn">사전보고서 생성</button>
+      </p>
+      <p class="hint">생성에는 보통 2~3분 정도 걸립니다.</p>
+      <p class="hint">그림 자리는 문서 안의 링크를 열어 직접 채울 수 있습니다 (기본 양식).</p>
+    </form>
+
+    <p class="disclaimer">
+      본 서비스는 개인이 만든 비공식 학습 보조 도구입니다. AI 생성물은 부정확할 수 있으니 반드시 직접 검증·수정 후 사용하세요.
+      학교·교사 기준에서 허용되지 않는 방식의 사용, 그대로 제출, 표절, 저작권 침해로 인한 책임은 사용자 본인에게 있습니다.
+      운영자는 점수, 제출 가능성, 표절 판정 회피를 보장하지 않습니다.
+    </p>
+
+    <div id="progressArea" style="display: none">
+      <h2 id="statusTitle">생성 중...</h2>
+      <p>
+        <button type="button" id="stopBtn" class="stop-btn" style="display: none">중지</button>
+      </p>
+      <pre id="progress"></pre>
+      <div id="resultArea"></div>
+    </div>
+    </section>
+
+    <section id="filesPanel" class="tab-panel" data-tab-panel="files" hidden>
+      <div class="settings-card">
+        <h2>내 파일</h2>
+        <p class="hint">생성된 보고서는 최대 3개, 24시간만 보관됩니다.</p>
+        <div id="filesStatus" class="hint">불러오는 중...</div>
+        <div id="filesList" class="file-list" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section id="feedbackPanel" class="tab-panel" data-tab-panel="feedback" hidden>
+      <div class="settings-card feedback-card">
+        <h2>건의사항</h2>
+        <form id="feedbackForm" class="compact-form feedback-form">
+          <p>
+            <label>분류:
+              <select id="feedbackCategory" required>
+                <option value="bug">버그 제보</option>
+                <option value="report-quality">보고서 내용</option>
+                <option value="data-processing">데이터 처리</option>
+                <option value="format">문서 형식</option>
+                <option value="account">계정/결제</option>
+                <option value="feature">기능 제안</option>
+                <option value="other">기타</option>
+              </select>
+            </label>
+          </p>
+          <p>
+            <label>제목:
+              <input id="feedbackTitle" type="text" maxlength="120" required placeholder="예: 물리 HWPX 이미지가 비어 있음" />
+            </label>
+          </p>
+          <p>
+            <label>내용:
+              <textarea id="feedbackMessage" rows="8" maxlength="4000" required placeholder="어떤 보고서 종류였는지, 어떤 파일/상황에서 문제가 났는지 적어주세요."></textarea>
+            </label>
+          </p>
+          <p>
+            <label>답장 받을 이메일 (선택):
+              <input id="feedbackContactEmail" type="email" maxlength="160" placeholder="name@example.com" />
+            </label>
+          </p>
+          <p class="hint">
+            비밀번호, API 키, 주민번호 같은 민감정보는 적지 마세요.
+          </p>
+          <p>
+            <button type="submit" id="feedbackBtn">보내기</button>
+            <span id="feedbackStatus" class="inline-status" aria-live="polite"></span>
+          </p>
+        </form>
+      </div>
+    </section>
+
+    <section id="settingsPanel" class="tab-panel" data-tab-panel="settings" hidden>
+      <div class="settings-card">
+        <h2>개인 설정</h2>
+        <p class="hint">계정 정보를 확인하고 비밀번호를 변경할 수 있습니다.</p>
+        <dl class="settings-summary">
+          <dt>이름</dt>
+          <dd id="settingsUserName">-</dd>
+          <dt>학번</dt>
+          <dd id="settingsStudentId">-</dd>
+          <dt>권한</dt>
+          <dd id="settingsUserRole">일반 사용자</dd>
+        </dl>
+      </div>
+
+      <div class="settings-card">
+        <h2>학번</h2>
+        <form id="profileForm" class="compact-form">
+          <p>
+            <label>학번:<br>
+              <input id="settingsStudentIdInput" type="text" maxlength="20" placeholder="예: 2402" autocomplete="off" />
+            </label>
+          </p>
+          <p>
+            <button type="submit" id="profileBtn">저장</button>
+            <span id="profileStatus" style="margin-left: 10px;"></span>
+          </p>
+          <p class="hint">
+            저장한 학번은 보고서 표지와 파일명에 자동으로 들어갑니다.
+          </p>
+        </form>
+      </div>
+
+      <div class="settings-card">
+        <h2>비밀번호 변경</h2>
+      <form id="pwForm" class="compact-form">
+        <p>
+          <label>현재 비밀번호:<br>
+            <input id="currentPw" type="password" required autocomplete="current-password" />
+          </label>
+        </p>
+        <p>
+          <label>새 비밀번호:<br>
+            <input id="newPw" type="password" required minlength="5" autocomplete="new-password" />
+            <small>(최소 5자)</small>
+          </label>
+        </p>
+        <p>
+          <label>새 비밀번호 확인:<br>
+            <input id="confirmPw" type="password" required minlength="5" autocomplete="new-password" />
+          </label>
+        </p>
+        <p>
+          <button type="submit" id="pwBtn">변경</button>
+          <span id="pwStatus" style="margin-left: 10px;"></span>
+        </p>
+        <p class="hint">
+          10분당 3회까지 변경을 시도할 수 있습니다.
+        </p>
+      </form>
+      </div>
+    </section>
+
+    <footer class="site-footer">
+      <a href="/terms.html">이용약관</a>
+      <a href="/privacy.html">개인정보처리방침</a>
+      <a href="/refund.html">환불정책</a>
+      <a href="/changelog.html">패치노트</a>
+      <span class="site-version" data-site-version>버전 확인 중...</span>
+    </footer>
+
+    <script src="/version-footer.js"></script>
+    <script>
+      let currentStudentId = "";
+      const USE_POLICY_NOTE =
+        "학습 보조 초안입니다. 권한 있는 파일만 업로드하고, 학교·교사 기준을 확인한 뒤 직접 검토·수정해 사용하세요. 그대로 제출하면 안 됩니다.";
+
+      function normalizeStudentId(value) {
+        return String(value || "").trim().slice(0, 20);
+      }
+
+      function setStudentIdUi(value) {
+        currentStudentId = normalizeStudentId(value);
+        document.getElementById("settingsStudentId").textContent =
+          currentStudentId || "미설정";
+        document.getElementById("settingsStudentIdInput").value = currentStudentId;
+      }
+
+      function getLocalStudentId() {
+        try {
+          return normalizeStudentId(localStorage.getItem("studentId") || "");
+        } catch (_) {
+          return "";
+        }
+      }
+
+      function saveLocalStudentId(value) {
+        try {
+          localStorage.setItem("studentId", normalizeStudentId(value));
+        } catch (_) { /* private mode etc. */ }
+      }
+
+      function appendPolicyAcknowledgements(fd) {
+        fd.append("copyrightAccepted", "true");
+        fd.append("academicIntegrityAccepted", "true");
+        fd.append("policyAcceptedAt", new Date().toISOString());
+      }
+
+      // Confirm session
+      fetch("/api/me")
+        .then((r) => (r.ok ? r.json() : Promise.reject()))
+        .then((d) => {
+          document.getElementById("user").textContent = d.user + " 님 ";
+          document.getElementById("settingsUserName").textContent = d.user;
+          setStudentIdUi(d.studentId || getLocalStudentId());
+          document.getElementById("settingsUserRole").textContent = d.isAdmin
+            ? "관리자"
+            : "일반 사용자";
+          if (d.isAdmin) {
+            document.getElementById("adminLink").style.display = "inline";
+          }
+          // 일반 사용자: 잔액 박스 표시
+          if (!d.isAdmin) loadBalance();
+          loadFiles();
+        })
+        .catch(() => (location.href = "/login.html"));
+
+      async function loadBalance() {
+        try {
+          const r = await fetch("/api/me/balance");
+          if (!r.ok) return;
+          const b = await r.json();
+          if (b.isAdmin) return; // admin은 잔액 X
+          const rate = b.krwPerUsd || 1400;
+          const preCount = b.preUnitUsd > 0 ? Math.floor(b.preUsd / b.preUnitUsd) : 0;
+          const resultCount = b.resultUnitUsd > 0 ? Math.floor(b.resultUsd / b.resultUnitUsd) : 0;
+          const preKrw = Math.round(b.preUsd * rate).toLocaleString();
+          const resultKrw = Math.round(b.resultUsd * rate).toLocaleString();
+          document.getElementById("balPre").textContent =
+            `사전 ${preCount}건 (₩${preKrw})`;
+          document.getElementById("balResult").textContent =
+            `결과 ${resultCount}건 (₩${resultKrw})`;
+          document.getElementById("balanceBox").style.display = "flex";
+          document.querySelector(".report-toolbar")?.classList.add("has-balance");
+        } catch (_) {
+          /* graceful: 잔액 박스 숨김 */
+        }
+      }
+
+      function formatBytes(bytes) {
+        const n = Number(bytes) || 0;
+        if (n < 1024) return `${n}B`;
+        if (n < 1024 * 1024) return `${Math.round(n / 1024)}KB`;
+        return `${(n / 1024 / 1024).toFixed(1)}MB`;
+      }
+
+      function formatDateTime(value) {
+        if (!value) return "-";
+        return new Date(value).toLocaleString("ko-KR", {
+          dateStyle: "short",
+          timeStyle: "short",
+        });
+      }
+
+      async function loadFiles() {
+        const status = document.getElementById("filesStatus");
+        const list = document.getElementById("filesList");
+        if (!status || !list) return;
+        status.textContent = "불러오는 중...";
+        list.innerHTML = "";
+        try {
+          const res = await fetch("/api/me/files");
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "파일 목록 오류");
+          if (!data.storage) {
+            status.textContent = "파일 저장소가 아직 설정되지 않았습니다.";
+            return;
+          }
+          const files = data.files || [];
+          const maxFiles = data.maxFilesPerUser || 3;
+          if (files.length === 0) {
+            status.textContent = `보관 중인 파일이 없습니다. 최대 ${maxFiles}개까지 저장됩니다.`;
+            return;
+          }
+          status.textContent = `${files.length}/${maxFiles}개 보관 중`;
+          for (const file of files) {
+            const item = document.createElement("div");
+            item.className = "file-item";
+
+            const meta = document.createElement("div");
+            meta.className = "file-meta";
+
+            const name = document.createElement("strong");
+            name.textContent = file.filename || "보고서";
+
+            const detail = document.createElement("span");
+            detail.textContent =
+              `${formatBytes(file.size_bytes)} · ${formatDateTime(file.created_at)} 생성 · ${formatDateTime(file.expires_at)} 만료`;
+
+            meta.append(name, detail);
+
+            const actions = document.createElement("div");
+            actions.className = "file-actions";
+
+            const download = document.createElement("a");
+            download.href = `/api/me/files/${file.id}/download`;
+            download.textContent = "다운로드";
+            download.download = file.filename || "";
+
+            const del = document.createElement("button");
+            del.type = "button";
+            del.className = "secondary compact";
+            del.textContent = "삭제";
+            del.addEventListener("click", async () => {
+              const ok = await showConfirmDialog({
+                title: "파일 삭제",
+                rows: [["파일", file.filename || "보고서"]],
+                note: "파일함에서 바로 삭제합니다.",
+                okLabel: "삭제",
+              });
+              if (!ok) return;
+              const r = await fetch(`/api/me/files/${file.id}`, { method: "DELETE" });
+              if (!r.ok) {
+                const body = await r.json().catch(() => ({}));
+                alert(body.error || "삭제 실패");
+              }
+              loadFiles();
+            });
+
+            actions.append(download, del);
+            item.append(meta, actions);
+            list.appendChild(item);
+          }
+        } catch (err) {
+          status.textContent = err.message || "파일 목록을 불러오지 못했습니다.";
+        }
+      }
+
+      document.getElementById("logout").addEventListener("click", async (e) => {
+        e.preventDefault();
+        await fetch("/api/logout", { method: "POST" });
+        location.href = "/login.html";
+      });
+
+      // 상단 탭 전환
+      const tabButtons = document.querySelectorAll(".page-tabs [data-tab]");
+      const tabPanels = document.querySelectorAll("[data-tab-panel]");
+      function showTab(tabName) {
+        tabButtons.forEach((btn) => {
+          const active = btn.dataset.tab === tabName;
+          btn.classList.toggle("active", active);
+          btn.setAttribute("aria-selected", active ? "true" : "false");
+        });
+        tabPanels.forEach((panel) => {
+          const active = panel.dataset.tabPanel === tabName;
+          panel.classList.toggle("active", active);
+          panel.hidden = !active;
+        });
+        if (tabName === "files") loadFiles();
+      }
+      tabButtons.forEach((btn) => {
+        btn.addEventListener("click", () => showTab(btn.dataset.tab));
+      });
+
+      // Default to today
+      document.getElementById("date").value = new Date().toISOString().slice(0, 10);
+
+      // chem-pre 폼: 이름은 마지막 입력값을 localStorage에서 복원
+      try {
+        const cached = JSON.parse(localStorage.getItem("chemPreUserDefaults") || "{}");
+        const nameEl = document.getElementById("studentName");
+        if (nameEl && cached.studentName) nameEl.value = cached.studentName;
+      } catch (_) { /* ignore */ }
+
+      // 보고서 종류 라디오 → 폼 전환
+      const reportTypeRadios = document.querySelectorAll('input[name="reportType"]');
+      const comingSoon = document.getElementById("comingSoon");
+      const reportForms = document.querySelectorAll("[data-report-form]");
+
+      function setVisible(el, visible) {
+        if (visible) {
+          el.removeAttribute("hidden");
+        } else {
+          el.setAttribute("hidden", "");
+        }
+      }
+
+      function updateReportTypeView() {
+        const selected =
+          document.querySelector('input[name="reportType"]:checked')?.value || "chem-pre";
+        let matched = false;
+
+        reportForms.forEach((formEl) => {
+          const active = formEl.dataset.reportForm === selected;
+          formEl.classList.toggle("active", active);
+          setVisible(formEl, active);
+          matched = matched || active;
+        });
+        setVisible(comingSoon, !matched);
+
+        if (selected === "chem-result") {
+          const crDate = document.getElementById("crDate");
+          if (crDate && !crDate.value) {
+            crDate.value = new Date().toISOString().slice(0, 10);
+          }
+        } else if (selected === "phys-result") {
+          const prDate = document.getElementById("prDate");
+          if (prDate && !prDate.value) {
+            prDate.value = new Date().toISOString().slice(0, 10);
+          }
+        }
+      }
+      reportTypeRadios.forEach((r) => r.addEventListener("change", updateReportTypeView));
+      updateReportTypeView();
+
+      const form = document.getElementById("form");
+      const btn = document.getElementById("btn");
+      const stopBtn = document.getElementById("stopBtn");
+      const progressArea = document.getElementById("progressArea");
+      const progressEl = document.getElementById("progress");
+      const resultArea = document.getElementById("resultArea");
+      const statusTitle = document.getElementById("statusTitle");
+      const crForm = document.getElementById("chemResultForm");
+      const crBtn = document.getElementById("crBtn");
+      const prForm = document.getElementById("physResultForm");
+      const prBtn = document.getElementById("prBtn");
+
+      document
+        .querySelectorAll('#form input[name="format"]')
+        .forEach((el) => el.addEventListener("change", updateChemPreFontOptions));
+      updateChemPreFontOptions();
+      document
+        .querySelectorAll('#chemResultForm input[name="crFormat"]')
+        .forEach((el) => el.addEventListener("change", updateChemResultFontOptions));
+      updateChemResultFontOptions();
+      document
+        .querySelectorAll('#physResultForm input[name="prFormat"]')
+        .forEach((el) => el.addEventListener("change", updatePhysResultFontOptions));
+      updatePhysResultFontOptions();
+
+      // 진행 중인 작업 추적용 (중지·재시도 방지)
+      let currentJobId = null;
+      let currentEs = null;
+      let activeFormEl = null; // 어떤 폼이 락 상태인지
+
+      function lockForm(targetForm) {
+        activeFormEl = targetForm;
+        targetForm
+          .querySelectorAll("input, button[type='submit']")
+          .forEach((el) => (el.disabled = true));
+        stopBtn.style.display = "inline-block";
+        stopBtn.disabled = false;
+      }
+
+      function unlockForm() {
+        if (activeFormEl) {
+          activeFormEl
+            .querySelectorAll("input, button[type='submit']")
+            .forEach((el) => (el.disabled = false));
+        }
+        activeFormEl = null;
+        stopBtn.style.display = "none";
+        currentJobId = null;
+        currentEs = null;
+      }
+
+      stopBtn.addEventListener("click", async () => {
+        if (!currentJobId) return;
+        const ok = await showConfirmDialog({
+          title: "작업 중지",
+          rows: [["상태", "진행 중인 작업을 중단합니다."]],
+          note: "이미 사용된 토큰 비용은 발생할 수 있습니다.",
+          okLabel: "중지",
+        });
+        if (!ok) return;
+        stopBtn.disabled = true;
+        stopBtn.textContent = "중지 중...";
+        try {
+          await fetch(`/api/jobs/${currentJobId}/abort`, { method: "POST" });
+        } catch (_) {}
+        // SSE는 서버가 done/error 이벤트로 닫아줌
+      });
+
+      // ── 개인 설정: 학번 저장 ────────────────────────────────────────────
+      const profileForm = document.getElementById("profileForm");
+      const profileBtn = document.getElementById("profileBtn");
+      const profileStatus = document.getElementById("profileStatus");
+
+      profileForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const nextStudentId = normalizeStudentId(
+          document.getElementById("settingsStudentIdInput").value,
+        );
+        profileBtn.disabled = true;
+        profileStatus.style.color = "#666";
+        profileStatus.textContent = "저장 중...";
+
+        try {
+          const res = await fetch("/api/me/profile", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ studentId: nextStudentId }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "저장 실패");
+          setStudentIdUi(data.studentId || nextStudentId);
+          saveLocalStudentId(currentStudentId);
+          profileStatus.style.color = "green";
+          profileStatus.textContent = "저장 완료";
+        } catch (err) {
+          setStudentIdUi(nextStudentId);
+          saveLocalStudentId(nextStudentId);
+          profileStatus.style.color = "#9a6700";
+          profileStatus.textContent = "이 브라우저에 저장됨";
+        } finally {
+          profileBtn.disabled = false;
+        }
+      });
+
+      // ── 비밀번호 변경 ────────────────────────────────────────────────────
+      const pwForm = document.getElementById("pwForm");
+      const pwBtn = document.getElementById("pwBtn");
+      const pwStatus = document.getElementById("pwStatus");
+
+      pwForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const cur = document.getElementById("currentPw").value;
+        const newP = document.getElementById("newPw").value;
+        const confirmP = document.getElementById("confirmPw").value;
+
+        if (newP !== confirmP) {
+          pwStatus.style.color = "red";
+          pwStatus.textContent = "새 비밀번호가 일치하지 않습니다.";
+          return;
+        }
+        if (newP === cur) {
+          pwStatus.style.color = "red";
+          pwStatus.textContent = "새 비밀번호가 현재와 같습니다.";
+          return;
+        }
+
+        pwBtn.disabled = true;
+        pwStatus.style.color = "#666";
+        pwStatus.textContent = "변경 중...";
+
+        try {
+          const res = await fetch("/api/me/password", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ currentPassword: cur, newPassword: newP }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "변경 실패");
+          pwStatus.style.color = "green";
+          pwStatus.textContent = "변경 완료";
+          pwForm.reset();
+        } catch (err) {
+          pwStatus.style.color = "red";
+          pwStatus.textContent = err.message;
+        } finally {
+          pwBtn.disabled = false;
+        }
+      });
+
+      // ── 건의사항/버그 제보 ────────────────────────────────────────────────
+      const feedbackForm = document.getElementById("feedbackForm");
+      const feedbackBtn = document.getElementById("feedbackBtn");
+      const feedbackStatus = document.getElementById("feedbackStatus");
+
+      feedbackForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        feedbackBtn.disabled = true;
+        feedbackStatus.style.color = "#666";
+        feedbackStatus.textContent = "전송 중...";
+
+        const payload = {
+          category: document.getElementById("feedbackCategory").value,
+          title: document.getElementById("feedbackTitle").value.trim(),
+          message: document.getElementById("feedbackMessage").value.trim(),
+          contactEmail: document.getElementById("feedbackContactEmail").value.trim(),
+          pageUrl: location.href,
+        };
+
+        try {
+          const res = await fetch("/api/feedback", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || "전송 실패");
+          feedbackStatus.style.color = "green";
+          feedbackStatus.textContent = "접수 완료";
+          feedbackForm.reset();
+        } catch (err) {
+          feedbackStatus.style.color = "red";
+          feedbackStatus.textContent = err.message || "전송 실패";
+        } finally {
+          feedbackBtn.disabled = false;
+        }
+      });
+
+      // 모델별 가격 (per 1M tokens, USD)
+      const MODEL_PRICING = {
+        "claude-sonnet-4-6": { input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75 },
+        "claude-opus-4-7": { input: 15, output: 75, cacheRead: 1.5, cacheWrite: 18.75 },
+      };
+
+      // chem-pre 비용 추정 (PDF 1개 + 시스템 프롬프트 ~10K 토큰 + 출력 6~10K)
+      // 실제 사용자 경험치 (3~5분 → 2~3분 단축, 출력 토큰도 그에 맞춰 축소).
+      function estimateCost(pdfBytes, modelId) {
+        const sizeKB = pdfBytes / 1024;
+        const p = MODEL_PRICING[modelId] || MODEL_PRICING["claude-opus-4-7"];
+
+        const sysCostLo = (10000 / 1e6) * p.cacheRead;
+        const sysCostHi = (10000 / 1e6) * p.cacheWrite;
+        const pdfTokensLo = sizeKB * 30;
+        const pdfTokensHi = sizeKB * 100;
+        const pdfCostLo = (pdfTokensLo / 1e6) * p.input;
+        const pdfCostHi = (pdfTokensHi / 1e6) * p.input;
+        const outputCostLo = (6000 / 1e6) * p.output;
+        const outputCostHi = (10000 / 1e6) * p.output;
+        const searchCostLo = 1 * 0.01;
+        const searchCostHi = 3 * 0.01;
+
+        const lo = sysCostLo + pdfCostLo + outputCostLo + searchCostLo;
+        const hi = sysCostHi + pdfCostHi + outputCostHi + searchCostHi;
+        return { lo, hi, sizeKB: Math.round(sizeKB) };
+      }
+
+      // phys-result 비용 추정
+      // - .cap 파일과 엑셀/CSV/텍스트는 서버에서 텍스트로 파싱됨
+      // - 이미지 자료 1장 ≈ 1500 토큰
+      // - 양식·평가기준 PDF (선택): 추가 입력
+      // - 출력 6K~10K (5p 강제 + 실제 사용자 경험상 2~3분 작성)
+      function estimatePhysResultCost({
+        capBytes,
+        photoCount,
+        photoBytes,
+        formBytes,
+        rubricBytes,
+        modelId,
+      }) {
+        const p = MODEL_PRICING[modelId] || MODEL_PRICING["claude-opus-4-7"];
+        const sysCostLo = (8000 / 1e6) * p.cacheRead;
+        const sysCostHi = (8000 / 1e6) * p.cacheWrite;
+
+        // .cap 파싱 결과 텍스트 — binary 파일이 텍스트로 변환되면 매우 작음.
+        // 실측: 20MB cap → ~5K 토큰. KB당 0.3 토큰 정도가 적정.
+        const capTextTokens = Math.min((capBytes / 1024) * 0.3, 8000);
+        const capCost = (capTextTokens / 1e6) * p.input;
+
+        // 양식·평가기준 PDF
+        const extraDocKB = (formBytes + rubricBytes) / 1024;
+        const extraDocTokens = extraDocKB * 80;
+        const extraDocCost = (extraDocTokens / 1e6) * p.input;
+
+        // 사진
+        const photoTokens = (photoCount || 0) * 1500;
+        const photoCost = (photoTokens / 1e6) * p.input;
+
+        // 출력 (5p 강제 + 2~3분 작성 기준)
+        const outputCostLo = (6000 / 1e6) * p.output;
+        const outputCostHi = (10000 / 1e6) * p.output;
+
+        const lo = sysCostLo + capCost + extraDocCost + photoCost + outputCostLo;
+        const hi = sysCostHi + capCost + extraDocCost + photoCost + outputCostHi;
+        const totalKB = Math.round(
+          (capBytes + photoBytes + formBytes + rubricBytes) / 1024,
+        );
+        return { lo, hi, totalKB };
+      }
+
+      // chem-result 비용 추정 (다중 파일 + 사진 N장)
+      // - 시스템 프롬프트 ~6K 토큰
+      // - 사진 1장 ≈ 1500 입력 토큰 (Claude vision 표준)
+      // - 출력 8K~13K (실제 사용자 경험상 2~4분 작성)
+      function estimateChemResultCost({
+        preReportBytes,
+        manualBytes,
+        dataBytes,
+        photoBytes,
+        photoCount,
+        modelId,
+      }) {
+        const p = MODEL_PRICING[modelId] || MODEL_PRICING["claude-opus-4-7"];
+
+        const sysCostLo = (6000 / 1e6) * p.cacheRead;
+        const sysCostHi = (6000 / 1e6) * p.cacheWrite;
+
+        // PDF/docx 텍스트 입력: KB당 30~100 토큰 (실측치에 맞춤)
+        const docKB = (preReportBytes + manualBytes) / 1024;
+        const docTokensLo = docKB * 30;
+        const docTokensHi = docKB * 100;
+        const docCostLo = (docTokensLo / 1e6) * p.input;
+        const docCostHi = (docTokensHi / 1e6) * p.input;
+
+        // 데이터 파일: 엑셀이면 markdown table로 변환. 최대 30KB.
+        const dataKB = Math.min(dataBytes / 1024, 30);
+        const dataTokens = dataKB * 80;
+        const dataCost = (dataTokens / 1e6) * p.input;
+
+        // 사진: 1장당 ~1500 토큰 (Claude vision)
+        const photoTokens = (photoCount || 0) * 1500;
+        const photoCost = (photoTokens / 1e6) * p.input;
+
+        // 출력: 8K~13K (2~4분 작성 기준)
+        const outputCostLo = (8000 / 1e6) * p.output;
+        const outputCostHi = (13000 / 1e6) * p.output;
+
+        const lo = sysCostLo + docCostLo + dataCost + photoCost + outputCostLo;
+        const hi = sysCostHi + docCostHi + dataCost + photoCost + outputCostHi;
+        const totalKB = Math.round(
+          (preReportBytes + manualBytes + dataBytes + photoBytes) / 1024,
+        );
+        return { lo, hi, totalKB };
+      }
+
+      function getSelectedModel() {
+        // Sonnet 비활성화 — 항상 Opus 4.7 사용.
+        // 복구 시: 아래 hidden input 대응 로직과 함께 라디오 버튼 형태로 변경.
+        const el = document.querySelector('input[name="model"]');
+        return el ? el.value : "claude-opus-4-7";
+      }
+
+      function getModelLabel(modelId) {
+        if (modelId === "claude-opus-4-7") return "Opus 4.7";
+        if (modelId === "claude-sonnet-4-6") return "Sonnet 4.6";
+        return modelId || "Opus 4.7";
+      }
+
+      function getFontLabel(fontId) {
+        if (fontId === "hamchorom-batang") return "함초롬바탕";
+        if (fontId === "nanum-gothic") return "나눔고딕";
+        if (fontId === "nanum-myeongjo") return "나눔명조";
+        return "맑은 고딕";
+      }
+
+      function getChemPreFormat() {
+        const formatEl = document.querySelector(
+          '#form input[name="format"]:checked, #form input[name="format"][type="hidden"]'
+        );
+        return formatEl ? formatEl.value : "docx";
+      }
+
+      function getChemResultFormat() {
+        const formatEl = document.querySelector(
+          '#chemResultForm input[name="crFormat"]:checked, #chemResultForm input[name="crFormat"][type="hidden"]'
+        );
+        return formatEl ? formatEl.value : "docx";
+      }
+
+      function getPhysResultFormat() {
+        const formatEl = document.querySelector(
+          '#physResultForm input[name="prFormat"]:checked, #physResultForm input[name="prFormat"][type="hidden"]'
+        );
+        return formatEl ? formatEl.value : "docx";
+      }
+
+      function updateHwpxOnlyFontOptions(selectId, format) {
+        const fontSelect = document.getElementById(selectId);
+        if (!fontSelect) return;
+        const allowHwpxOnly = format === "hwpx";
+        fontSelect
+          .querySelectorAll('option[data-hwpx-only="true"]')
+          .forEach((option) => {
+            option.hidden = !allowHwpxOnly;
+            option.disabled = !allowHwpxOnly;
+          });
+        const selectedOption = fontSelect.options[fontSelect.selectedIndex];
+        if (
+          !allowHwpxOnly &&
+          selectedOption &&
+          selectedOption.dataset.hwpxOnly === "true"
+        ) {
+          fontSelect.value = "malgun-gothic";
+        }
+      }
+
+      function updateChemPreFontOptions() {
+        updateHwpxOnlyFontOptions("fontFace", getChemPreFormat());
+      }
+
+      function updateChemResultFontOptions() {
+        updateHwpxOnlyFontOptions("crFontFace", getChemResultFormat());
+      }
+
+      function updatePhysResultFontOptions() {
+        updateHwpxOnlyFontOptions("prFontFace", getPhysResultFormat());
+      }
+
+      function costRangeText(est, krwLo, krwHi) {
+        return `$${est.lo.toFixed(2)} ~ $${est.hi.toFixed(2)} (약 ₩${krwLo.toLocaleString()} ~ ₩${krwHi.toLocaleString()})`;
+      }
+
+      function getUserNotesValue(id) {
+        return (document.getElementById(id)?.value || "").trim();
+      }
+
+      function getUserNotesFile(id) {
+        return document.getElementById(id)?.files?.[0] || null;
+      }
+
+      function validateUserNotesFile(file) {
+        if (!file) return true;
+        const ext = (file.name.split(".").pop() || "").toLowerCase();
+        if (!["md", "txt"].includes(ext)) {
+          alert("AI 참고 메모 파일은 .md 또는 .txt 형식만 업로드할 수 있습니다.");
+          return false;
+        }
+        if (file.size > 256 * 1024) {
+          alert("AI 참고 메모 파일은 최대 256KB까지만 업로드할 수 있습니다.");
+          return false;
+        }
+        return true;
+      }
+
+      function userNotesSummary(notes, file = null) {
+        const parts = [];
+        if (notes) parts.push(`${notes.length}자 직접 입력`);
+        if (file) parts.push(`${file.name} (${formatBytes(file.size)})`);
+        return parts.length ? parts.join(", ") : "없음";
+      }
+
+      function showConfirmDialog({ title, rows, note, okLabel = "생성" }) {
+        return new Promise((resolve) => {
+          const overlay = document.createElement("div");
+          overlay.className = "confirm-overlay";
+
+          const dialog = document.createElement("section");
+          dialog.className = "confirm-card";
+          dialog.setAttribute("role", "dialog");
+          dialog.setAttribute("aria-modal", "true");
+          dialog.setAttribute("aria-labelledby", "confirmTitle");
+
+          const heading = document.createElement("h2");
+          heading.id = "confirmTitle";
+          heading.textContent = title || "보고서 생성";
+
+          const list = document.createElement("dl");
+          list.className = "confirm-list";
+          for (const [label, value] of rows) {
+            const dt = document.createElement("dt");
+            dt.textContent = label;
+            const dd = document.createElement("dd");
+            dd.textContent = value;
+            list.append(dt, dd);
+          }
+
+          const noteEl = document.createElement("p");
+          noteEl.className = "confirm-note";
+          noteEl.textContent = note || "생성하시겠습니까?";
+
+          const actions = document.createElement("div");
+          actions.className = "confirm-actions";
+          const cancelBtn = document.createElement("button");
+          cancelBtn.type = "button";
+          cancelBtn.className = "secondary";
+          cancelBtn.textContent = "취소";
+          const okBtn = document.createElement("button");
+          okBtn.type = "button";
+          okBtn.className = "primary";
+          okBtn.textContent = okLabel;
+          actions.append(cancelBtn, okBtn);
+
+          dialog.append(heading, list, noteEl, actions);
+          overlay.appendChild(dialog);
+          document.body.appendChild(overlay);
+          document.body.classList.add("modal-open");
+
+          const close = (result) => {
+            document.removeEventListener("keydown", onKeydown);
+            document.body.classList.remove("modal-open");
+            overlay.remove();
+            resolve(result);
+          };
+          const onKeydown = (event) => {
+            if (event.key === "Escape") close(false);
+          };
+          document.addEventListener("keydown", onKeydown);
+          overlay.addEventListener("click", (event) => {
+            if (event.target === overlay) close(false);
+          });
+          cancelBtn.addEventListener("click", () => close(false));
+          okBtn.addEventListener("click", () => close(true));
+          okBtn.focus();
+        });
+      }
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (currentJobId) return; // 안전장치: 진행 중이면 무시
+        const file = document.getElementById("manual").files[0];
+        if (!file) return;
+
+        const model = getSelectedModel();
+        const modelLabel = getModelLabel(model);
+        const formatValue = getChemPreFormat();
+        updateChemPreFontOptions();
+        const fontFace = document.getElementById("fontFace").value;
+        const userNotes = getUserNotesValue("preUserNotes");
+        const userNotesFile = getUserNotesFile("preUserNotesFile");
+        if (!validateUserNotesFile(userNotesFile)) return;
+
+        // 예상 비용 확인
+        const est = estimateCost(file.size, model);
+        const krwLo = Math.round(est.lo * 1400);
+        const krwHi = Math.round(est.hi * 1400);
+        const ok = await showConfirmDialog({
+          title: "사전보고서 생성",
+          rows: [
+            ["모델", modelLabel],
+            ["글꼴", getFontLabel(fontFace)],
+            ["참고 메모", userNotesSummary(userNotes, userNotesFile)],
+            ["PDF", `${est.sizeKB}KB`],
+            ["예상 비용", costRangeText(est, krwLo, krwHi)],
+          ],
+          note: `실제 비용은 완료 후 표시됩니다. ${USE_POLICY_NOTE}`,
+        });
+        if (!ok) return;
+
+        lockForm(form);
+        btn.textContent = "생성 중...";
+        progressArea.style.display = "block";
+        progressEl.textContent = "";
+        resultArea.innerHTML = "";
+        statusTitle.textContent = "생성 중...";
+
+        const fd = new FormData();
+        fd.append("type", "chem-pre");
+        fd.append("manual", file);
+        const dateStr = document.getElementById("date").value;
+        const [y, m, d] = dateStr.split("-");
+        fd.append("date", `${y}/ ${m} / ${d}`);
+        fd.append("model", model);
+        fd.append("format", formatValue);
+        // 스타일 모드 (default | minimal). docx/hwpx 모두 지원한다.
+        const styleEl = document.querySelector('#form input[name="style"]:checked');
+        const styleValue = styleEl ? styleEl.value : "default";
+        fd.append("style", styleValue);
+        fd.append("fontFace", fontFace);
+        fd.append("userNotes", userNotes);
+        if (userNotesFile) fd.append("userNotesFile", userNotesFile);
+
+        // 표지에 들어갈 사용자 입력. 학번은 개인 설정값을 자동 사용한다.
+        const nameEl = document.getElementById("studentName");
+        const tempEl = document.getElementById("temperature");
+        const presEl = document.getElementById("pressure");
+        const studentId = currentStudentId;
+        const studentName = nameEl?.value.trim() || "";
+        const temperature = tempEl?.value.trim() || "";
+        const pressure = presEl?.value.trim() || "";
+        fd.append("studentId", studentId);
+        fd.append("studentName", studentName);
+        fd.append("temperature", temperature);
+        fd.append("pressure", pressure);
+        appendPolicyAcknowledgements(fd);
+        try {
+          localStorage.setItem(
+            "chemPreUserDefaults",
+            JSON.stringify({ studentName }),
+          );
+        } catch (_) { /* private mode etc. */ }
+
+        try {
+          const res = await fetch("/api/generate", { method: "POST", body: fd });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "요청 실패");
+          currentJobId = data.jobId;
+          streamJob(data.jobId);
+        } catch (err) {
+          appendLine("오류: " + err.message);
+          resetForm();
+        }
+      });
+
+      // ── 화학 결과보고서 submit (Phase 2-2: 백엔드 골격 동작) ──────────────
+      crForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (currentJobId) return;
+
+        const preReport = document.getElementById("crPreReport").files[0];
+        if (!preReport) return;
+        const dataFile = document.getElementById("crData").files[0] || null;
+        const photos = Array.from(document.getElementById("crPhotos").files);
+        const manual = document.getElementById("crManual").files[0] || null;
+
+        // :checked 셀렉터는 hidden input을 매칭 못하므로,
+        // 라디오가 비활성(주석 처리)된 현재는 hidden input value를 fallback으로.
+        // Sonnet 복구 시: 라디오 주석 해제 + fallback을 "claude-sonnet-4-6"로.
+        const crModel =
+          document.querySelector('input[name="crModel"]:checked')?.value ||
+          document.querySelector('input[name="crModel"]')?.value ||
+          "claude-opus-4-7";
+        const modelLabel = getModelLabel(crModel);
+        const crStyle =
+          document.querySelector('input[name="crStyle"]:checked')?.value ||
+          "default";
+        const crStyleLabel = crStyle === "minimal" ? "간단 양식" : "기본 양식";
+        const crFormat = getChemResultFormat();
+        updateChemResultFontOptions();
+        const crFontFace = document.getElementById("crFontFace").value;
+        const crUserNotes = getUserNotesValue("crUserNotes");
+        const crUserNotesFile = getUserNotesFile("crUserNotesFile");
+        if (!validateUserNotesFile(crUserNotesFile)) return;
+
+        const photoBytes = photos.reduce((s, p) => s + p.size, 0);
+        const est = estimateChemResultCost({
+          preReportBytes: preReport.size,
+          manualBytes: manual?.size || 0,
+          dataBytes: (dataFile?.size || 0) + (crUserNotesFile?.size || 0),
+          photoBytes,
+          photoCount: photos.length,
+          modelId: crModel,
+        });
+        const krwLo = Math.round(est.lo * 1400);
+        const krwHi = Math.round(est.hi * 1400);
+        const ok = await showConfirmDialog({
+          title: "화학 결과보고서 생성",
+          rows: [
+            ["모델", modelLabel],
+            ["스타일", crStyleLabel],
+            ["형식", crFormat === "hwpx" ? ".hwpx (한글)" : ".docx (MS Word)"],
+            ["글꼴", getFontLabel(crFontFace)],
+            ["참고 메모", userNotesSummary(crUserNotes, crUserNotesFile)],
+            ["출력 범위", "사전보고서 뒤에 붙일 결과 추가 작성분"],
+            ["첨부", `사전보고서${dataFile ? ", 데이터" : ", 데이터 없음"}${(crUserNotes || crUserNotesFile) && !dataFile ? " (메모 활용)" : ""}, 사진 ${photos.length}장${manual ? ", 매뉴얼" : ""}`],
+            ["총 크기", `${est.totalKB}KB`],
+            ["예상 비용", costRangeText(est, krwLo, krwHi)],
+          ],
+          note: `실제 비용은 완료 후 표시됩니다. ${USE_POLICY_NOTE}`,
+        });
+        if (!ok) return;
+
+        lockForm(crForm);
+        crBtn.textContent = "생성 중...";
+        progressArea.style.display = "block";
+        progressEl.textContent = "";
+        resultArea.innerHTML = "";
+        statusTitle.textContent = "생성 중...";
+
+        const fd = new FormData();
+        fd.append("type", "chem-result");
+        fd.append("preReport", preReport);
+        if (dataFile) fd.append("data", dataFile);
+        photos.forEach((p) => fd.append("photos", p));
+        if (manual) fd.append("manual", manual);
+        const crDateStr = document.getElementById("crDate").value;
+        const [y, m, d] = crDateStr.split("-");
+        fd.append("date", `${y}/ ${m} / ${d}`);
+        fd.append("temperature", document.getElementById("crTemp").value || "");
+        fd.append("pressure", document.getElementById("crPressure").value || "");
+        fd.append("studentId", currentStudentId);
+        fd.append("model", crModel);
+        fd.append("style", crStyle);
+        fd.append("format", crFormat);
+        fd.append("fontFace", crFontFace);
+        fd.append("userNotes", crUserNotes);
+        if (crUserNotesFile) fd.append("userNotesFile", crUserNotesFile);
+        appendPolicyAcknowledgements(fd);
+
+        try {
+          const res = await fetch("/api/generate", { method: "POST", body: fd });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "요청 실패");
+          currentJobId = data.jobId;
+          streamJob(data.jobId);
+        } catch (err) {
+          appendLine("오류: " + err.message);
+          resetForm();
+        }
+      });
+
+      // ── 물리 결과보고서 submit ───────────────────────────────────────────
+      prForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (currentJobId) return;
+
+        const cap = document.getElementById("prCap").files[0] || null;
+        const dataFiles = Array.from(document.getElementById("prData").files);
+        const manual = document.getElementById("prManual").files[0] || null;
+        const photos = Array.from(document.getElementById("prPhotos").files);
+
+        // 클라이언트 검증: cap, 엑셀/CSV, 데이터 스크린샷 중 하나는 필수
+        if (!cap && dataFiles.length === 0 && photos.length === 0) {
+          alert("PASCO Capstone (.cap), 엑셀/CSV/텍스트 데이터, 데이터표·그래프 스크린샷 중 하나는 업로드해야 합니다.");
+          return;
+        }
+        if (!currentStudentId) {
+          alert("개인 설정에서 학번을 저장한 뒤 생성하세요.");
+          showTab("settings");
+          document.getElementById("settingsStudentIdInput").focus();
+          return;
+        }
+
+        // :checked 셀렉터는 hidden input을 매칭 못하므로,
+        // 라디오가 비활성(주석 처리)된 현재는 hidden input value를 fallback으로.
+        // Sonnet 복구 시: 라디오 주석 해제 + fallback을 "claude-sonnet-4-6"로.
+        const prModel =
+          document.querySelector('input[name="prModel"]:checked')?.value ||
+          document.querySelector('input[name="prModel"]')?.value ||
+          "claude-opus-4-7";
+        const modelLabel = getModelLabel(prModel);
+        const prFormat = getPhysResultFormat();
+        updatePhysResultFontOptions();
+        const prFontFace = document.getElementById("prFontFace").value;
+        const prUserNotes = getUserNotesValue("prUserNotes");
+        const prUserNotesFile = getUserNotesFile("prUserNotesFile");
+        if (!validateUserNotesFile(prUserNotesFile)) return;
+
+        const photoBytes = photos.reduce((s, p) => s + p.size, 0);
+        const dataFileBytes = dataFiles.reduce((s, f) => s + f.size, 0);
+        const dataInputBytes =
+          (cap?.size || 0) + dataFileBytes + (prUserNotesFile?.size || 0);
+        const est = estimatePhysResultCost({
+          capBytes: dataInputBytes,
+          photoCount: photos.length,
+          photoBytes,
+          formBytes: manual?.size || 0,
+          rubricBytes: 0,
+          modelId: prModel,
+        });
+        const krwLo = Math.round(est.lo * 1400);
+        const krwHi = Math.round(est.hi * 1400);
+        const inputLabel =
+          (cap ? `.cap (${Math.round(cap.size / 1024)}KB)` : "") +
+          (cap && dataFiles.length ? " + " : "") +
+          (dataFiles.length
+            ? `엑셀/CSV/텍스트 ${dataFiles.length}개 (${Math.round(dataFileBytes / 1024)}KB)`
+            : "") +
+          (!cap && dataFiles.length === 0 && photos.length ? "이미지 자료만" : "");
+        const ok = await showConfirmDialog({
+          title: "물리 결과보고서 생성",
+          rows: [
+            ["모델", modelLabel],
+            ["양식", "기본 양식"],
+            ["형식", prFormat === "hwpx" ? ".hwpx (한글)" : ".docx (MS Word)"],
+            ["글꼴", getFontLabel(prFontFace)],
+            ["참고 메모", userNotesSummary(prUserNotes, prUserNotesFile)],
+            ["입력", `${inputLabel}${photos.length > 0 ? `, 사진 ${photos.length}장` : ""}${manual ? ", 매뉴얼" : ""}`],
+            ["총 크기", `${est.totalKB}KB`],
+            ["예상 비용", costRangeText(est, krwLo, krwHi)],
+          ],
+          note: `기본 평가 기준을 적용합니다. ${USE_POLICY_NOTE}`,
+        });
+        if (!ok) return;
+
+        lockForm(prForm);
+        prBtn.textContent = "생성 중...";
+        progressArea.style.display = "block";
+        progressEl.textContent = "";
+        resultArea.innerHTML = "";
+        statusTitle.textContent = "생성 중...";
+
+        const fd = new FormData();
+        fd.append("type", "phys-result");
+        if (cap) fd.append("cap", cap);
+        dataFiles.forEach((f) => fd.append("data", f));
+        if (manual) fd.append("manual", manual);
+        photos.forEach((p) => fd.append("photos", p));
+        const prDateStr = document.getElementById("prDate").value;
+        const [y, m, d] = prDateStr.split("-");
+        fd.append("date", `${y}/ ${m} / ${d}`);
+        fd.append("studentId", currentStudentId);
+        fd.append("model", prModel);
+        fd.append("format", prFormat);
+        fd.append("fontFace", prFontFace);
+        fd.append("userNotes", prUserNotes);
+        if (prUserNotesFile) fd.append("userNotesFile", prUserNotesFile);
+        appendPolicyAcknowledgements(fd);
+
+        try {
+          const res = await fetch("/api/generate", { method: "POST", body: fd });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "요청 실패");
+          currentJobId = data.jobId;
+          streamJob(data.jobId);
+        } catch (err) {
+          appendLine("오류: " + err.message);
+          resetForm();
+        }
+      });
+
+      function appendLine(text) {
+        progressEl.textContent += text + "\n";
+        progressEl.scrollTop = progressEl.scrollHeight;
+      }
+
+      function resetForm() {
+        unlockForm();
+        btn.textContent = "사전보고서 생성";
+        if (crBtn) crBtn.textContent = "결과보고서 생성";
+        if (prBtn) prBtn.textContent = "물리 결과보고서 생성";
+        stopBtn.textContent = "중지";
+      }
+
+      function streamJob(jobId) {
+        const es = new EventSource(`/api/jobs/${jobId}/stream`);
+        currentEs = es;
+
+        es.addEventListener("progress", (e) => {
+          appendLine(JSON.parse(e.data));
+        });
+
+        es.addEventListener("done", (e) => {
+          const data = JSON.parse(e.data);
+          appendLine("완료");
+          statusTitle.textContent = "완료";
+
+          const link = document.createElement("a");
+          link.href = `/api/jobs/${jobId}/download`;
+          link.textContent = `${data.filename} 다운로드`;
+          link.download = data.filename;
+          resultArea.appendChild(link);
+
+          es.close();
+          resetForm();
+          // 작업 후 잔액 자동 새로고침
+          if (typeof loadBalance === "function") loadBalance();
+          if (typeof loadFiles === "function") loadFiles();
+        });
+
+        es.addEventListener("error", (e) => {
+          const msg = e.data
+            ? JSON.parse(e.data)
+            : "서버 연결이 끊겼습니다. 보통 (1) 서버 재배포로 컨테이너가 재시작되었거나 (2) 무료 플랜 일시 sleep 진입 시 발생합니다. 이 경우 크레딧(쿠폰)은 차감되지 않습니다. 1~2분 기다린 뒤 보고서 생성을 다시 시도하세요. (이전 작업은 복구 불가 — 새로 만들어집니다)";
+          appendLine("오류: " + msg);
+          statusTitle.textContent = "오류";
+          es.close();
+          resetForm();
+        });
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>관리자 — 보고서 작성 툴</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <p class="topbar">
+      <a href="/">메인으로</a>
+      <a href="#" id="logout">로그아웃</a>
+    </p>
+    <h1>관리자 페이지</h1>
+    <p class="notice">
+      사용자 계정 발급 전 만 14세 이상 여부와 이용약관·개인정보처리방침·환불정책 동의 여부를 확인하세요.
+    </p>
+    <p id="rateInfo" style="color: #666; font-size: 0.9em">환율 로딩 중...</p>
+
+    <h2>사용자 추가</h2>
+    <form id="addForm">
+      <p>
+        이름: <input id="name" required maxlength="50" />
+      </p>
+      <p>
+        비밀번호: <input id="password" type="text" required minlength="5" />
+        <small>(평문 입력, 해시되어 저장됨. 최소 5자)</small>
+      </p>
+      <p>
+        <small style="color: #888">충전은 사용자 추가 후 사용자 목록의 ‘+ 충전’ 버튼으로 진행하세요.</small>
+      </p>
+      <p>
+        <label><input id="isAdmin" type="checkbox" /> 관리자 권한</label>
+      </p>
+      <p>
+        <button type="submit">추가</button>
+        <span id="addStatus" style="color: green; margin-left: 10px"></span>
+      </p>
+    </form>
+
+    <hr />
+
+    <h2>사용자 목록</h2>
+    <button id="refresh" class="secondary">새로고침</button>
+    <div class="table-wrapper">
+      <table id="userTable" border="1" cellpadding="6" cellspacing="0" style="margin-top: 8px; border-collapse: collapse; font-size: 13px">
+        <thead style="background: #eee">
+          <tr>
+            <th>이름</th>
+            <th>사전 잔액</th>
+            <th>결과 잔액</th>
+            <th>누적 사용</th>
+            <th>관리자</th>
+            <th>시간당</th>
+            <th>가입일</th>
+            <th>조작</th>
+          </tr>
+        </thead>
+        <tbody id="userTbody"></tbody>
+      </table>
+    </div>
+    <p id="listStatus" style="color: #666; font-size: 0.9em"></p>
+
+    <hr />
+
+    <h2>보고서 생성 로그</h2>
+    <p style="color: #666; font-size: 0.9em">
+      누가 언제 어떤 보고서를 만들었는지 기록. 최근 100건 표시.
+      <button id="refreshLogs" class="secondary">새로고침</button>
+    </p>
+    <div class="table-wrapper">
+      <table id="logTable" border="1" cellpadding="6" cellspacing="0" style="margin-top: 8px; border-collapse: collapse; font-size: 13px">
+        <thead style="background: #eee">
+          <tr>
+            <th>시각</th>
+            <th>사용자</th>
+            <th>종류</th>
+            <th>모델</th>
+            <th>보고서 제목</th>
+            <th>비용</th>
+            <th>토큰</th>
+            <th>웹검색</th>
+          </tr>
+        </thead>
+        <tbody id="logTbody"></tbody>
+      </table>
+    </div>
+    <p id="logStatus" style="color: #666; font-size: 0.9em"></p>
+
+    <footer class="site-footer">
+      <a href="/terms.html">이용약관</a>
+      <a href="/privacy.html">개인정보처리방침</a>
+      <a href="/refund.html">환불정책</a>
+      <a href="/changelog.html">패치노트</a>
+      <span class="site-version" data-site-version>버전 확인 중...</span>
+    </footer>
+
+    <script src="/version-footer.js"></script>
+    <script>
+      let krwPerUsd = 1400;
+
+      // ── Auth check ────────────────────────────────────────────────────────
+      fetch("/api/me")
+        .then((r) => (r.ok ? r.json() : Promise.reject()))
+        .then((d) => {
+          if (!d.isAdmin) {
+            alert("관리자 권한이 필요합니다");
+            location.href = "/";
+          }
+        })
+        .catch(() => (location.href = "/login.html"));
+
+      document.getElementById("logout").addEventListener("click", async (e) => {
+        e.preventDefault();
+        await fetch("/api/logout", { method: "POST" });
+        location.href = "/login.html";
+      });
+
+      // ── Helpers ───────────────────────────────────────────────────────────
+      const fmtUSD = (n) => "$" + Number(n || 0).toFixed(3);
+      const fmtKRW = (n) =>
+        Math.round(Number(n || 0) * krwPerUsd).toLocaleString() + "원";
+      const fmtBoth = (usd) => `${fmtUSD(usd)} (${fmtKRW(usd)})`;
+
+      async function loadUsers() {
+        const status = document.getElementById("listStatus");
+        status.textContent = "로딩 중...";
+        try {
+          const res = await fetch("/api/admin/users");
+          if (!res.ok) {
+            const e = await res.json();
+            throw new Error(e.error || "fetch failed");
+          }
+          const data = await res.json();
+          krwPerUsd = data.krwPerUsd || krwPerUsd;
+          document.getElementById("rateInfo").textContent =
+            `현재 환율: 1 USD = ${krwPerUsd.toFixed(2)} KRW`;
+          renderUsers(data.users);
+          status.textContent = `${data.users.length}명 로드됨`;
+        } catch (e) {
+          status.textContent = "오류: " + e.message;
+        }
+      }
+
+      // 단가 (server lib/pricing.js와 동기화). 충전 시 N건 → N×단가 USD로 변환.
+      const PRE_PRICE_USD = 0.81;
+      const RESULT_PRICE_USD = 1.02;
+
+      function balanceCell(usd, unitUsd) {
+        const v = Number(usd) || 0;
+        const count = unitUsd > 0 ? Math.floor(v / unitUsd) : 0;
+        const krw = Math.round(v * krwPerUsd).toLocaleString();
+        const color = count === 0 ? "red" : count <= 1 ? "orange" : "black";
+        return `<span style="color: ${color}">${count}건 ($${v.toFixed(3)} ≈ ₩${krw})</span>`;
+      }
+
+      function renderUsers(users) {
+        const tbody = document.getElementById("userTbody");
+        tbody.innerHTML = "";
+        for (const u of users) {
+          const count = u.recent_gen_count || 0;
+          const limit = u.recent_gen_limit || 5;
+          const isAdmin = !!u.is_admin;
+          const isLocked = !isAdmin && count >= limit;
+          const rateText = isAdmin
+            ? '<span style="color: #888">무제한</span>'
+            : `<span style="color: ${isLocked ? "red" : count >= limit - 1 ? "orange" : "black"}">${count}/${limit}${isLocked ? " 🔒" : ""}</span>`;
+          const unlockBtn = isLocked
+            ? `<button data-act="unlock" data-id="${u.id}" style="color: blue">잠금 해제</button>`
+            : "";
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${escape(u.name)}</td>
+            <td>${balanceCell(u.pre_credits_usd, PRE_PRICE_USD)}<br>
+              <button data-act="topup-pre" data-id="${u.id}" style="font-size: 11px; padding: 3px 6px;">+ 충전</button>
+            </td>
+            <td>${balanceCell(u.result_credits_usd, RESULT_PRICE_USD)}<br>
+              <button data-act="topup-result" data-id="${u.id}" style="font-size: 11px; padding: 3px 6px;">+ 충전</button>
+            </td>
+            <td>${fmtBoth(u.spent_usd)}</td>
+            <td>${isAdmin ? "✓" : ""}</td>
+            <td>${rateText}</td>
+            <td style="font-size: 11px">${new Date(u.created_at).toLocaleDateString()}</td>
+            <td>
+              ${unlockBtn}
+              <button data-act="edit" data-id="${u.id}">수정</button>
+              <button data-act="reset" data-id="${u.id}">사용량 0</button>
+              <button data-act="delete" data-id="${u.id}" style="color: red">삭제</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        }
+      }
+
+      function escape(s) {
+        return String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+      }
+
+      document.getElementById("userTbody").addEventListener("click", async (e) => {
+        const btn = e.target.closest("button");
+        if (!btn) return;
+        const id = btn.dataset.id;
+        const act = btn.dataset.act;
+        if (act === "unlock") {
+          if (!confirm("이 사용자의 시간당 사용 잠금을 해제할까요?")) return;
+          const res = await fetch(`/api/admin/users/${id}/unlock-rate`, {
+            method: "POST",
+          });
+          if (!res.ok) {
+            const e = await res.json();
+            return alert("실패: " + (e.error || "알 수 없음"));
+          }
+          loadUsers();
+          return;
+        }
+        if (act === "topup-pre" || act === "topup-result") {
+          const field = act === "topup-pre" ? "pre" : "result";
+          const label = field === "pre" ? "사전" : "결과";
+          const unit = field === "pre" ? PRE_PRICE_USD : RESULT_PRICE_USD;
+          const krwPerCount = Math.round(unit * krwPerUsd);
+          const input = prompt(
+            `${label} 보고서 충전\n` +
+              `1건 = $${unit.toFixed(2)} ≈ ₩${krwPerCount.toLocaleString()}\n\n` +
+              `몇 건 충전할까요? (숫자만 입력)`,
+            "5",
+          );
+          if (input == null) return;
+          const count = parseInt(input, 10);
+          if (!Number.isFinite(count) || count <= 0) {
+            return alert("1 이상의 정수를 입력하세요.");
+          }
+          const totalKrw = count * krwPerCount;
+          if (
+            !confirm(
+              `${label} ${count}건 = $${(unit * count).toFixed(2)} ≈ ₩${totalKrw.toLocaleString()}\n충전하시겠습니까?`,
+            )
+          )
+            return;
+          const res = await fetch(`/api/admin/users/${id}/topup`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ field, count }),
+          });
+          if (!res.ok) {
+            const e = await res.json();
+            return alert("실패: " + (e.error || "알 수 없음"));
+          }
+          loadUsers();
+          return;
+        }
+        if (act === "delete") {
+          if (!confirm("정말 삭제할까요?")) return;
+          const res = await fetch(`/api/admin/users/${id}`, { method: "DELETE" });
+          if (!res.ok) {
+            const e = await res.json();
+            return alert("삭제 실패: " + e.error);
+          }
+          loadUsers();
+        } else if (act === "reset") {
+          if (!confirm("이 사용자의 누적 사용량을 0으로 리셋할까요?")) return;
+          const res = await fetch(`/api/admin/users/${id}/reset-spent`, {
+            method: "POST",
+          });
+          if (!res.ok) return alert("실패");
+          loadUsers();
+        } else if (act === "edit") {
+          // 충전은 +충전(쿠폰) 방식만 쓰므로 수정은 비밀번호 변경 1개로 단순화.
+          const password = prompt("새 비밀번호:");
+          if (!password) return;
+          await patchUser(id, { password });
+          loadUsers();
+        }
+      });
+
+      async function patchUser(id, patch) {
+        const res = await fetch(`/api/admin/users/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(patch),
+        });
+        if (!res.ok) {
+          const e = await res.json();
+          alert("수정 실패: " + e.error);
+        }
+      }
+
+      document.getElementById("refresh").addEventListener("click", loadUsers);
+
+      // ── Add user form ─────────────────────────────────────────────────────
+      // 사용자 추가는 이름·비번·관리자 권한만. 충전은 사용자 목록의 ‘+ 충전’ 버튼.
+      document.getElementById("addForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const status = document.getElementById("addStatus");
+        status.textContent = "처리 중...";
+        status.style.color = "#666";
+        const body = {
+          name: document.getElementById("name").value,
+          password: document.getElementById("password").value,
+          isAdmin: document.getElementById("isAdmin").checked,
+        };
+        try {
+          const res = await fetch("/api/admin/users", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "실패");
+          status.textContent = `✓ ${data.user.name} 추가됨. 잔액은 + 충전으로.`;
+          status.style.color = "green";
+          document.getElementById("addForm").reset();
+          loadUsers();
+        } catch (e) {
+          status.textContent = "오류: " + e.message;
+          status.style.color = "red";
+        }
+      });
+
+      // ── Usage logs ────────────────────────────────────────────────────────
+      async function loadLogs() {
+        const status = document.getElementById("logStatus");
+        status.textContent = "로딩 중...";
+        try {
+          const res = await fetch("/api/admin/usage-logs?limit=100");
+          if (!res.ok) {
+            const e = await res.json();
+            throw new Error(e.error || "fetch failed");
+          }
+          const data = await res.json();
+          renderLogs(data.logs);
+          status.textContent = `${data.logs.length}건 로드됨`;
+        } catch (e) {
+          status.textContent = "오류: " + e.message;
+        }
+      }
+
+      function renderLogs(logs) {
+        const tbody = document.getElementById("logTbody");
+        tbody.innerHTML = "";
+        if (!logs || logs.length === 0) {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `<td colspan="8" style="color: #888; text-align: center">아직 생성된 보고서가 없습니다.</td>`;
+          tbody.appendChild(tr);
+          return;
+        }
+        for (const log of logs) {
+          const meta = log.meta || {};
+          const inputT = meta.inputTokens || 0;
+          const outputT = meta.outputTokens || 0;
+          const tokenStr =
+            inputT || outputT ? `입 ${fmtTok(inputT)} / 출 ${fmtTok(outputT)}` : "—";
+          const webStr = meta.webSearchCount != null ? `${meta.webSearchCount}회` : "—";
+          const modelStr = shortModel(meta.model);
+          const typeStr = shortType(meta.reportType, meta.reportLabel);
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${formatTime(log.created_at)}</td>
+            <td>${escape(log.user_name)}</td>
+            <td style="font-size: 11px">${typeStr}</td>
+            <td style="font-size: 11px; color: #555">${modelStr}</td>
+            <td>${escape(meta.title || "(제목 없음)")}</td>
+            <td>${fmtBoth(log.total_usd)}</td>
+            <td style="font-size: 11px; color: #555">${tokenStr}</td>
+            <td style="text-align: center">${webStr}</td>
+          `;
+          tbody.appendChild(tr);
+        }
+      }
+
+      function shortType(type, label) {
+        if (!type) return '<span style="color:#aaa">사전*</span>'; // legacy 데이터
+        if (type === "chem-pre") return "사전";
+        if (type === "chem-result") return "결과";
+        if (type === "phys-result") return "물리";
+        return escape(label || type);
+      }
+
+      function shortModel(m) {
+        if (!m) return "—";
+        const s = String(m).toLowerCase();
+        if (s.includes("opus")) return "Opus";
+        if (s.includes("sonnet")) return "Sonnet";
+        if (s.includes("haiku")) return "Haiku";
+        return m;
+      }
+
+      function fmtTok(n) {
+        const num = Number(n) || 0;
+        if (num >= 1000) return (num / 1000).toFixed(1) + "K";
+        return String(num);
+      }
+
+      function formatTime(iso) {
+        const d = new Date(iso);
+        const yy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const dd = String(d.getDate()).padStart(2, "0");
+        const hh = String(d.getHours()).padStart(2, "0");
+        const mi = String(d.getMinutes()).padStart(2, "0");
+        return `${yy}-${mm}-${dd} ${hh}:${mi}`;
+      }
+
+      document.getElementById("refreshLogs").addEventListener("click", loadLogs);
+
+      // 초기 로드
+      loadUsers();
+      loadLogs();
+    </script>
+  </body>
+</html>

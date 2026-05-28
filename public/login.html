@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>로그인</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <h1>보고서 작성 툴</h1>
+
+    <form id="form">
+      <p>
+        <label>이름: <input id="username" name="username" required maxlength="50" /></label>
+      </p>
+      <p>
+        <label>비밀번호: <input id="password" name="password" type="password" required /></label>
+      </p>
+
+      <div class="notice">
+        <strong>사용 전 확인</strong>
+        <ol style="margin: 8px 0 8px 18px; padding: 0;">
+          <li>본 서비스는 개인이 학습 보조용으로 만든 <strong>비공식 도구</strong>입니다. 학교·기관과 무관합니다.</li>
+          <li>AI가 작성한 보고서는 <strong>사실 오류·출처 부정확·누락</strong> 등이 있을 수 있습니다. 사용자가 반드시 직접 검증·수정 후 사용해야 합니다.</li>
+          <li>학교·교사 기준에서 허용되지 않는 제출, 그대로 제출, 표절, AI 사용 사실 은폐 등으로 발생하는 <strong>결과(학칙 위반·성적 불이익 등)에 대한 책임은 사용자 본인</strong>에게 있습니다.</li>
+          <li>업로드한 PDF 내용은 AI 분석을 위해 외부 서버(Anthropic)로 전송됩니다. 민감 정보는 업로드하지 마세요.</li>
+          <li>운영자는 점수, 제출 가능성, 표절 판정 회피를 보장하지 않습니다. 법령상 제한할 수 없는 책임과 환불정책상 권리는 배제하지 않습니다.</li>
+        </ol>
+        <p class="hint">
+          서비스 이용 전
+          <a href="/terms.html" target="_blank" rel="noopener">이용약관</a>,
+          <a href="/privacy.html" target="_blank" rel="noopener">개인정보처리방침</a>,
+          <a href="/refund.html" target="_blank" rel="noopener">환불정책</a>을 확인하세요.
+        </p>
+        <label>
+          <input type="checkbox" id="age14" required />
+          <strong>만 14세 이상입니다 (필수)</strong>
+        </label>
+        <br />
+        <label>
+          <input type="checkbox" id="agree" required />
+          <strong>위 내용과 약관·개인정보처리방침·환불정책을 이해했고 동의합니다 (필수)</strong>
+        </label>
+      </div>
+
+      <p>
+        <button type="submit" id="btn">로그인</button>
+      </p>
+      <p id="err" style="color: red"></p>
+    </form>
+
+    <script>
+      const form = document.getElementById("form");
+      const btn = document.getElementById("btn");
+      const err = document.getElementById("err");
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (!document.getElementById("age14").checked) {
+          err.textContent = "만 14세 이상인 경우에만 이용할 수 있습니다.";
+          return;
+        }
+        if (!document.getElementById("agree").checked) {
+          err.textContent = "약관과 고지 사항에 동의해야 로그인할 수 있습니다.";
+          return;
+        }
+        err.textContent = "";
+        btn.disabled = true;
+        btn.textContent = "로그인 중...";
+        try {
+          const res = await fetch("/api/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              username: document.getElementById("username").value,
+              password: document.getElementById("password").value,
+              age14Confirmed: document.getElementById("age14").checked,
+              termsAccepted: document.getElementById("agree").checked,
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "로그인 실패");
+          location.href = "/";
+        } catch (e) {
+          err.textContent = e.message;
+          btn.disabled = false;
+          btn.textContent = "로그인";
+        }
+      });
+    </script>
+    <footer class="site-footer">
+      <a href="/terms.html">이용약관</a>
+      <a href="/privacy.html">개인정보처리방침</a>
+      <a href="/refund.html">환불정책</a>
+      <a href="/changelog.html">패치노트</a>
+      <span class="site-version" data-site-version>버전 확인 중...</span>
+    </footer>
+    <script src="/version-footer.js"></script>
+  </body>
+</html>

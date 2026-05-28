@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>패치노트</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <main class="legal-page changelog-page">
+      <p><a href="/">← 보고서 작성 툴로 돌아가기</a></p>
+      <h1>패치노트</h1>
+      <p class="hint">
+        현재 배포된 코드의 버전과 최근 업데이트 내역입니다. 문제가 생기면 이 커밋 기준으로 롤백 지점을 잡을 수 있습니다.
+      </p>
+
+      <section class="version-card" aria-label="현재 배포 정보">
+        <h2>현재 배포</h2>
+        <dl>
+          <div>
+            <dt>앱 버전</dt>
+            <dd id="versionName">불러오는 중...</dd>
+          </div>
+          <div>
+            <dt>커밋</dt>
+            <dd><code id="versionCommit">...</code></dd>
+          </div>
+          <div>
+            <dt>브랜치</dt>
+            <dd id="versionBranch">...</dd>
+          </div>
+          <div>
+            <dt>서버 시작</dt>
+            <dd id="versionStarted">...</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section>
+        <h2>업데이트 내역</h2>
+        <div id="patchNotes" class="patch-notes">
+          <p class="hint">패치노트를 불러오는 중...</p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <a href="/terms.html">이용약관</a>
+      <a href="/privacy.html">개인정보처리방침</a>
+      <a href="/refund.html">환불정책</a>
+      <a href="/changelog.html">패치노트</a>
+      <span class="site-version" data-site-version>버전 확인 중...</span>
+    </footer>
+
+    <script src="/version-footer.js"></script>
+    <script>
+      function formatDateTime(value) {
+        if (!value) return "미확인";
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return value;
+        return date.toLocaleString("ko-KR", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      }
+
+      function renderPatchNotes(notes) {
+        const root = document.getElementById("patchNotes");
+        root.textContent = "";
+        if (!Array.isArray(notes) || notes.length === 0) {
+          root.innerHTML = '<p class="hint">표시할 패치노트가 없습니다.</p>';
+          return;
+        }
+        for (const note of notes) {
+          const article = document.createElement("article");
+          article.className = "patch-note";
+
+          const meta = document.createElement("p");
+          meta.className = "patch-note-meta";
+          meta.textContent = `${note.date || "날짜 미상"} · ${note.type || "업데이트"}`;
+
+          const title = document.createElement("h3");
+          title.textContent = note.title || "업데이트";
+
+          const list = document.createElement("ul");
+          for (const item of note.items || []) {
+            const li = document.createElement("li");
+            li.textContent = item;
+            list.appendChild(li);
+          }
+
+          article.append(meta, title, list);
+          root.appendChild(article);
+        }
+      }
+
+      async function loadVersion() {
+        try {
+          const res = await fetch("/api/version", { cache: "no-store" });
+          if (!res.ok) throw new Error("버전 정보를 불러오지 못했습니다.");
+          const info = await res.json();
+          document.getElementById("versionName").textContent = `${info.app || "app"} v${info.version || "?"}`;
+          document.getElementById("versionCommit").textContent = info.shortCommit || "미확인";
+          document.getElementById("versionCommit").title = info.commit || "";
+          document.getElementById("versionBranch").textContent = info.branch || "미확인";
+          document.getElementById("versionStarted").textContent = formatDateTime(info.serverStartedAt);
+          renderPatchNotes(info.patchNotes);
+        } catch (err) {
+          document.getElementById("patchNotes").innerHTML =
+            `<p class="error">${err.message || "패치노트를 불러오지 못했습니다."}</p>`;
+        }
+      }
+
+      loadVersion();
+    </script>
+  </body>
+</html>

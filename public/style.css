@@ -1,0 +1,943 @@
+/* 보고서 작성 툴 — 간결한 작업형 UI */
+
+:root {
+  --bg: #f3f5f8;
+  --surface: #ffffff;
+  --surface-soft: #f8fafc;
+  --surface-raised: #ffffff;
+  --text: #1f2937;
+  --muted: #667085;
+  --border: #d9e0ea;
+  --border-strong: #b9c4d3;
+  --primary: #1f6feb;
+  --primary-dark: #1557c0;
+  --primary-soft: #edf4ff;
+  --success: #11845b;
+  --danger: #c2413d;
+  --warning-bg: #fff8e5;
+  --shadow: 0 14px 36px rgba(16, 24, 40, 0.07);
+  --shadow-soft: 0 3px 12px rgba(16, 24, 40, 0.05);
+  --radius: 8px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  background: var(--bg);
+}
+
+body {
+  width: min(1080px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 24px 0 48px;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+    "Malgun Gothic", "맑은 고딕", system-ui, sans-serif;
+  color: var(--text);
+  line-height: 1.55;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body.modal-open {
+  overflow: hidden;
+}
+
+h1 {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+h2 {
+  margin: 28px 0 12px;
+  font-size: 20px;
+  font-weight: 750;
+}
+
+p {
+  margin: 10px 0;
+}
+
+small,
+.hint,
+.disclaimer {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.disclaimer {
+  line-height: 1.6;
+}
+
+a {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 650;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+a:visited {
+  color: var(--primary);
+}
+
+.topbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.topbar #user {
+  margin-right: auto;
+  color: var(--text);
+  font-weight: 700;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 22px 0;
+}
+
+body > form,
+body > details,
+.tab-panel > form,
+.settings-card,
+#progressArea,
+.balance-box,
+.notice,
+fieldset {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+body > form,
+body > details,
+.tab-panel > form,
+.settings-card,
+#progressArea {
+  padding: 22px;
+  margin: 16px 0;
+}
+
+.app-header {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.page-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  margin: 0 0 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.page-tabs button {
+  min-height: 36px;
+  margin: 0;
+  padding: 7px 16px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+}
+
+.page-tabs button:hover {
+  background: var(--surface-soft);
+}
+
+.page-tabs button.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+.tab-panel[hidden],
+.report-form[hidden],
+.notice[hidden] {
+  display: none !important;
+}
+
+.settings-card h2 {
+  margin-top: 0;
+}
+
+.report-toolbar {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  align-items: stretch;
+  margin-bottom: 16px;
+}
+
+.report-toolbar.has-balance {
+  grid-template-columns: minmax(240px, 0.72fr) minmax(0, 1.28fr);
+}
+
+.settings-summary {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr);
+  gap: 8px 14px;
+  margin: 16px 0 0;
+  padding: 14px 0 0;
+  border-top: 1px solid var(--border);
+}
+
+.settings-summary dt {
+  color: var(--muted);
+  font-weight: 750;
+}
+
+.settings-summary dd {
+  margin: 0;
+  font-weight: 750;
+}
+
+.file-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.file-item {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+
+.file-meta {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.file-meta strong {
+  overflow-wrap: anywhere;
+}
+
+.file-meta span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.file-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+  align-items: center;
+}
+
+.compact-form {
+  max-width: 460px;
+  padding: 0;
+  margin: 14px 0 0;
+  border: 0;
+  box-shadow: none;
+}
+
+.feedback-form {
+  max-width: 680px;
+}
+
+.inline-status {
+  display: inline-block;
+  margin-left: 10px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.balance-box {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+  align-content: center;
+  min-height: 100%;
+  padding: 14px 16px;
+  margin: 0;
+  background: var(--primary-soft);
+  box-shadow: none;
+}
+
+.balance-box strong {
+  margin-right: 4px;
+}
+
+.balance-box span {
+  color: #344054;
+  font-weight: 650;
+}
+
+.notice {
+  padding: 14px 16px;
+  margin: 14px 0;
+  background: var(--warning-bg);
+  box-shadow: none;
+  font-size: 14px;
+}
+
+.compliance-notice {
+  background: #eef6ff;
+  margin: 0;
+}
+
+.policy-check {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface-soft);
+}
+
+.policy-check label {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 0;
+  font-size: 14px;
+}
+
+.policy-check input {
+  flex: 0 0 auto;
+  margin-top: 6px;
+}
+
+.site-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  justify-content: center;
+  align-items: center;
+  margin: 34px 0 0;
+  padding: 18px 0 0;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.site-version {
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+}
+
+.legal-page {
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.legal-page h1 {
+  margin-top: 0;
+}
+
+.legal-page section {
+  margin-top: 24px;
+}
+
+.legal-page ul {
+  padding-left: 20px;
+}
+
+.legal-page li {
+  margin: 7px 0;
+}
+
+.version-card {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+}
+
+.version-card dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.version-card dt {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.version-card dd {
+  margin: 4px 0 0;
+  font-weight: 700;
+}
+
+.patch-notes {
+  display: grid;
+  gap: 12px;
+}
+
+.patch-note {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.patch-note h3 {
+  margin: 4px 0 10px;
+}
+
+.patch-note-meta {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* 입력 요소 */
+input[type="text"],
+input:not([type]),
+input[type="password"],
+input[type="number"],
+input[type="date"],
+input[type="email"],
+input[type="file"],
+select,
+textarea {
+  width: min(340px, 100%);
+  min-height: 42px;
+  padding: 9px 11px;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+  outline: none;
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    background-color 140ms ease;
+}
+
+input[type="file"] {
+  width: 100%;
+  padding: 10px;
+  background: var(--surface-soft);
+}
+
+input[type="file"]::file-selector-button {
+  min-height: 32px;
+  margin-right: 10px;
+  padding: 6px 11px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: #fff;
+  color: #344054;
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 750;
+}
+
+input[type="file"]::file-selector-button:hover {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: #123b7a;
+}
+
+.feedback-form textarea,
+.feedback-form input,
+.feedback-form select {
+  width: 100%;
+}
+
+input:focus,
+input:not([type]):focus,
+select:focus,
+textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.14);
+}
+
+input[type="radio"],
+input[type="checkbox"] {
+  accent-color: var(--primary);
+}
+
+form p {
+  margin: 0;
+}
+
+form label {
+  display: block;
+  max-width: 100%;
+  color: #344054;
+  font-weight: 650;
+  line-height: 1.7;
+}
+
+form label input,
+form label select,
+form label textarea {
+  margin-top: 5px;
+}
+
+.report-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.report-form > .notice,
+.report-form > .user-notes-field,
+.report-form > .policy-check,
+.report-form > p:has(button[type="submit"]),
+.report-form > .hint {
+  grid-column: 1 / -1;
+}
+
+.report-form > p:has(input[type="radio"]),
+.report-form > p:has(select) {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface-soft);
+}
+
+.report-form > p:has(input[type="radio"]) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+}
+
+.report-form > p:has(input[type="radio"]) strong {
+  flex-basis: 100%;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.report-form > p:has(input[type="radio"]) label {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 32px;
+  line-height: 1.4;
+}
+
+.report-form > p:has(input[type="radio"]) input {
+  margin: 0;
+}
+
+.user-notes-field label {
+  display: block;
+}
+
+.user-notes-field textarea {
+  width: 100%;
+  min-height: 118px;
+  resize: vertical;
+}
+
+.report-form > p:has(button[type="submit"]) {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
+button {
+  min-height: 40px;
+  margin: 2px;
+  padding: 9px 15px;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    transform 80ms ease;
+}
+
+button:hover {
+  border-color: #9aa8ba;
+  background: var(--surface-soft);
+}
+
+button:active {
+  transform: translateY(1px);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+button[type="submit"],
+button.primary {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fff;
+}
+
+button[type="submit"]:hover,
+button.primary:hover {
+  border-color: var(--primary-dark);
+  background: var(--primary-dark);
+}
+
+button.secondary,
+.confirm-actions button.secondary {
+  background: #fff;
+  color: #344054;
+}
+
+button.compact {
+  min-height: 34px;
+  padding: 6px 10px;
+  font-size: 14px;
+}
+
+.stop-btn {
+  border-color: #f2b8b5;
+  background: #fff5f5;
+  color: var(--danger);
+}
+
+.stop-btn:hover {
+  border-color: var(--danger);
+  background: #fff0f0;
+}
+
+/* 보고서 종류 선택 */
+#reportTypeFieldset {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 11px;
+  min-height: 100%;
+  padding: 13px;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+#reportTypeFieldset .report-type-title {
+  grid-column: 1 / -1;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+#reportTypeFieldset label {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  min-height: 46px;
+  margin: 0;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface-soft);
+  color: #344054;
+  cursor: pointer;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+#reportTypeFieldset label:has(input:checked) {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: #123b7a;
+  box-shadow: inset 0 0 0 1px rgba(31, 111, 235, 0.12);
+}
+
+#reportTypeFieldset input[type="radio"] {
+  margin: 0;
+}
+
+details summary {
+  cursor: pointer;
+  color: var(--primary);
+  font-weight: 750;
+}
+
+/* 진행 영역 */
+#progressArea pre {
+  max-height: 340px;
+  overflow: auto;
+  margin: 10px 0 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: #101828;
+  color: #e5e7eb;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+#progressArea h2 {
+  margin-top: 0;
+}
+
+#resultArea {
+  margin-top: 14px;
+}
+
+#resultArea a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 42px;
+  padding: 10px 15px;
+  border-radius: 7px;
+  background: var(--success);
+  color: #fff !important;
+  text-decoration: none;
+  font-weight: 800;
+}
+
+/* 표 */
+.table-wrapper {
+  overflow-x: auto;
+  margin: 10px 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  -webkit-overflow-scrolling: touch;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 0 !important;
+  font-size: 13px;
+}
+
+thead {
+  background: #eef2f7 !important;
+}
+
+table th,
+table td {
+  padding: 9px 10px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+table th {
+  color: #344054;
+  font-weight: 800;
+}
+
+table tr:last-child td {
+  border-bottom: 0;
+}
+
+td button,
+th button {
+  min-height: 32px;
+  padding: 5px 9px;
+  font-size: 12px;
+}
+
+/* 커스텀 생성 확인창 */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.confirm-card {
+  width: min(520px, 100%);
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 22px 60px rgba(15, 23, 42, 0.25);
+}
+
+.confirm-card h2 {
+  margin: 0 0 16px;
+  font-size: 21px;
+}
+
+.confirm-list {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 10px 14px;
+  margin: 0;
+  padding: 14px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.confirm-list dt {
+  color: var(--muted);
+  font-weight: 750;
+}
+
+.confirm-list dd {
+  margin: 0;
+  color: var(--text);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.confirm-note {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 22px;
+}
+
+@media (max-width: 700px) {
+  body {
+    width: min(100% - 24px, 960px);
+    padding-top: 18px;
+  }
+
+  h1 {
+    font-size: 24px;
+  }
+
+  .topbar {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  #reportTypeFieldset {
+    grid-template-columns: 1fr;
+  }
+
+  .report-toolbar,
+  .report-toolbar.has-balance,
+  .report-form {
+    grid-template-columns: 1fr;
+  }
+
+  body > form,
+  body > details,
+  .tab-panel > form,
+  .settings-card,
+  #progressArea {
+    padding: 16px;
+  }
+
+  form label {
+    display: block;
+  }
+
+  .report-form > p:has(button[type="submit"]) {
+    justify-content: stretch;
+  }
+
+  .report-form > p:has(button[type="submit"]) button {
+    width: 100%;
+  }
+
+  input[type="text"],
+  input:not([type]),
+  input[type="password"],
+  input[type="number"],
+  input[type="date"],
+  input[type="email"],
+  input[type="file"],
+  select,
+  textarea {
+    width: 100% !important;
+  }
+
+  button {
+    min-height: 44px;
+    padding: 10px 14px;
+  }
+
+  .page-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .page-tabs button {
+    width: 100%;
+  }
+
+  .file-item {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .file-actions {
+    justify-content: flex-start;
+  }
+
+  .inline-status {
+    display: block;
+    margin: 8px 0 0;
+  }
+
+  .confirm-card {
+    padding: 20px;
+  }
+
+  .confirm-list {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .confirm-list dd {
+    margin-bottom: 8px;
+  }
+
+  .confirm-actions {
+    flex-direction: column-reverse;
+  }
+
+  .confirm-actions button {
+    width: 100%;
+  }
+}

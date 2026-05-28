@@ -1,0 +1,21 @@
+node_modules/
+.env
+.env.local
+*.log
+.DS_Store
+.vscode/
+.idea/
+dist/
+tmp/
+__pycache__/
+*.pyc
+.venv/
+xcuserdata/
+*.xcuserstate
+.claude/
+*보고서*에시*/
+잘만든보고서 에시/
+*.hwp
+*.pdf
+*.hwpx
+ios/
