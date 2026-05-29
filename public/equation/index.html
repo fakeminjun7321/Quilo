@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HWPX LaTeX → 한글 수식 변환기</title>
+<meta name="description" content="HWPX 문서 안의 LaTeX 수식($...$, $$...$$, \(...\), \[...\])만 한글(HWP) 수식 개체로 바꿔 줍니다. 모든 처리는 브라우저에서 이루어지며 파일은 외부로 전송되지 않습니다." />
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --card: #ffffff;
+    --ink: #1f2430;
+    --muted: #6b7280;
+    --line: #e3e6ea;
+    --brand: #2f6df6;
+    --brand-ink: #ffffff;
+    --ok: #137a4b;
+    --ok-bg: #e7f6ee;
+    --warn: #8a5a00;
+    --warn-bg: #fdf3df;
+    --err: #b42318;
+    --err-bg: #fdecea;
+    --drop: #f0f4ff;
+    --shadow: 0 1px 3px rgba(16,24,40,.06), 0 8px 24px rgba(16,24,40,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14171c; --card: #1c2027; --ink: #e7e9ee; --muted: #9aa3b2;
+      --line: #2a2f38; --brand: #5b8cff; --drop: #1b2333;
+      --ok-bg: #14301f; --warn-bg: #2e2510; --err-bg: #331a18;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard",
+      "Malgun Gothic", "Segoe UI", Roboto, sans-serif;
+    line-height: 1.6; -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 40px 20px 80px; }
+  header h1 { font-size: 1.6rem; margin: 0 0 6px; letter-spacing: -0.01em; }
+  header p { margin: 0 0 28px; color: var(--muted); font-size: 0.96rem; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+    padding: 22px; box-shadow: var(--shadow);
+  }
+  .drop {
+    border: 2px dashed var(--line); border-radius: 14px; padding: 40px 20px;
+    text-align: center; cursor: pointer; transition: .15s border-color, .15s background;
+    background: transparent;
+  }
+  .drop:hover, .drop.over { border-color: var(--brand); background: var(--drop); }
+  .drop .big { font-size: 1.05rem; font-weight: 600; margin: 8px 0 4px; }
+  .drop .sub { color: var(--muted); font-size: 0.88rem; }
+  .drop svg { width: 40px; height: 40px; opacity: .55; }
+  input[type=file] { display: none; }
+  .file-row {
+    display: flex; align-items: center; gap: 12px; margin-top: 16px;
+    padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px;
+    font-size: 0.92rem; word-break: break-all;
+  }
+  .file-row .name { flex: 1; font-weight: 600; }
+  .file-row .size { color: var(--muted); white-space: nowrap; }
+  .actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+  button {
+    font: inherit; font-weight: 600; border: 0; border-radius: 11px; padding: 12px 20px;
+    cursor: pointer; transition: .12s transform, .12s opacity, .12s background;
+  }
+  button:active { transform: translateY(1px); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-primary { background: var(--brand); color: var(--brand-ink); }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+  .result { margin-top: 18px; display: none; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 7px; padding: 10px 14px;
+    border-radius: 11px; font-size: 0.92rem; font-weight: 600; margin-bottom: 12px;
+  }
+  .badge.ok { background: var(--ok-bg); color: var(--ok); }
+  .badge.warn { background: var(--warn-bg); color: var(--warn); }
+  .badge.err { background: var(--err-bg); color: var(--err); }
+  .stat-list { margin: 0 0 14px; padding-left: 18px; color: var(--muted); font-size: 0.9rem; }
+  .stat-list b { color: var(--ink); }
+  .muted { color: var(--muted); }
+  .note {
+    margin-top: 26px; font-size: 0.82rem; color: var(--muted);
+    border-top: 1px solid var(--line); padding-top: 18px;
+  }
+  .note code { background: var(--drop); padding: 1px 6px; border-radius: 6px; font-size: 0.82em; }
+  .spinner {
+    width: 16px; height: 16px; border: 2px solid currentColor; border-right-color: transparent;
+    border-radius: 50%; display: inline-block; animation: spin .7s linear infinite; vertical-align: -3px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  footer { margin-top: 30px; font-size: 0.78rem; color: var(--muted); text-align: center; }
+  footer a { color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="site-topbar" style="border-bottom:1px solid var(--line);background:var(--card)">
+  <div style="max-width:720px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;gap:10px">
+    <a href="/" style="display:inline-flex;align-items:center;gap:8px;color:var(--ink);text-decoration:none;font-weight:800;letter-spacing:-.01em">
+      <span style="display:grid;place-items:center;width:26px;height:26px;border-radius:8px;background:var(--brand);color:#fff;font-weight:800;font-size:14px">R</span>
+      보고서 작성 툴
+    </a>
+    <a href="/" style="margin-left:auto;color:var(--muted);text-decoration:none;font-size:.9rem">← 메인으로</a>
+  </div>
+</div>
+<div class="wrap">
+  <header>
+    <h1>HWP·HWPX LaTeX → 한글 수식 변환기</h1>
+    <p>HWP·HWPX 문서 안의 LaTeX 수식만 한글(HWP) 수식 개체로 바꿔, 새 <code>.hwpx</code> 파일로 내려받습니다. AI가 만든 <code>$…$</code>·<code>$$…$$</code>·<code>\(…\)</code>·<code>\[…\]</code> 수식이 그대로 한글에서 렌더링됩니다.</p>
+  </header>
+
+  <div class="card">
+    <div class="drop" id="drop" role="button" tabindex="0" aria-label="HWPX 파일 선택">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
+      </svg>
+      <div class="big">HWP·HWPX 파일을 여기에 끌어다 놓기</div>
+      <div class="sub">또는 클릭해서 파일 선택 · <code>.hwp</code> · <code>.hwpx</code> 지원</div>
+    </div>
+    <input type="file" id="file" accept=".hwp,.hwpx" />
+
+    <div class="file-row" id="fileRow" style="display:none">
+      <span class="name" id="fileName"></span>
+      <span class="size" id="fileSize"></span>
+    </div>
+
+    <div class="actions" id="actions" style="display:none">
+      <button class="btn-primary" id="convertBtn">수식 변환</button>
+      <button class="btn-ghost" id="resetBtn">다른 파일</button>
+    </div>
+
+    <div class="result" id="result"></div>
+  </div>
+
+  <p class="note">
+    <b>개인정보:</b> 변환은 전부 <b>브라우저 안에서</b> 실행됩니다. 업로드한 파일은 어떤 서버로도 전송되지 않습니다.<br />
+    <b>HWP(.hwp):</b> 이진 형식이라 오픈소스 <a href="https://github.com/edwardkim/rhwp" target="_blank" rel="noopener">rhwp</a>(WebAssembly)를 빌려 브라우저 안에서 <code>.hwpx</code>로 먼저 바꾼 뒤 수식을 변환합니다(역시 서버 업로드 없음, rhwp 페이지를 불러옵니다). <b>결과물은 <code>.hwpx</code>로 받습니다.</b><br />
+    <b>변환 대상:</b> 텍스트로 들어간 LaTeX 구간만 수식 개체로 바꿉니다. <code>$100$</code>처럼 숫자뿐인 달러 표기는 금액으로 보고 건드리지 않습니다. 이미 수식 개체이거나 이미지로 들어간 수식은 대상이 아닙니다.<br />
+    <b>확인:</b> 한글 수식 문법은 공식 레퍼런스가 빈약해, 복잡한 수식은 한글에서 직접 열어 확인하길 권합니다.
+  </p>
+
+  <footer>
+    변환 엔진·규칙 © 2026 Shin Mingyu — <a href="https://github.com/minigu5/latex-to-hwp" target="_blank" rel="noopener">latex-to-hwp</a>
+    (Non-Commercial &amp; Attribution). 본 도구는 이를 포함·파생한 비영리 무료 도구입니다.<br />
+    HWP 변환은 <a href="https://github.com/edwardkim/rhwp" target="_blank" rel="noopener">rhwp</a>(© edwardkim) 인스턴스를 빌려 씁니다.<br />
+    <a href="LICENSE">LICENSE</a> · <a href="NOTICE">NOTICE</a> · <a href="CONVERSION_RULES.md">변환 규칙</a>
+  </footer>
+</div>
+
+<script src="vendor/jszip.min.js"></script>
+<script src="src/converter.js"></script>
+<script src="src/hwpx-convert.js"></script>
+<script>
+(function () {
+  'use strict';
+  var fileInput = document.getElementById('file');
+  var drop = document.getElementById('drop');
+  var fileRow = document.getElementById('fileRow');
+  var fileName = document.getElementById('fileName');
+  var fileSize = document.getElementById('fileSize');
+  var actions = document.getElementById('actions');
+  var convertBtn = document.getElementById('convertBtn');
+  var resetBtn = document.getElementById('resetBtn');
+  var result = document.getElementById('result');
+
+  var currentFile = null;
+  var lastUrl = null;
+
+  function fmtSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1024 / 1024).toFixed(2) + ' MB';
+  }
+
+  function clearResult() {
+    result.style.display = 'none';
+    result.innerHTML = '';
+    if (lastUrl) { URL.revokeObjectURL(lastUrl); lastUrl = null; }
+  }
+
+  function showError(msg) {
+    clearResult();
+    result.style.display = 'block';
+    result.innerHTML = '<div class="badge err">⚠ ' + escapeHtml(msg) + '</div>';
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function pickFile(file) {
+    clearResult();
+    if (!file) return;
+    if (!/\.hwpx?$/i.test(file.name)) {
+      currentFile = null;
+      fileRow.style.display = 'none';
+      actions.style.display = 'none';
+      showError('HWP(.hwp) 또는 HWPX(.hwpx) 파일만 변환할 수 있습니다. 선택한 파일: ' + file.name);
+      return;
+    }
+    currentFile = file;
+    fileName.textContent = file.name;
+    fileSize.textContent = fmtSize(file.size);
+    fileRow.style.display = 'flex';
+    actions.style.display = 'flex';
+  }
+
+  function reset() {
+    currentFile = null;
+    fileInput.value = '';
+    fileRow.style.display = 'none';
+    actions.style.display = 'none';
+    clearResult();
+  }
+
+  // .hwp(이진) → 오픈소스 rhwp(WebAssembly) 공개 인스턴스를 숨긴 iframe으로 띄워
+  // .hwpx로 변환한 뒤, 기존 HWPX 파이프라인(HwpxConvert.convertFile)으로 수식을 바꾼다.
+  // 모든 처리는 브라우저 안에서 일어나며(서버 업로드 없음), 결과물은 .hwpx 다.
+  // postMessage 프로토콜은 rhwp의 임베드 에디터(npm/editor) 규약을 따른다.
+  function convertHwpViaRhwp(file) {
+    var RHWP_URL = 'https://edwardkim.github.io/rhwp/';
+    return file.arrayBuffer().then(function (buf) {
+      return new Promise(function (resolve, reject) {
+        var iframe = document.createElement('iframe');
+        iframe.src = RHWP_URL;
+        iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1280px;height:900px;border:none;';
+        document.body.appendChild(iframe);
+
+        var reqId = 0;
+        var pending = new Map();
+        function sendRequest(method, params) {
+          return new Promise(function (res, rej) {
+            var id = ++reqId;
+            pending.set(id, { resolve: res, reject: rej });
+            iframe.contentWindow.postMessage({ type: 'rhwp-request', id: id, method: method, params: params || {} }, '*');
+            setTimeout(function () {
+              if (pending.has(id)) { pending.delete(id); rej(new Error('rhwp 응답 시간 초과: ' + method)); }
+            }, 30000);
+          });
+        }
+        function onMessage(e) {
+          if (e.data && e.data.type === 'rhwp-response' && e.data.id != null) {
+            var r = pending.get(e.data.id);
+            if (r) {
+              pending.delete(e.data.id);
+              if (e.data.error) r.reject(new Error('rhwp 변환 오류: ' + e.data.error));
+              else r.resolve(e.data.result);
+            }
+          }
+        }
+        window.addEventListener('message', onMessage);
+        function cleanup() {
+          window.removeEventListener('message', onMessage);
+          if (iframe.parentNode) document.body.removeChild(iframe);
+        }
+
+        iframe.addEventListener('load', function () {
+          sendRequest('ready')
+            .then(function () { return sendRequest('loadFile', { data: new Uint8Array(buf), fileName: file.name }); })
+            .then(function () { return sendRequest('exportHwpx'); })
+            .then(function (rhwpResult) {
+              cleanup();
+              var bytes = rhwpResult instanceof Uint8Array ? rhwpResult : new Uint8Array(rhwpResult);
+              var hwpxFile = new File(
+                [new Blob([bytes], { type: 'application/vnd.hancom.hwpx' })],
+                file.name.replace(/\.hwp$/i, '.hwpx'),
+                { type: 'application/vnd.hancom.hwpx' }
+              );
+              return window.HwpxConvert.convertFile(hwpxFile);
+            })
+            .then(resolve)
+            .catch(function (err) { cleanup(); reject(err); });
+        });
+      });
+    });
+  }
+
+  function runConvert() {
+    if (!currentFile) return;
+    convertBtn.disabled = true;
+    resetBtn.disabled = true;
+    clearResult();
+    result.style.display = 'block';
+    var isHwp = /\.hwp$/i.test(currentFile.name) && !/\.hwpx$/i.test(currentFile.name);
+    result.innerHTML = '<div class="badge ok"><span class="spinner"></span> ' +
+      (isHwp ? 'rhwp로 .hwp → .hwpx 변환 후 수식 변환 중… (수십 초 걸릴 수 있어요)' : '변환 중…') + '</div>';
+
+    var task = isHwp ? convertHwpViaRhwp(currentFile) : window.HwpxConvert.convertFile(currentFile);
+    task.then(function (out) {
+      var s = out.stats;
+      lastUrl = URL.createObjectURL(out.blob);
+
+      var html = '';
+      if (s.equations > 0) {
+        html += '<div class="badge ok">✓ 변환 완료</div>';
+      } else {
+        html += '<div class="badge warn">변환할 LaTeX 수식을 찾지 못했습니다</div>';
+      }
+      html += '<ul class="stat-list">';
+      html += '<li>수식 개체로 변환: <b>' + s.equations + '</b>개</li>';
+      if (s.skippedNumericDollars > 0) {
+        html += '<li>숫자뿐인 <code>$…$</code> 건너뜀: <b>' + s.skippedNumericDollars + '</b>개</li>';
+      }
+      html += '<li>수정된 본문(section): <b>' + s.sectionsChanged + '</b>개</li>';
+      html += '</ul>';
+
+      if (s.equations > 0) {
+        html += '<a id="dl" class="btn-primary" style="display:inline-block;text-decoration:none" ' +
+          'href="' + lastUrl + '" download="' + escapeHtml(out.filename) + '">' +
+          '↓ ' + escapeHtml(out.filename) + ' 내려받기</a>';
+      } else {
+        html += '<p class="muted" style="font-size:.88rem;margin:0">' +
+          '이 문서에는 <code>$…$</code> 형태의 LaTeX 텍스트가 없거나, 이미 수식 개체로 들어가 있을 수 있습니다.</p>';
+      }
+      result.innerHTML = html;
+    }).catch(function (err) {
+      showError((err && err.message) ? err.message : String(err));
+    }).then(function () {
+      convertBtn.disabled = false;
+      resetBtn.disabled = false;
+    });
+  }
+
+  // 이벤트
+  drop.addEventListener('click', function () { fileInput.click(); });
+  drop.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); }
+  });
+  fileInput.addEventListener('change', function () { pickFile(fileInput.files[0]); });
+
+  ['dragenter', 'dragover'].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('over'); });
+  });
+  ['dragleave', 'drop'].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('over'); });
+  });
+  drop.addEventListener('drop', function (e) {
+    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) pickFile(f);
+  });
+
+  convertBtn.addEventListener('click', runConvert);
+  resetBtn.addEventListener('click', reset);
+})();
+</script>
+</body>
+</html>
