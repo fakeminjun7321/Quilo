@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>이미지 변환·압축 — 보고서 도구</title>
+    <meta name="description" content="이미지를 JPG·PNG·WebP로 변환하고 크기를 줄이는 브라우저 도구. 업로드 없이 기기 안에서 처리." />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("theme");
+          if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          document.documentElement.setAttribute("data-theme", t);
+        } catch (e) {}
+      })();
+    </script>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body class="landing">
+    <div class="landing-bg" aria-hidden="true"></div>
+    <nav class="landing-nav">
+      <div class="landing-nav-inner">
+        <a href="/" class="brand"><span class="brand-mark" aria-hidden="true">R</span> 보고서 작성 툴</a>
+        <div class="landing-nav-actions">
+          <a href="/tools/index.html" class="nav-link">← 도구 모음</a>
+          <button type="button" id="themeToggle" class="theme-toggle" aria-label="다크 모드로 전환" title="다크 모드로 전환">
+            <span class="theme-icon-light" aria-hidden="true">🌙</span>
+            <span class="theme-icon-dark" aria-hidden="true">☀️</span>
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="landing-shell">
+      <section class="section" style="border-top:0">
+        <div class="tool-page-head">
+          <h1>이미지 변환·압축</h1>
+          <p>이미지를 JPG·PNG·WebP로 바꾸고 크기를 줄입니다. 보고서에 넣을 사진 용량 줄일 때. 모든 처리는 브라우저 안에서만 이뤄집니다.</p>
+        </div>
+
+        <div class="tool-card">
+          <div id="imgDrop" role="button" tabindex="0" style="border:2px dashed var(--border-strong);border-radius:12px;padding:34px 20px;text-align:center;cursor:pointer;color:var(--text-muted)">
+            <div style="font-weight:650;color:var(--text)">이미지를 끌어다 놓기</div>
+            <div style="font-size:13px;margin-top:4px">또는 클릭해서 선택 · JPG · PNG · WebP · HEIC 등</div>
+          </div>
+          <input type="file" id="imgFile" accept="image/*" style="display:none" />
+
+          <div class="tool-row">
+            <label class="tool-label">출력 형식
+              <select id="imgFmt" class="tool-input">
+                <option value="image/jpeg">JPG</option>
+                <option value="image/png">PNG</option>
+                <option value="image/webp">WebP</option>
+              </select>
+            </label>
+            <label class="tool-label">최대 너비 (px, 0=원본)
+              <input id="imgW" class="tool-input" type="number" min="0" step="1" value="0" />
+            </label>
+            <label class="tool-label">품질 (JPG·WebP): <span id="imgQv">0.85</span>
+              <input id="imgQ" type="range" min="0.3" max="1" step="0.05" value="0.85" style="width:100%" />
+            </label>
+          </div>
+
+          <div id="imgOut" class="tool-result" style="display:none">
+            <div class="stat-grid">
+              <div class="stat-box"><div class="stat-label">원본</div><div class="stat-value sm" id="imgOrig">–</div></div>
+              <div class="stat-box"><div class="stat-label">변환 후</div><div class="stat-value sm" id="imgNew">–</div></div>
+              <div class="stat-box"><div class="stat-label">크기 변화</div><div class="stat-value sm" id="imgDelta">–</div></div>
+            </div>
+            <a id="imgDl" class="btn-lg btn-primary" style="display:inline-flex;min-height:44px;justify-self:start" download>↓ 내려받기</a>
+            <img id="imgPrev" alt="미리보기" style="max-width:100%;border-radius:10px;border:1px solid var(--border)" />
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-links">
+        <a href="/">메인</a>
+        <a href="/tools/index.html">도구 모음</a>
+        <a href="/guide.html">이용 가이드</a>
+        <a href="https://blog.naver.com/physicjun1905" target="_blank" rel="noopener">블로그</a>
+      </div>
+      <div class="footer-copy">© 2026 Lab Report Generator Web · MIT License</div>
+    </footer>
+
+    <script src="/theme.js"></script>
+    <script>
+      (function () {
+        var drop = document.getElementById("imgDrop"), file = document.getElementById("imgFile");
+        var fmt = document.getElementById("imgFmt"), wEl = document.getElementById("imgW"), q = document.getElementById("imgQ"), qv = document.getElementById("imgQv");
+        var out = document.getElementById("imgOut"), dl = document.getElementById("imgDl"), prev = document.getElementById("imgPrev");
+        var current = null, origSize = 0, origName = "image", lastUrl = null;
+
+        function fmtSize(b) { return b < 1024 ? b + " B" : b < 1048576 ? (b / 1024).toFixed(1) + " KB" : (b / 1048576).toFixed(2) + " MB"; }
+        function ext(type) { return type === "image/png" ? "png" : type === "image/webp" ? "webp" : "jpg"; }
+
+        function render() {
+          if (!current) return;
+          var maxW = parseInt(wEl.value, 10) || 0;
+          var scale = maxW > 0 && current.naturalWidth > maxW ? maxW / current.naturalWidth : 1;
+          var w = Math.round(current.naturalWidth * scale), h = Math.round(current.naturalHeight * scale);
+          var cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+          var ctx = cv.getContext("2d");
+          if (fmt.value === "image/jpeg") { ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, w, h); }
+          ctx.drawImage(current, 0, 0, w, h);
+          cv.toBlob(function (blob) {
+            if (!blob) return;
+            if (lastUrl) URL.revokeObjectURL(lastUrl);
+            lastUrl = URL.createObjectURL(blob);
+            out.style.display = "grid";
+            document.getElementById("imgOrig").textContent = fmtSize(origSize) + " · " + current.naturalWidth + "×" + current.naturalHeight;
+            document.getElementById("imgNew").textContent = fmtSize(blob.size) + " · " + w + "×" + h;
+            var pct = origSize ? Math.round((1 - blob.size / origSize) * 100) : 0;
+            document.getElementById("imgDelta").textContent = (pct >= 0 ? "−" + pct : "+" + -pct) + "%";
+            prev.src = lastUrl;
+            dl.href = lastUrl;
+            dl.download = origName.replace(/\.[^.]+$/, "") + "." + ext(fmt.value);
+          }, fmt.value, parseFloat(q.value));
+        }
+        function load(f) {
+          if (!f || !/^image\//.test(f.type) && !/\.(jpe?g|png|webp|heic|gif|bmp)$/i.test(f.name)) return;
+          origSize = f.size; origName = f.name;
+          var img = new Image();
+          img.onload = function () { current = img; render(); };
+          img.onerror = function () { alert("이미지를 불러오지 못했습니다. (HEIC 등 일부 형식은 브라우저가 지원하지 않을 수 있어요)"); };
+          img.src = URL.createObjectURL(f);
+        }
+        drop.addEventListener("click", function () { file.click(); });
+        drop.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); file.click(); } });
+        file.addEventListener("change", function () { load(file.files[0]); });
+        ["dragover", "dragenter"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.style.borderColor = "var(--accent)"; }); });
+        ["dragleave", "drop"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.style.borderColor = "var(--border-strong)"; }); });
+        drop.addEventListener("drop", function (e) { var f = e.dataTransfer && e.dataTransfer.files[0]; if (f) load(f); });
+        [fmt, wEl].forEach(function (el) { el.addEventListener("input", render); el.addEventListener("change", render); });
+        q.addEventListener("input", function () { qv.textContent = q.value; render(); });
+      })();
+    </script>
+  </body>
+</html>

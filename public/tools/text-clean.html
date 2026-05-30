@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>텍스트 정리 — 보고서 도구</title>
+    <meta name="description" content="여러 공백·빈 줄·줄바꿈을 정리하고 깔끔한 평문으로 만드는 브라우저 도구." />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("theme");
+          if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          document.documentElement.setAttribute("data-theme", t);
+        } catch (e) {}
+      })();
+    </script>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body class="landing">
+    <div class="landing-bg" aria-hidden="true"></div>
+    <nav class="landing-nav">
+      <div class="landing-nav-inner">
+        <a href="/" class="brand"><span class="brand-mark" aria-hidden="true">R</span> 보고서 작성 툴</a>
+        <div class="landing-nav-actions">
+          <a href="/tools/index.html" class="nav-link">← 도구 모음</a>
+          <button type="button" id="themeToggle" class="theme-toggle" aria-label="다크 모드로 전환" title="다크 모드로 전환">
+            <span class="theme-icon-light" aria-hidden="true">🌙</span>
+            <span class="theme-icon-dark" aria-hidden="true">☀️</span>
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="landing-shell">
+      <section class="section" style="border-top:0">
+        <div class="tool-page-head">
+          <h1>텍스트 정리</h1>
+          <p>복사해 온 텍스트의 여러 공백·빈 줄·줄바꿈을 정리해 깔끔한 평문으로 만듭니다. 옵션을 켜면 바로 적용됩니다.</p>
+        </div>
+
+        <div class="tool-card">
+          <textarea id="tcIn" class="tool-input" placeholder="정리할 텍스트를 붙여넣으세요…" autofocus></textarea>
+          <div style="display:flex;flex-wrap:wrap;gap:14px 20px">
+            <label class="check-line"><input type="checkbox" id="opSpace" checked /> <span>여러 공백·탭을 하나로</span></label>
+            <label class="check-line"><input type="checkbox" id="opTrim" checked /> <span>각 줄 양끝 공백 제거</span></label>
+            <label class="check-line"><input type="checkbox" id="opBlank" checked /> <span>빈 줄 제거</span></label>
+            <label class="check-line"><input type="checkbox" id="opOneLine" /> <span>모든 줄바꿈 → 한 줄</span></label>
+            <label class="check-line"><input type="checkbox" id="opQuotes" /> <span>특수 따옴표·대시를 일반 기호로</span></label>
+          </div>
+          <div class="tool-result">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <strong style="font-size:14px">결과</strong>
+              <span class="hint" id="tcCount" style="margin:0"></span>
+              <button class="btn-lg btn-primary" id="tcCopy" style="min-height:38px;padding:8px 16px;font-size:14px;margin-left:auto">복사</button>
+            </div>
+            <textarea id="tcOut" class="tool-input" readonly></textarea>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-links">
+        <a href="/">메인</a>
+        <a href="/tools/index.html">도구 모음</a>
+        <a href="/guide.html">이용 가이드</a>
+        <a href="https://blog.naver.com/physicjun1905" target="_blank" rel="noopener">블로그</a>
+      </div>
+      <div class="footer-copy">© 2026 Lab Report Generator Web · MIT License</div>
+    </footer>
+
+    <script src="/theme.js"></script>
+    <script>
+      (function () {
+        var inp = document.getElementById("tcIn"), out = document.getElementById("tcOut"), cnt = document.getElementById("tcCount");
+        var ids = ["opSpace", "opTrim", "opBlank", "opOneLine", "opQuotes"];
+        function on(id) { return document.getElementById(id).checked; }
+        function clean(t) {
+          if (on("opQuotes")) t = t.replace(/[‘’‛′]/g, "'").replace(/[“”″]/g, '"').replace(/[–—−]/g, "-");
+          if (on("opOneLine")) t = t.replace(/\s*\r?\n\s*/g, " ");
+          if (on("opSpace")) t = t.replace(/[ \t ]+/g, " ");
+          if (on("opTrim")) t = t.split(/\r?\n/).map(function (l) { return l.replace(/^[ \t]+|[ \t]+$/g, ""); }).join("\n");
+          if (on("opBlank")) t = t.replace(/\n{2,}/g, "\n").replace(/^\n+|\n+$/g, "");
+          return t;
+        }
+        function update() {
+          var r = clean(inp.value);
+          out.value = r;
+          cnt.textContent = r ? (Array.from(r).length.toLocaleString("ko-KR") + "자") : "";
+        }
+        inp.addEventListener("input", update);
+        ids.forEach(function (id) { document.getElementById(id).addEventListener("change", update); });
+        document.getElementById("tcCopy").addEventListener("click", function () {
+          var b = this, t = out.value, done = function () { var s = b.textContent; b.textContent = "복사됨"; setTimeout(function () { b.textContent = s; }, 1200); };
+          if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, done);
+          else { out.select(); try { document.execCommand("copy"); } catch (e) {} done(); }
+        });
+        update();
+      })();
+    </script>
+  </body>
+</html>
