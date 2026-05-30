@@ -128,11 +128,20 @@
         function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
         function err(e) { msg.innerHTML = '<span class="error">' + esc((e && e.message) || String(e)) + "</span>"; }
         function busy(t) { msg.textContent = t || ""; }
-        function dl(sel, url, name) { var a = document.querySelector('[data-dl="' + sel + '"]'); a.href = url; a.download = name; a.style.display = "inline-flex"; }
+        var _dlUrls = {};
+        function dl(sel, url, name) {
+          if (_dlUrls[sel]) { try { URL.revokeObjectURL(_dlUrls[sel]); } catch (e) {} }
+          _dlUrls[sel] = url;
+          var a = document.querySelector('[data-dl="' + sel + '"]'); a.href = url; a.download = name; a.style.display = "inline-flex";
+        }
         function pick(sel) { return document.querySelector('[data-in="' + sel + '"]'); }
         function wireDrop(sel, onFiles) {
           var z = document.querySelector('[data-pick="' + sel + '"]'), inp = pick(sel);
+          z.setAttribute("role", "button");
+          z.setAttribute("tabindex", "0");
+          if (!z.getAttribute("aria-label")) z.setAttribute("aria-label", "파일 선택");
           z.addEventListener("click", function () { inp.click(); });
+          z.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); inp.click(); } });
           inp.addEventListener("change", function () { onFiles(inp.files); });
           ["dragover", "dragenter"].forEach(function (ev) { z.addEventListener(ev, function (e) { e.preventDefault(); z.style.borderColor = "var(--accent)"; }); });
           ["dragleave", "drop"].forEach(function (ev) { z.addEventListener(ev, function (e) { e.preventDefault(); z.style.borderColor = "var(--border-strong)"; }); });
