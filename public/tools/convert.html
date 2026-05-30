@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>파일 변환기 — 보고서 도구</title>
+    <meta name="description" content="표(Excel↔CSV↔TSV), 이미지→PDF, PDF→이미지, 이미지 형식 변환을 브라우저 안에서 처리하는 파일 변환기." />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("theme");
+          if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          document.documentElement.setAttribute("data-theme", t);
+        } catch (e) {}
+      })();
+    </script>
+    <link rel="stylesheet" href="/style.css" />
+    <style>
+      .mode-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+      .mode-tabs button {
+        padding: 9px 14px; border: 1px solid var(--border-strong); border-radius: 10px;
+        background: var(--surface); color: var(--text-muted); font: inherit; font-weight: 650; font-size: 14px; cursor: pointer;
+      }
+      .mode-tabs button.on { background: var(--accent); color: var(--on-accent); border-color: transparent; }
+      .drop-z { border: 2px dashed var(--border-strong); border-radius: 12px; padding: 28px 20px; text-align: center; cursor: pointer; color: var(--text-muted); }
+      .drop-z .big { font-weight: 650; color: var(--text); }
+      .drop-z .sub { font-size: 13px; margin-top: 4px; }
+      .panel { display: none; gap: 16px; }
+      .panel.on { display: grid; }
+    </style>
+  </head>
+  <body class="landing">
+    <div class="landing-bg" aria-hidden="true"></div>
+    <nav class="landing-nav">
+      <div class="landing-nav-inner">
+        <a href="/" class="brand"><span class="brand-mark" aria-hidden="true">R</span> 보고서 작성 툴</a>
+        <div class="landing-nav-actions">
+          <a href="/tools/index.html" class="nav-link">← 도구 모음</a>
+          <button type="button" id="themeToggle" class="theme-toggle" aria-label="다크 모드로 전환" title="다크 모드로 전환">
+            <span class="theme-icon-light" aria-hidden="true">🌙</span>
+            <span class="theme-icon-dark" aria-hidden="true">☀️</span>
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="landing-shell">
+      <section class="section" style="border-top:0">
+        <div class="tool-page-head">
+          <h1>파일 변환기</h1>
+          <p>표·이미지·PDF 형식을 서로 변환합니다. 모든 처리는 브라우저 안에서만 이뤄지고 파일은 서버로 전송되지 않습니다.</p>
+        </div>
+
+        <div class="tool-card">
+          <div class="mode-tabs" id="modeTabs">
+            <button data-m="table" class="on">표 (Excel ↔ CSV ↔ TSV)</button>
+            <button data-m="img2pdf">이미지 → PDF</button>
+            <button data-m="pdf2img">PDF → 이미지</button>
+            <button data-m="imgfmt">이미지 형식 변환</button>
+          </div>
+
+          <!-- 표 -->
+          <div class="panel on" data-p="table">
+            <div class="drop-z" data-pick="tb"><div class="big">엑셀/CSV 파일을 끌어다 놓기</div><div class="sub">.xlsx · .xls · .csv · .tsv</div></div>
+            <input type="file" data-in="tb" accept=".xlsx,.xls,.csv,.tsv,.txt" hidden />
+            <div class="tool-row" data-show="tb" style="display:none">
+              <label class="tool-label">출력 형식<select class="tool-input" id="tbFmt"><option value="xlsx">Excel (.xlsx)</option><option value="csv">CSV (.csv)</option><option value="tsv">TSV (.tsv)</option></select></label>
+              <label class="tool-label" id="tbSheetWrap" style="display:none">내보낼 시트<select class="tool-input" id="tbSheet"></select></label>
+            </div>
+            <a class="btn-lg btn-primary" data-dl="tb" style="display:none;min-height:44px;justify-self:start" download>↓ 변환해서 내려받기</a>
+          </div>
+
+          <!-- 이미지 → PDF -->
+          <div class="panel" data-p="img2pdf">
+            <div class="drop-z" data-pick="ip"><div class="big">이미지들을 끌어다 놓기</div><div class="sub">JPG · PNG · WebP · 여러 장 (순서대로 페이지가 됩니다)</div></div>
+            <input type="file" data-in="ip" accept="image/*" multiple hidden />
+            <ul id="ipList" style="list-style:none;margin:0;padding:0;display:grid;gap:6px"></ul>
+            <div class="actions" data-show="ip" style="display:none"><button class="btn-primary" id="ipGo">PDF로 만들기</button></div>
+            <a class="btn-lg btn-primary" data-dl="ip" style="display:none;min-height:44px;justify-self:start" download>↓ PDF 내려받기</a>
+          </div>
+
+          <!-- PDF → 이미지 -->
+          <div class="panel" data-p="pdf2img">
+            <div class="drop-z" data-pick="pi"><div class="big">PDF 파일을 끌어다 놓기</div><div class="sub">각 페이지를 PNG로 (여러 페이지면 ZIP)</div></div>
+            <input type="file" data-in="pi" accept="application/pdf,.pdf" hidden />
+            <label class="tool-label" data-show="pi" style="display:none">해상도 배율: <span id="piScaleV">2×</span><input type="range" id="piScale" min="1" max="4" step="0.5" value="2" style="width:100%" /></label>
+            <div class="actions" data-show="pi" style="display:none"><button class="btn-primary" id="piGo">이미지로 변환</button></div>
+            <a class="btn-lg btn-primary" data-dl="pi" style="display:none;min-height:44px;justify-self:start" download>↓ 내려받기</a>
+          </div>
+
+          <!-- 이미지 형식 -->
+          <div class="panel" data-p="imgfmt">
+            <div class="drop-z" data-pick="if"><div class="big">이미지를 끌어다 놓기</div><div class="sub">JPG · PNG · WebP</div></div>
+            <input type="file" data-in="if" accept="image/*" hidden />
+            <div class="tool-row" data-show="if" style="display:none">
+              <label class="tool-label">출력 형식<select class="tool-input" id="ifFmt"><option value="image/png">PNG</option><option value="image/jpeg">JPG</option><option value="image/webp">WebP</option></select></label>
+              <label class="tool-label">품질(JPG·WebP): <span id="ifQv">0.9</span><input type="range" id="ifQ" min="0.3" max="1" step="0.05" value="0.9" style="width:100%" /></label>
+            </div>
+            <a class="btn-lg btn-primary" data-dl="if" style="display:none;min-height:44px;justify-self:start" download>↓ 내려받기</a>
+          </div>
+
+          <p class="hint" id="cvMsg" style="margin:0"></p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-links">
+        <a href="/">메인</a>
+        <a href="/tools/index.html">도구 모음</a>
+        <a href="/guide.html">이용 가이드</a>
+        <a href="https://blog.naver.com/physicjun1905" target="_blank" rel="noopener">블로그</a>
+      </div>
+      <div class="footer-copy">© 2026 Lab Report Generator Web · MIT License · SheetJS(Apache-2.0) · pdf-lib(MIT) · pdf.js(Apache-2.0)</div>
+    </footer>
+
+    <script src="/theme.js"></script>
+    <script>
+      (function () {
+        var msg = document.getElementById("cvMsg");
+        var loaded = {};
+        function lazy(url, check) {
+          if (check()) return Promise.resolve();
+          if (loaded[url]) return loaded[url];
+          loaded[url] = new Promise(function (res, rej) { var s = document.createElement("script"); s.src = url; s.onload = res; s.onerror = function () { rej(new Error("라이브러리 로드 실패")); }; document.head.appendChild(s); });
+          return loaded[url];
+        }
+        function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+        function err(e) { msg.innerHTML = '<span class="error">' + esc((e && e.message) || String(e)) + "</span>"; }
+        function busy(t) { msg.textContent = t || ""; }
+        function dl(sel, url, name) { var a = document.querySelector('[data-dl="' + sel + '"]'); a.href = url; a.download = name; a.style.display = "inline-flex"; }
+        function pick(sel) { return document.querySelector('[data-in="' + sel + '"]'); }
+        function wireDrop(sel, onFiles) {
+          var z = document.querySelector('[data-pick="' + sel + '"]'), inp = pick(sel);
+          z.addEventListener("click", function () { inp.click(); });
+          inp.addEventListener("change", function () { onFiles(inp.files); });
+          ["dragover", "dragenter"].forEach(function (ev) { z.addEventListener(ev, function (e) { e.preventDefault(); z.style.borderColor = "var(--accent)"; }); });
+          ["dragleave", "drop"].forEach(function (ev) { z.addEventListener(ev, function (e) { e.preventDefault(); z.style.borderColor = "var(--border-strong)"; }); });
+          z.addEventListener("drop", function (e) { if (e.dataTransfer && e.dataTransfer.files.length) onFiles(e.dataTransfer.files); });
+        }
+        function show(sel) { document.querySelectorAll('[data-show="' + sel + '"]').forEach(function (e) { e.style.display = e.classList.contains("tool-row") ? "grid" : (e.classList.contains("actions") ? "flex" : "block"); }); }
+
+        // 모드 전환
+        document.getElementById("modeTabs").addEventListener("click", function (e) {
+          var b = e.target.closest("button[data-m]"); if (!b) return;
+          msg.textContent = "";
+          document.querySelectorAll("#modeTabs button").forEach(function (x) { x.classList.toggle("on", x === b); });
+          document.querySelectorAll(".panel").forEach(function (p) { p.classList.toggle("on", p.getAttribute("data-p") === b.getAttribute("data-m")); });
+        });
+
+        // ── 표 변환 (SheetJS) ──
+        var tbWb = null, tbBase = "변환";
+        wireDrop("tb", function (fl) {
+          var f = fl[0]; if (!f) return; tbBase = f.name.replace(/\.[^.]+$/, ""); busy("불러오는 중…");
+          lazy("/tools/vendor/xlsx.mini.min.js", function () { return !!window.XLSX; }).then(function () {
+            var rd = new FileReader();
+            rd.onload = function () { try { tbWb = XLSX.read(new Uint8Array(rd.result), { type: "array" }); document.getElementById("tbSheet").innerHTML = tbWb.SheetNames.map(function (n) { return "<option>" + esc(n) + "</option>"; }).join(""); show("tb"); busy(""); tbBuild(); } catch (x) { err(x); } };
+            rd.readAsArrayBuffer(f);
+          }).catch(err);
+        });
+        function tbBuild() {
+          if (!tbWb) return; var fmt = document.getElementById("tbFmt").value, multi = tbWb.SheetNames.length > 1;
+          document.getElementById("tbSheetWrap").style.display = (fmt !== "xlsx" && multi) ? "grid" : "none";
+          try {
+            var blob, ext;
+            if (fmt === "xlsx") { blob = new Blob([XLSX.write(tbWb, { type: "array", bookType: "xlsx" })], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }); ext = "xlsx"; }
+            else { var ws = tbWb.Sheets[document.getElementById("tbSheet").value || tbWb.SheetNames[0]]; var sep = fmt === "tsv" ? "\t" : ","; var txt = "﻿" + XLSX.utils.sheet_to_csv(ws, { FS: sep }); blob = new Blob([txt], { type: "text/plain;charset=utf-8" }); ext = fmt; }
+            dl("tb", URL.createObjectURL(blob), tbBase + "." + ext);
+          } catch (x) { err(x); }
+        }
+        document.getElementById("tbFmt").addEventListener("change", tbBuild);
+        document.getElementById("tbSheet").addEventListener("change", tbBuild);
+
+        // ── 이미지 → PDF (pdf-lib) ──
+        var ipFiles = [];
+        wireDrop("ip", function (fl) { for (var i = 0; i < fl.length; i++) if (/^image\//.test(fl[i].type) || /\.(jpe?g|png|webp|gif|bmp)$/i.test(fl[i].name)) ipFiles.push(fl[i]); ipRender(); });
+        function ipRender() {
+          document.getElementById("ipList").innerHTML = ipFiles.map(function (f, i) { return '<li style="font-size:13px;color:var(--text-muted)">' + (i + 1) + ". " + esc(f.name) + "</li>"; }).join("");
+          if (ipFiles.length) show("ip");
+        }
+        async function toPngBytes(file) {
+          var img = await new Promise(function (res, rej) { var im = new Image(); im.onload = function () { res(im); }; im.onerror = rej; im.src = URL.createObjectURL(file); });
+          var cv = document.createElement("canvas"); cv.width = img.naturalWidth; cv.height = img.naturalHeight; cv.getContext("2d").drawImage(img, 0, 0);
+          return new Uint8Array(await (await new Promise(function (r) { cv.toBlob(r, "image/png"); })).arrayBuffer());
+        }
+        document.getElementById("ipGo").addEventListener("click", function () {
+          if (!ipFiles.length) return; var btn = this; btn.disabled = true; btn.textContent = "변환 중…"; busy("");
+          lazy("/tools/vendor/pdf-lib.min.js", function () { return !!window.PDFLib; }).then(async function () {
+            try {
+              var doc = await PDFLib.PDFDocument.create();
+              for (var i = 0; i < ipFiles.length; i++) {
+                var f = ipFiles[i], img;
+                if (/jpe?g$/i.test(f.type) || /\.jpe?g$/i.test(f.name)) img = await doc.embedJpg(await f.arrayBuffer());
+                else img = await doc.embedPng(await toPngBytes(f));
+                var pg = doc.addPage([img.width, img.height]); pg.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
+              }
+              dl("ip", URL.createObjectURL(new Blob([await doc.save()], { type: "application/pdf" })), "이미지묶음.pdf");
+            } catch (x) { err(x); } finally { btn.disabled = false; btn.textContent = "PDF로 만들기"; }
+          }).catch(err);
+        });
+
+        // ── PDF → 이미지 (pdf.js + jszip) ──
+        var piFile = null;
+        wireDrop("pi", function (fl) { piFile = fl[0]; if (piFile) show("pi"); });
+        document.getElementById("piScale").addEventListener("input", function () { document.getElementById("piScaleV").textContent = this.value + "×"; });
+        document.getElementById("piGo").addEventListener("click", function () {
+          if (!piFile) return; var btn = this; btn.disabled = true; btn.textContent = "변환 중…"; busy("페이지를 그리는 중… (오래 걸릴 수 있어요)");
+          lazy("/tools/vendor/pdf.min.js", function () { return !!window.pdfjsLib; }).then(async function () {
+            try {
+              pdfjsLib.GlobalWorkerOptions.workerSrc = "/tools/vendor/pdf.worker.min.js";
+              var scale = parseFloat(document.getElementById("piScale").value) || 2;
+              var data = new Uint8Array(await piFile.arrayBuffer());
+              var pdf = await pdfjsLib.getDocument({ data: data }).promise;
+              var base = piFile.name.replace(/\.[^.]+$/, ""), pngs = [];
+              for (var p = 1; p <= pdf.numPages; p++) {
+                var page = await pdf.getPage(p), vp = page.getViewport({ scale: scale });
+                var cv = document.createElement("canvas"); cv.width = vp.width; cv.height = vp.height;
+                await page.render({ canvasContext: cv.getContext("2d"), viewport: vp }).promise;
+                pngs.push(await new Promise(function (r) { cv.toBlob(r, "image/png"); }));
+                busy("페이지 " + p + "/" + pdf.numPages + " …");
+              }
+              busy("");
+              if (pngs.length === 1) { dl("pi", URL.createObjectURL(pngs[0]), base + ".png"); }
+              else {
+                await lazy("/tools/vendor/jszip.min.js", function () { return !!window.JSZip; });
+                var zip = new JSZip(); pngs.forEach(function (b, i) { zip.file(base + "_" + (i + 1) + ".png", b); });
+                dl("pi", URL.createObjectURL(await zip.generateAsync({ type: "blob" })), base + "_이미지.zip");
+              }
+            } catch (x) { err(x); } finally { btn.disabled = false; btn.textContent = "이미지로 변환"; }
+          }).catch(err);
+        });
+
+        // ── 이미지 형식 (canvas) ──
+        var ifImg = null, ifName = "이미지";
+        document.getElementById("ifQ").addEventListener("input", function () { document.getElementById("ifQv").textContent = this.value; ifBuild(); });
+        document.getElementById("ifFmt").addEventListener("change", ifBuild);
+        wireDrop("if", function (fl) {
+          var f = fl[0]; if (!f) return; ifName = f.name.replace(/\.[^.]+$/, "");
+          var im = new Image(); im.onload = function () { ifImg = im; show("if"); ifBuild(); }; im.onerror = function () { err(new Error("이미지를 불러오지 못했습니다.")); }; im.src = URL.createObjectURL(f);
+        });
+        function ifBuild() {
+          if (!ifImg) return; var fmt = document.getElementById("ifFmt").value;
+          var cv = document.createElement("canvas"); cv.width = ifImg.naturalWidth; cv.height = ifImg.naturalHeight; var ctx = cv.getContext("2d");
+          if (fmt === "image/jpeg") { ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, cv.width, cv.height); }
+          ctx.drawImage(ifImg, 0, 0);
+          var ext = fmt === "image/png" ? "png" : fmt === "image/webp" ? "webp" : "jpg";
+          cv.toBlob(function (b) { if (b) dl("if", URL.createObjectURL(b), ifName + "." + ext); }, fmt, parseFloat(document.getElementById("ifQ").value));
+        }
+      })();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PDF 병합 — 보고서 도구</title>
+    <meta name="description" content="여러 PDF를 순서대로 하나로 합치는 브라우저 도구. 업로드 없이 기기 안에서 처리." />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("theme");
+          if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          document.documentElement.setAttribute("data-theme", t);
+        } catch (e) {}
+      })();
+    </script>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body class="landing">
+    <div class="landing-bg" aria-hidden="true"></div>
+    <nav class="landing-nav">
+      <div class="landing-nav-inner">
+        <a href="/" class="brand"><span class="brand-mark" aria-hidden="true">R</span> 보고서 작성 툴</a>
+        <div class="landing-nav-actions">
+          <a href="/tools/index.html" class="nav-link">← 도구 모음</a>
+          <button type="button" id="themeToggle" class="theme-toggle" aria-label="다크 모드로 전환" title="다크 모드로 전환">
+            <span class="theme-icon-light" aria-hidden="true">🌙</span>
+            <span class="theme-icon-dark" aria-hidden="true">☀️</span>
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="landing-shell">
+      <section class="section" style="border-top:0">
+        <div class="tool-page-head">
+          <h1>PDF 병합</h1>
+          <p>여러 PDF를 원하는 순서로 하나로 합칩니다. 모든 처리는 브라우저 안에서만 이뤄지고 파일은 서버로 전송되지 않습니다.</p>
+        </div>
+
+        <div class="tool-card">
+          <div id="pmDrop" role="button" tabindex="0" style="border:2px dashed var(--border-strong);border-radius:12px;padding:30px 20px;text-align:center;cursor:pointer;color:var(--text-muted)">
+            <div style="font-weight:650;color:var(--text)">PDF 파일들을 끌어다 놓기</div>
+            <div style="font-size:13px;margin-top:4px">또는 클릭해서 선택 · 여러 개 가능</div>
+          </div>
+          <input type="file" id="pmFile" accept="application/pdf,.pdf" multiple style="display:none" />
+
+          <ul id="pmList" style="list-style:none;margin:0;padding:0;display:grid;gap:8px"></ul>
+
+          <div class="actions">
+            <button class="btn-primary" id="pmMerge" disabled>PDF 합치기</button>
+            <button class="btn-ghost" id="pmClear">비우기</button>
+          </div>
+          <div id="pmOut" class="tool-result" style="display:none">
+            <div class="badge ok" id="pmStat" style="display:inline-flex;align-items:center;gap:7px;padding:10px 14px;border-radius:11px;background:var(--accent-soft);color:var(--accent-text);font-weight:600;font-size:14px"></div>
+            <a id="pmDl" class="btn-lg btn-primary" style="display:inline-flex;min-height:44px;justify-self:start" download>↓ 합친 PDF 내려받기</a>
+          </div>
+          <p class="hint" id="pmMsg" style="margin:0"></p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-links">
+        <a href="/">메인</a>
+        <a href="/tools/index.html">도구 모음</a>
+        <a href="/guide.html">이용 가이드</a>
+        <a href="https://blog.naver.com/physicjun1905" target="_blank" rel="noopener">블로그</a>
+      </div>
+      <div class="footer-copy">© 2026 Lab Report Generator Web · MIT License · PDF: pdf-lib (MIT)</div>
+    </footer>
+
+    <script src="/tools/vendor/pdf-lib.min.js"></script>
+    <script src="/theme.js"></script>
+    <script>
+      (function () {
+        var drop = document.getElementById("pmDrop"), input = document.getElementById("pmFile"), list = document.getElementById("pmList");
+        var mergeBtn = document.getElementById("pmMerge"), clearBtn = document.getElementById("pmClear"), out = document.getElementById("pmOut"), msg = document.getElementById("pmMsg");
+        var files = [], lastUrl = null;
+
+        function fmt(b) { return b < 1024 ? b + " B" : b < 1048576 ? (b / 1024).toFixed(0) + " KB" : (b / 1048576).toFixed(1) + " MB"; }
+        function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+        function render() {
+          list.innerHTML = files.map(function (f, i) {
+            return '<li style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px">' +
+              '<span style="color:var(--text-faint);min-width:18px">' + (i + 1) + '</span>' +
+              '<span style="flex:1;word-break:break-all">' + esc(f.name) + '</span>' +
+              '<span style="color:var(--text-muted);white-space:nowrap">' + fmt(f.size) + '</span>' +
+              '<button data-up="' + i + '" class="btn-ghost" style="padding:4px 9px" title="위로"' + (i === 0 ? " disabled" : "") + '>↑</button>' +
+              '<button data-down="' + i + '" class="btn-ghost" style="padding:4px 9px" title="아래로"' + (i === files.length - 1 ? " disabled" : "") + '>↓</button>' +
+              '<button data-rm="' + i + '" class="btn-ghost" style="padding:4px 9px" title="삭제">✕</button></li>';
+          }).join("");
+          mergeBtn.disabled = files.length < 2;
+          list.querySelectorAll("button[data-up]").forEach(function (b) { b.onclick = function () { var i = +b.getAttribute("data-up"); var t = files[i - 1]; files[i - 1] = files[i]; files[i] = t; render(); }; });
+          list.querySelectorAll("button[data-down]").forEach(function (b) { b.onclick = function () { var i = +b.getAttribute("data-down"); var t = files[i + 1]; files[i + 1] = files[i]; files[i] = t; render(); }; });
+          list.querySelectorAll("button[data-rm]").forEach(function (b) { b.onclick = function () { files.splice(+b.getAttribute("data-rm"), 1); render(); }; });
+        }
+        function add(fl) {
+          for (var i = 0; i < fl.length; i++) { if (/\.pdf$/i.test(fl[i].name) || fl[i].type === "application/pdf") files.push(fl[i]); }
+          out.style.display = "none"; msg.textContent = ""; render();
+        }
+
+        drop.addEventListener("click", function () { input.click(); });
+        drop.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); input.click(); } });
+        input.addEventListener("change", function () { add(input.files); input.value = ""; });
+        ["dragover", "dragenter"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.style.borderColor = "var(--accent)"; }); });
+        ["dragleave", "drop"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.style.borderColor = "var(--border-strong)"; }); });
+        drop.addEventListener("drop", function (e) { if (e.dataTransfer && e.dataTransfer.files) add(e.dataTransfer.files); });
+        clearBtn.addEventListener("click", function () { files = []; out.style.display = "none"; msg.textContent = ""; render(); });
+
+        mergeBtn.addEventListener("click", function () {
+          if (files.length < 2 || !window.PDFLib) { msg.textContent = !window.PDFLib ? "PDF 라이브러리를 불러오지 못했습니다." : ""; return; }
+          mergeBtn.disabled = true; mergeBtn.textContent = "합치는 중…"; msg.textContent = "";
+          (async function () {
+            try {
+              var PDFDocument = PDFLib.PDFDocument;
+              var merged = await PDFDocument.create();
+              var totalPages = 0;
+              for (var i = 0; i < files.length; i++) {
+                var bytes = await files[i].arrayBuffer();
+                var src = await PDFDocument.load(bytes, { ignoreEncryption: true });
+                var pages = await merged.copyPages(src, src.getPageIndices());
+                pages.forEach(function (p) { merged.addPage(p); });
+                totalPages += pages.length;
+              }
+              var outBytes = await merged.save();
+              if (lastUrl) URL.revokeObjectURL(lastUrl);
+              lastUrl = URL.createObjectURL(new Blob([outBytes], { type: "application/pdf" }));
+              document.getElementById("pmStat").textContent = "✓ " + files.length + "개 파일 · " + totalPages + "쪽 병합 완료";
+              var dl = document.getElementById("pmDl"); dl.href = lastUrl; dl.download = "병합.pdf";
+              out.style.display = "grid";
+            } catch (e) {
+              msg.innerHTML = '<span class="error">병합 실패: ' + esc(e.message || "알 수 없는 오류") + " (암호가 걸린 PDF는 합칠 수 없습니다)</span>";
+            } finally {
+              mergeBtn.disabled = false; mergeBtn.textContent = "PDF 합치기";
+            }
+          })();
+        });
+        render();
+      })();
+    </script>
+  </body>
+</html>
