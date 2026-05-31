@@ -498,6 +498,83 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
+app.post("/api/signup", async (req, res) => {
+  // 가입 남용 방어: 로그인과 동일한 IP 분당 제한을 재사용
+  const ip = req.ip || "unknown";
+  const limit = rateLimit.checkLoginLimit(ip);
+  if (!limit.allowed) {
+    return res.status(429).json({
+      error: `요청이 너무 많습니다 (분당 ${rateLimit.LOGIN_LIMIT}회 제한). 1분 후 다시 시도하세요.`,
+    });
+  }
+  rateLimit.recordLoginAttempt(ip);
+
+  const { username, password, studentId, age14Confirmed, termsAccepted } =
+    req.body || {};
+  const name = String(username || "").trim().slice(0, 50);
+  if (!name || !password) {
+    return res.status(400).json({ error: "이름과 비밀번호를 입력하세요." });
+  }
+  if (name.length < 2) {
+    return res.status(400).json({ error: "이름은 2자 이상이어야 합니다." });
+  }
+  if (String(password).length < 6) {
+    return res.status(400).json({ error: "비밀번호는 6자 이상이어야 합니다." });
+  }
+  if (!age14Confirmed) {
+    return res
+      .status(403)
+      .json({ error: "만 14세 이상인 경우에만 가입할 수 있습니다." });
+  }
+  if (!termsAccepted) {
+    return res
+      .status(403)
+      .json({ error: "이용약관과 개인정보처리방침에 동의해야 합니다." });
+  }
+  if (!supa.isEnabled()) {
+    return res
+      .status(503)
+      .json({ error: "DB가 일시적으로 사용 불가합니다. 잠시 후 다시 시도하세요." });
+  }
+
+  try {
+    const existing = await supa.findUserByName(name);
+    if (existing) {
+      return res
+        .status(409)
+        .json({ error: "이미 사용 중인 이름입니다. 다른 이름을 입력하세요." });
+    }
+    // 신규 계정은 크레딧 0으로 시작 — 보고서 생성은 관리자/결제 충전 후 가능.
+    const user = await supa.createUser({
+      name,
+      password: String(password),
+      preCreditsUsd: 0,
+      resultCreditsUsd: 0,
+      isAdmin: false,
+      studentId: String(studentId || "").trim().slice(0, 30),
+    });
+    req.session.userInfo = {
+      id: user.id,
+      name: user.name,
+      studentId: normalizeStudentId(user.student_id),
+      isAdmin: false,
+    };
+    console.log(`[signup] ${user.name}`);
+    return res.json({ ok: true, user: user.name, isAdmin: false });
+  } catch (e) {
+    // 이름 unique 위반(동시 가입 레이스) → 409
+    if (/duplicate key|unique|23505/i.test(e.message || "")) {
+      return res
+        .status(409)
+        .json({ error: "이미 사용 중인 이름입니다." });
+    }
+    console.error("[signup] error:", e);
+    return res
+      .status(500)
+      .json({ error: "회원가입 처리 중 오류가 발생했습니다." });
+  }
+});
+
 app.post("/api/logout", (req, res) => {
   req.session.destroy(() => res.json({ ok: true }));
 });

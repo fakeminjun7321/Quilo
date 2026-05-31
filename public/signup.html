@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>회원가입 — 보고서 작성 툴</title>
+    <meta name="description" content="보고서 작성 툴 계정을 만들어 화학·물리 보고서 초안 생성을 시작하세요." />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("theme");
+          if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          document.documentElement.setAttribute("data-theme", t);
+        } catch (e) {}
+      })();
+    </script>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body class="landing">
+    <div class="landing-bg" aria-hidden="true"></div>
+
+    <nav class="landing-nav">
+      <div class="landing-nav-inner">
+        <a href="/" class="brand">
+          <span class="brand-mark" aria-hidden="true">R</span>
+          보고서 작성 툴
+        </a>
+        <div class="landing-nav-actions">
+          <a href="/login.html" class="nav-link">로그인</a>
+          <button type="button" id="themeToggle" class="theme-toggle" aria-label="다크 모드로 전환" title="다크 모드로 전환">
+            <span class="theme-icon-light" aria-hidden="true">🌙</span>
+            <span class="theme-icon-dark" aria-hidden="true">☀️</span>
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="landing-shell">
+      <section class="section" style="border-top:0;display:flex;justify-content:center">
+        <div class="login-card" style="width:100%;max-width:460px">
+          <form id="form">
+            <div class="auth-head">
+              <h1>회원가입</h1>
+              <p class="hint">계정을 만들어 시작하세요. 보고서 생성에 필요한 크레딧은 가입 후 운영자가 충전합니다.</p>
+            </div>
+            <div class="field">
+              <label>
+                <span class="field-label">이름 (로그인 아이디)</span>
+                <input id="username" name="username" required minlength="2" maxlength="50" autocomplete="username" />
+              </label>
+            </div>
+            <div class="field">
+              <label>
+                <span class="field-label">비밀번호 (6자 이상)</span>
+                <input id="password" name="password" type="password" required minlength="6" autocomplete="new-password" />
+              </label>
+            </div>
+            <div class="field">
+              <label>
+                <span class="field-label">비밀번호 확인</span>
+                <input id="password2" name="password2" type="password" required minlength="6" autocomplete="new-password" />
+              </label>
+            </div>
+            <div class="field">
+              <label>
+                <span class="field-label">학번 (선택 — 물리 결과보고서에 필요)</span>
+                <input id="studentId" name="studentId" maxlength="30" inputmode="numeric" placeholder="예: 2402" />
+              </label>
+            </div>
+            <label class="check-line">
+              <input type="checkbox" id="age14" required />
+              <span>만 14세 이상입니다 <strong>(필수)</strong></span>
+            </label>
+            <label class="check-line">
+              <input type="checkbox" id="agree" required />
+              <span>이용약관·개인정보처리방침·환불정책을 이해했고 동의합니다 <strong>(필수)</strong></span>
+            </label>
+            <p class="hint">
+              가입 전
+              <a href="/terms.html" target="_blank" rel="noopener">이용약관</a>,
+              <a href="/privacy.html" target="_blank" rel="noopener">개인정보처리방침</a>,
+              <a href="/refund.html" target="_blank" rel="noopener">환불정책</a>을 확인하세요.
+            </p>
+            <div class="form-actions">
+              <button type="submit" id="btn">회원가입</button>
+            </div>
+            <p id="err" class="form-error" role="alert"></p>
+            <p class="hint" style="text-align:center;margin:0">
+              이미 계정이 있으신가요? <a href="/login.html">로그인</a>
+            </p>
+          </form>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-links">
+        <a href="/terms.html">이용약관</a>
+        <a href="/privacy.html">개인정보처리방침</a>
+        <a href="/refund.html">환불정책</a>
+        <a href="/changelog.html">패치노트</a>
+        <a href="/tools/index.html">도구 모음</a>
+        <a href="https://blog.naver.com/physicjun1905" target="_blank" rel="noopener">블로그</a>
+      </div>
+      <div class="footer-copy">© 2026 Lab Report Generator Web · MIT License</div>
+    </footer>
+
+    <script>
+      const form = document.getElementById("form");
+      const btn = document.getElementById("btn");
+      const err = document.getElementById("err");
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const pw = document.getElementById("password").value;
+        const pw2 = document.getElementById("password2").value;
+        if (pw.length < 6) {
+          err.textContent = "비밀번호는 6자 이상이어야 합니다.";
+          return;
+        }
+        if (pw !== pw2) {
+          err.textContent = "비밀번호가 일치하지 않습니다.";
+          return;
+        }
+        if (!document.getElementById("age14").checked) {
+          err.textContent = "만 14세 이상인 경우에만 가입할 수 있습니다.";
+          return;
+        }
+        if (!document.getElementById("agree").checked) {
+          err.textContent = "약관과 고지 사항에 동의해야 가입할 수 있습니다.";
+          return;
+        }
+        err.textContent = "";
+        btn.disabled = true;
+        btn.textContent = "가입 중...";
+        try {
+          const res = await fetch("/api/signup", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              username: document.getElementById("username").value,
+              password: pw,
+              studentId: document.getElementById("studentId").value,
+              age14Confirmed: document.getElementById("age14").checked,
+              termsAccepted: document.getElementById("agree").checked,
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "회원가입 실패");
+          location.href = "/";
+        } catch (e) {
+          err.textContent = e.message;
+          btn.disabled = false;
+          btn.textContent = "회원가입";
+        }
+      });
+    </script>
+    <script src="/theme.js"></script>
+  </body>
+</html>
