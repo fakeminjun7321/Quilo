@@ -16,7 +16,7 @@
 - 서버 엔트리: `server.js`
 - 핵심 파이프라인: `lib/pipelines/chem-pre/`, `lib/pipelines/chem-result/`, `lib/pipelines/phys-result/`
 - 출력 형식: `.docx`, `.hwpx`
-- 현재 허용 모델: `claude-opus-4-7`
+- 현재 허용 모델: `claude-opus-4-8`
 
 ## 핵심 파일
 
@@ -84,7 +84,7 @@
 - `format`: `docx` 또는 `hwpx`
 - `fontFace`: 출력 글꼴
 - `userNotes`: AI 참고 메모 / 실험자 의견
-- `model`: 현재 `claude-opus-4-7`만 허용
+- `model`: 현재 `claude-opus-4-8`만 허용
 
 ## 서버 실행 흐름
 

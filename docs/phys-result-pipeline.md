@@ -112,7 +112,7 @@ npm start
 | `photos` | file[] | 조건부/선택 | 실험 사진, 데이터 표/그래프 스크린샷 |
 | `date` | text | 선택 | 보고서 날짜 |
 | `studentId` | text | 필수 | 학번. 개인 설정 저장값 fallback 가능 |
-| `model` | text | 선택 | 현재 `claude-opus-4-7`만 허용 |
+| `model` | text | 선택 | 현재 `claude-opus-4-8`만 허용 |
 | `format` | text | 선택 | `docx` 또는 `hwpx` |
 | `fontFace` | text | 선택 | `Malgun Gothic`, `Nanum Gothic`, `Nanum Myeongjo`, `함초롬바탕` |
 | `userNotes` | text | 선택 | AI 참고 메모 / 실험자 의견 |
@@ -191,7 +191,7 @@ npm start
 
 ```text
 🚀 작업 시작 (물리 결과보고서, timeout: 8분)
-🤖 모델: claude-opus-4-7 | 양식: 기본
+🤖 모델: claude-opus-4-8 | 양식: 기본
 📦 .cap 파일 파싱 중... (2476KB)
 ✓ .cap 파싱 완료 — 페이지 10, 센서 1, dataset 69, 내장이미지 5
 📤 첨부: .cap 파싱 결과 텍스트, 데이터.xlsx (...), 양식 PDF (내장), 사용자 참고 메모
@@ -474,8 +474,8 @@ Claude에 보내는 이미지 앞에는 설명 text block을 붙인다.
 
 모델:
 
-- 기본값: `claude-opus-4-7`
-- `server.js` whitelist도 현재 `claude-opus-4-7`만 허용
+- 기본값: `claude-opus-4-8`
+- `server.js` whitelist도 현재 `claude-opus-4-8`만 허용
 
 호출 방식:
 

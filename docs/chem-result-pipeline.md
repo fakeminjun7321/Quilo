@@ -109,7 +109,7 @@ HWPX 출력은 Python 의존성이 필요하다. Render 빌드에서 `.venv` 생
 | `date` | text | 필수 UI | 실험 날짜 |
 | `temperature` | text/number | 선택 | 실험 온도 |
 | `pressure` | text/number | 선택 | 기압 |
-| `model` | text | 선택 | 현재 서버 whitelist상 `claude-opus-4-7`만 허용 |
+| `model` | text | 선택 | 현재 서버 whitelist상 `claude-opus-4-8`만 허용 |
 | `format` | text | 선택 | `docx` 또는 `hwpx` |
 | `style` | text | 선택 | `default` 또는 `minimal` |
 | `fontFace` | text | 선택 | 출력 글꼴 |
@@ -198,7 +198,7 @@ HWPX 출력은 Python 의존성이 필요하다. Render 빌드에서 `.venv` 생
 
 ```text
 🚀 작업 시작 (화학 결과보고서, timeout: 8분)
-🤖 모델: claude-opus-4-7 | 스타일: default
+🤖 모델: claude-opus-4-8 | 스타일: default
 📎 출력 문서는 사전보고서 뒤에 붙일 결과 추가 작성분만 생성합니다.
 📤 첨부: 사전보고서 PDF (...), 데이터 xlsx (... 자동 파싱), 실험 사진 2장, 사용자 참고 메모
 ✍️ 보고서 작성 시작

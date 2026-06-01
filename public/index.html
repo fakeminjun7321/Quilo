@@ -191,7 +191,7 @@
         <div class="form-section-head">
           <span class="form-section-title">출력 설정</span>
         </div>
-        <input type="hidden" name="crModel" value="claude-opus-4-7" />
+        <input type="hidden" name="crModel" value="claude-opus-4-8" />
         <div class="field-grid cols-3">
           <div class="seg-group">
             <span class="field-label">출력 형식</span>
@@ -315,7 +315,7 @@
         <div class="form-section-head">
           <span class="form-section-title">출력 설정</span>
         </div>
-        <input type="hidden" name="prModel" value="claude-opus-4-7" />
+        <input type="hidden" name="prModel" value="claude-opus-4-8" />
         <div class="field-grid">
           <div class="seg-group">
             <span class="field-label">출력 형식</span>
@@ -408,7 +408,7 @@
         <div class="form-section-head">
           <span class="form-section-title">출력 설정</span>
         </div>
-        <input type="hidden" name="model" value="claude-opus-4-7" />
+        <input type="hidden" name="model" value="claude-opus-4-8" />
         <div class="field-grid cols-3">
           <div class="seg-group">
             <span class="field-label">출력 형식</span>
@@ -1067,6 +1067,7 @@
       // 모델별 가격 (per 1M tokens, USD)
       const MODEL_PRICING = {
         "claude-sonnet-4-6": { input: 3, output: 15, cacheRead: 0.3, cacheWrite: 3.75 },
+        "claude-opus-4-8": { input: 15, output: 75, cacheRead: 1.5, cacheWrite: 18.75 },
         "claude-opus-4-7": { input: 15, output: 75, cacheRead: 1.5, cacheWrite: 18.75 },
       };
 
@@ -1074,7 +1075,7 @@
       // 실제 사용자 경험치 (3~5분 → 2~3분 단축, 출력 토큰도 그에 맞춰 축소).
       function estimateCost(pdfBytes, modelId) {
         const sizeKB = pdfBytes / 1024;
-        const p = MODEL_PRICING[modelId] || MODEL_PRICING["claude-opus-4-7"];
+        const p = MODEL_PRICING[modelId] || MODEL_PRICING["claude-opus-4-8"];
 
         const sysCostLo = (10000 / 1e6) * p.cacheRead;
         const sysCostHi = (10000 / 1e6) * p.cacheWrite;
@@ -1105,7 +1106,7 @@
         rubricBytes,
         modelId,
       }) {
-        const p = MODEL_PRICING[modelId] || MODEL_PRICING["claude-opus-4-7"];
+        const p = MODEL_PRICING[modelId] || MODEL_PRICING["claude-opus-4-8"];
         const sysCostLo = (8000 / 1e6) * p.cacheRead;
         const sysCostHi = (8000 / 1e6) * p.cacheWrite;
 
@@ -1147,7 +1148,7 @@
         photoCount,
         modelId,
       }) {
-        const p = MODEL_PRICING[modelId] || MODEL_PRICING["claude-opus-4-7"];
+        const p = MODEL_PRICING[modelId] || MODEL_PRICING["claude-opus-4-8"];
 
         const sysCostLo = (6000 / 1e6) * p.cacheRead;
         const sysCostHi = (6000 / 1e6) * p.cacheWrite;
@@ -1189,9 +1190,10 @@
       }
 
       function getModelLabel(modelId) {
+        if (modelId === "claude-opus-4-8") return "Opus 4.8";
         if (modelId === "claude-opus-4-7") return "Opus 4.7";
         if (modelId === "claude-sonnet-4-6") return "Sonnet 4.6";
-        return modelId || "Opus 4.7";
+        return modelId || "Opus 4.8";
       }
 
       function getFontLabel(fontId) {

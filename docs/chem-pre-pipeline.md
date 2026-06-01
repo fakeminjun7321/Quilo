@@ -102,7 +102,7 @@ HWPX 출력은 Python 의존성이 필요하다. `package.json`의 `postinstall`
 | `studentName` | text | 선택 | 사전보고서 표지/헤더용 이름 |
 | `temperature` | text | 선택 | 실험 온도. 사전보고서는 보통 비어 있음 |
 | `pressure` | text | 선택 | 기압. 사전보고서는 보통 비어 있음 |
-| `model` | text | 선택 | 현재 서버 whitelist상 `claude-opus-4-7`만 허용 |
+| `model` | text | 선택 | 현재 서버 whitelist상 `claude-opus-4-8`만 허용 |
 | `format` | text | 선택 | `docx` 또는 `hwpx` |
 | `style` | text | 선택 | `default` 또는 `minimal` |
 | `fontFace` | text | 선택 | 출력 글꼴 |
@@ -178,7 +178,7 @@ HWPX 출력은 Python 의존성이 필요하다. `package.json`의 `postinstall`
 
 ```text
 🚀 작업 시작 (화학 사전보고서, timeout: 8분)
-🤖 모델: claude-opus-4-7 | 스타일: default
+🤖 모델: claude-opus-4-8 | 스타일: default
 PDF 수신 (512KB), 사용자 메모 포함 — Claude Opus에게 전송
 ✍️ 보고서 작성 시작
 🔍 시약 데이터 웹 검색 중... (1번째)

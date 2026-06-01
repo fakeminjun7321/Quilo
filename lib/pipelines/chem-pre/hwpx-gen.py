@@ -149,8 +149,13 @@ def normalize_font_face(face):
     aliases = {
         "함초롱바탕": "함초롬바탕",
         "hamchorom-batang": "함초롬바탕",
+        "맑은 고딕": "Malgun Gothic",
         "malgun-gothic": "Malgun Gothic",
+        "나눔고딕": "Nanum Gothic",
+        "나눔 고딕": "Nanum Gothic",
         "nanum-gothic": "Nanum Gothic",
+        "나눔명조": "Nanum Myeongjo",
+        "나눔 명조": "Nanum Myeongjo",
         "nanum-myeongjo": "Nanum Myeongjo",
     }
     if face in aliases:
@@ -231,6 +236,31 @@ def apply_default_font(doc, face=DEFAULT_FONT_FACE):
     changed = False
     for font in hdr.element.iter(f"{NS_HH}font"):
         if font.get("face") != face:
+            font.set("face", face)
+            changed = True
+    if changed:
+        hdr.mark_dirty()
+
+
+def apply_body_font(doc, face=DEFAULT_FONT_FACE):
+    """Rewrite ONLY the primary font (id="0") in every <hh:fontface> group.
+
+    All generated body content goes through ``_get_or_create_charpr``, which
+    points every fontRef language to font id "0". So rewriting just id "0"
+    makes all generated text (headings, paragraphs, tables, captions) use the
+    user's chosen ``face`` while leaving template-defined fonts (the school
+    form's title box, labels, footer — which reference other font ids) on
+    their original faces.
+
+    This is the template-path counterpart to ``apply_default_font`` (which
+    rewrites every font and is fine for blank/new documents). The physics
+    result-report template ships with 굴림 as font id 0, which is why the
+    body always rendered in 굴림 before this was applied.
+    """
+    hdr = doc.oxml.headers[0]
+    changed = False
+    for font in hdr.element.iter(f"{NS_HH}font"):
+        if font.get("id") == "0" and font.get("face") != face:
             font.set("face", face)
             changed = True
     if changed:

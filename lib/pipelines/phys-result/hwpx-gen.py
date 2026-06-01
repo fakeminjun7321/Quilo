@@ -1143,6 +1143,15 @@ def generate_hwpx(content):
         result_cell, conclusion_cell = find_template_body_cells(doc)
         fill_template_title(doc, content)
         make_template_title_header_first_page_only(doc)
+        # The school form template ships with 굴림 as font id 0; generated body
+        # content (build_results/build_conclusion) references font id 0 via
+        # _get_or_create_charpr. Rewrite only id 0 to the user's chosen font so
+        # the report body honors the selection while the form's title/label
+        # fonts are preserved.
+        pre.apply_body_font(
+            doc,
+            pre.normalize_font_face(content.get("font_face") or content.get("__fontFace")),
+        )
         if result_cell is not None and conclusion_cell is not None:
             clear_cell(result_cell)
             clear_cell(conclusion_cell)
