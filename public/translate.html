@@ -87,7 +87,7 @@
                     <option value="retypeset">고품질 재조판 — 문서를 다시 조판, 수식 복원·스캔본 OCR (논문·문제집, PDF 새로 생성)</option>
                   </select>
                 </label>
-                <p class="hint" id="trModeHint" style="margin:4px 0 0">PDF만 올리면 됩니다 — 스캔본·수식 많은 문서는 자동으로 ‘재조판’, 일반 문서는 ‘빠른 번역’으로 처리합니다. 원하면 직접 고를 수도 있어요.</p>
+                <p class="hint" id="trModeHint" style="margin:4px 0 0">PDF만 올리면 됩니다 — 일반 문서는 ‘빠른 번역’, 스캔본·수식 많은 문서는 ‘재조판’을 권유합니다(진행 전에 한 번 더 여쭤봐요). 원하면 직접 고를 수도 있어요.</p>
               </div>
 
               <div class="field">
@@ -213,7 +213,7 @@
         const modeHint = document.getElementById("trModeHint");
         const modelSel = document.getElementById("trModel");
         const MODE_HINTS = {
-          auto: "PDF만 올리면 됩니다 — 스캔본·수식 많은 문서는 자동으로 ‘재조판’, 일반 문서는 ‘빠른 번역’으로 처리합니다. 원하면 직접 고를 수도 있어요.",
+          auto: "PDF만 올리면 됩니다 — 일반 문서는 ‘빠른 번역’, 스캔본·수식 많은 문서는 ‘재조판’을 권유합니다(진행 전에 한 번 더 여쭤봐요). 원하면 직접 고를 수도 있어요.",
           retypeset:
             "문서를 한국어로 다시 조판하고 수식을 복원해 새 PDF를 만듭니다. 스캔본·이미지 PDF도 이 방식(OCR)으로 처리되며 원본 그림도 복원합니다. 기본 Sonnet으로 빠르게 — 수식이 아주 복잡한 논문만 Opus를 고르세요(느림).",
           inplace:
@@ -445,6 +445,59 @@
           stopBtn.style.display = busy ? "inline-block" : "none";
         }
 
+        // 재조판 권유 확인창. 사용자가 '재조판'을 명시하지 않았는데 문서가 재조판을
+        // 필요로 하면(스캔본·수식 많음) 자동 전환하지 않고 먼저 물어본다.
+        // 반환: 'retypeset' | 'inplace' | 'cancel'
+        function askRetypeset(kind, density) {
+          return new Promise((resolve) => {
+            const scanned = kind === "scanned";
+            const ov = document.createElement("div");
+            ov.style.cssText =
+              "position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;padding:18px";
+            const card = document.createElement("div");
+            card.style.cssText =
+              "background:#fff;border-radius:14px;max-width:440px;width:100%;padding:22px 22px 18px;box-shadow:0 12px 40px rgba(0,0,0,.25);font-size:14px;line-height:1.6;color:#1f2937";
+            const title = scanned
+              ? "스캔본 PDF — 재조판이 필요합니다"
+              : "수식이 많은 문서입니다";
+            const body = scanned
+              ? "이 PDF는 스캔본/이미지예요. 글자만 바꾸는 <b>빠른 번역</b>은 불가능하고, OCR로 새로 조판하는 <b>재조판</b>으로만 번역할 수 있습니다. (PDF를 새로 생성 · 시간·비용이 더 듭니다.)"
+              : `이 문서는 수식이 많습니다(수식밀도 <b>${density}</b>).<br><b>빠른 번역</b>은 레이아웃·그림은 그대로지만 복잡한 수식·전하·구조식이 깨질 수 있어요.<br><b>재조판</b>은 PDF를 새로 만들어 수식을 정확히 복원합니다(시간·비용↑, 레이아웃은 달라짐).`;
+            card.innerHTML =
+              `<div style="font-weight:700;font-size:16px;margin-bottom:8px">${title}</div>` +
+              `<div style="margin-bottom:16px">${body}</div>`;
+            const row = document.createElement("div");
+            row.style.cssText =
+              "display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end";
+            const close = (val) => {
+              if (ov.parentNode) document.body.removeChild(ov);
+              resolve(val);
+            };
+            const mk = (label, val, primary) => {
+              const b = document.createElement("button");
+              b.type = "button";
+              b.textContent = label;
+              b.className = "btn" + (primary ? " btn-primary" : "");
+              if (!primary)
+                b.style.cssText =
+                  "background:#f1f5f9;color:#334155;border:1px solid #e2e8f0";
+              b.addEventListener("click", () => close(val));
+              return b;
+            };
+            row.appendChild(mk("취소", "cancel", false));
+            if (!scanned) row.appendChild(mk("빠른 번역 그대로", "inplace", false));
+            row.appendChild(
+              mk(scanned ? "재조판으로 진행" : "재조판으로 진행 (권장)", "retypeset", true),
+            );
+            card.appendChild(row);
+            ov.appendChild(card);
+            ov.addEventListener("click", (ev) => {
+              if (ev.target === ov) close("cancel");
+            });
+            document.body.appendChild(ov);
+          });
+        }
+
         form.addEventListener("submit", async (e) => {
           e.preventDefault();
           errEl.style.display = "none";
@@ -454,10 +507,36 @@
             return;
           }
 
+          // 재조판이 필요한 문서인데 사용자가 '재조판'을 고르지 않았으면 먼저 확인.
+          let chosenMode = document.getElementById("trMode").value;
+          const f0 = fileInput.files[0];
+          if (!estMeta || estKey !== fileKey(f0)) {
+            // 추정이 아직 없거나 다른 파일이면 한 번 계산해서 메타 확보.
+            try {
+              await updateEstimate();
+            } catch (_) {}
+          }
+          if (
+            chosenMode !== "retypeset" &&
+            estMeta &&
+            estKey === fileKey(f0)
+          ) {
+            const scanned = !!estMeta.scanned;
+            const density = +estMeta.math_density || 0;
+            if (scanned || density >= 12) {
+              const choice = await askRetypeset(
+                scanned ? "scanned" : "math",
+                density,
+              );
+              if (choice === "cancel") return;
+              chosenMode = choice; // 'retypeset' 또는 'inplace'
+            }
+          }
+
           const fd = new FormData();
           fd.append("pdf", fileInput.files[0]);
           fd.append("model", document.getElementById("trModel").value);
-          fd.append("mode", document.getElementById("trMode").value);
+          fd.append("mode", chosenMode);
 
           progressArea.style.display = "block";
           progressEl.textContent = "";

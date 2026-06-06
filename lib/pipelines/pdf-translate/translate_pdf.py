@@ -361,6 +361,16 @@ _CMMI_FIX = {"↵": "α", "⇡": "π", "✏": "ε"}
 # 'C—H'가 'CUH', 'H—C—H'가 'HUCUH'로 보이던 것 수정. 일반 글자 'U'는 본문폰트라 무관.
 _MATHTECH_FIX = {"U": "–"}
 
+# 화학 교과서(OXTOBY/Cengage 계열)의 위첨자 기호 전용 서브셋 폰트.
+# ToUnicode 손상으로 전하·반결합 기호가 숫자/글자로 추출돼, 'H₂⁺'→'H₂1', 'O₂⁻'→'O₂2',
+# 'O₂²⁻'→'O₂²2', 'σ*'→'σp' 처럼 깨지던 것 수정. 글리프 크롭으로 실제 모양을 확인해 매핑.
+#   WWDOC01: '1'=⁺(전하 플러스), '2'=⁻(전하 마이너스)
+#   WWDOC06: 'p'=*(반결합 오비탈 별표 σ*)
+# 이 폰트들은 본문 글자가 아니라 기호 전용 서브셋이라(해당 슬롯에 다른 글자가 없음)
+# 폰트명 한정 매핑이 안전하다. 크기상 위첨자로 잡혀 <sup>+</sup>/<sup>-</sup> 로 렌더된다.
+_WWDOC01_FIX = {"1": "+", "2": "-"}
+_WWDOC06_FIX = {"p": "*"}
+
 # 수식·기호 전용 폰트(이 폰트의 슬롯은 전부 기호 → /Differences 전부 적용 안전).
 _MATH_FONT_KEYS = (
     "MathematicalPi", "MathPi", "Symbol", "Euclid", "MT-Extra",
@@ -500,6 +510,14 @@ def _fix_span_text(font, text):
     dec = _CUR_DEC.get(_norm_font(f))
     out = []
     for ch in text:
+        # 기호 전용 서브셋 폰트(WWDOC…)는 디코더보다 우선해 강제 매핑(전하·별표).
+        # 디코더가 'MacRomanEncoding' 항등으로 '1'→'1' 을 돌려주면 깨진 채 남기 때문.
+        if "WWDOC01" in f and ch in _WWDOC01_FIX:
+            out.append(_WWDOC01_FIX[ch])
+            continue
+        if "WWDOC06" in f and ch in _WWDOC06_FIX:
+            out.append(_WWDOC06_FIX[ch])
+            continue
         if dec is not None:
             u = dec.get(ord(ch))
             if u is not None:

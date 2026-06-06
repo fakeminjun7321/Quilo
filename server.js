@@ -2724,9 +2724,10 @@ async function runPdfTranslation(job, { pdfBuffer, originalName, model, mode }) 
     // 변환 방식 결정.
     // - 명시적 '재조판' → 그대로.
     // - '자동' → 스캔/수식밀도로 결정.
-    // - '빠른 번역(in-place)' → 일반 문서는 그대로 두되, **스캔본·수식 많은 문서는
-    //   in-place 로는 수식이 깨지므로 재조판으로 강제 전환**(캐시된 옛 페이지/오선택
-    //   방어 — 이런 문서에서 in-place 는 절대 좋은 결과가 안 나옴).
+    // - 명시적 '빠른 번역(in-place)' → **사용자 선택 존중**. 프런트엔드에서 수식 많은
+    //   문서면 '재조판 권유' 확인창을 먼저 띄우므로(아래 estimate 기반), 여기까지 inplace
+    //   로 온 건 사용자가 권유를 받고도 빠른 번역을 고른 것 → 그대로 둔다. 단 **스캔본은
+    //   글자 교체할 텍스트 박스가 없어 in-place 가 물리적으로 불가능** → 재조판으로 전환.
     const AUTO_MATH_THRESHOLD = Number(process.env.PDF_AUTO_MATH_THRESHOLD || 12);
     const isAuto = mode !== "inplace" && mode !== "retypeset";
     const needsRetypeset =
@@ -2734,14 +2735,22 @@ async function runPdfTranslation(job, { pdfBuffer, originalName, model, mode }) 
     let resolvedMode;
     if (mode === "retypeset") {
       resolvedMode = "retypeset";
+    } else if (mode === "inplace") {
+      // 사용자가 명시적으로 빠른 번역 선택 → 스캔본만 재조판 강제, 수식 밀집은 존중.
+      resolvedMode = routing.scanned ? "retypeset" : "inplace";
     } else {
       resolvedMode = needsRetypeset ? "retypeset" : "inplace";
     }
-    if (mode === "inplace" && needsRetypeset) {
+    if (mode === "inplace" && routing.scanned) {
       pushProgress(
         job,
-        "⚠ 수식이 많은(또는 스캔) 문서는 '빠른 번역'으로 수식이 깨집니다 → '재조판'으로 자동 전환합니다." +
-          (routing.scanned ? " · 스캔본" : ` · 수식밀도 ${routing.mathDensity ?? 0}`),
+        "⚠ 스캔본/이미지 PDF는 글자만 교체하는 '빠른 번역'이 불가능합니다 → 'OCR 재조판'으로 전환합니다.",
+      );
+    } else if (mode === "inplace" && needsRetypeset) {
+      // 수식 많은 문서를 사용자가 빠른 번역으로 고른 경우(확인창에서 유지 선택).
+      pushProgress(
+        job,
+        `ℹ 수식이 많은 문서(수식밀도 ${routing.mathDensity ?? 0})를 '빠른 번역'으로 처리합니다 — 일부 수식이 깨질 수 있습니다(원하면 '재조판'으로 다시 시도).`,
       );
     } else if (isAuto) {
       pushProgress(
