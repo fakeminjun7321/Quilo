@@ -1675,12 +1675,7 @@ def generate_hwpx(content):
         build_apparatus_and_chemicals(doc, content)
         build_procedure(doc, content.get("procedure", []))
         build_references(doc, content)
-
-        try:
-            doc.set_footer_text("- 사전보고서 -")
-            add_page_number_to_footer(doc)
-        except Exception:
-            pass
+        # 바닥글(페이지 번호 포함) 미사용 — 사용자 요청으로 footer 줄 자체를 넣지 않는다.
 
     return doc
 
