@@ -2786,40 +2786,58 @@ async function runPdfTranslation(job, { pdfBuffer, originalName, model, mode }) 
     } else if (resolvedMode === "retypeset") {
       // 텍스트 PDF 재조판: 원본 그림을 미리 잘라두고(복원용), 페이지 구간으로 분할해
       // 병렬 번역(Opus 품질 유지·속도↑). 그림은 %%FIG:n%% 마커 자리에 다시 끼워넣는다.
-      const figures = await extractFiguresForRetypeset(pdfBuffer, {
-        signal: ac.signal,
-        onProgress,
-      });
-      if (figures.length) {
+      // 재조판은 LaTeX 조판·Tectonic 컴파일 등 실패 지점이 많다(미정의 명령어, 폰트,
+      // 환경). 실패해도 텍스트 PDF 는 '빠른 번역'으로 대체해 사용자가 빈손이 되지 않게
+      // 한다(하드 에러 방지). 스캔본은 위 분기에서 처리되므로 여기 폴백은 항상 가능.
+      try {
+        const figures = await extractFiguresForRetypeset(pdfBuffer, {
+          signal: ac.signal,
+          onProgress,
+        });
+        if (figures.length) {
+          pushProgress(
+            job,
+            `🖼️ 본문 그림 ${figures.length}개 추출 — 재조판본에 복원합니다.`,
+          );
+        }
+        if (routing.twoColumn) {
+          pushProgress(
+            job,
+            "📐 2단 레이아웃 감지 — 읽기 순서를 좌→우 단으로 맞추고 2단으로 조판합니다.",
+          );
+        }
+        const pdfChunks = await splitPdfToBuffers(pdfBuffer, {
+          signal: ac.signal,
+          onProgress,
+        });
+        result = await retypesetPdf({
+          pdfBuffer,
+          pdfChunks,
+          figures,
+          twoColumn: routing.twoColumn,
+          model,
+          signal: ac.signal,
+          onProgress,
+        });
+        if (result.figures) {
+          pushProgress(
+            job,
+            `🖼️ 원본 그림 ${result.figures}개를 재조판본에 복원했습니다.`,
+          );
+        }
+      } catch (e) {
+        if (ac.signal.aborted || timedOut) throw e; // 사용자 중단/타임아웃은 폴백 안 함
         pushProgress(
           job,
-          `🖼️ 본문 그림 ${figures.length}개 추출 — 재조판본에 복원합니다.`,
+          `⚠ 재조판 실패 → '빠른 번역(레이아웃 유지)'으로 대체합니다: ${String(e.message || e).slice(0, 160)}`,
         );
-      }
-      if (routing.twoColumn) {
-        pushProgress(
-          job,
-          "📐 2단 레이아웃 감지 — 읽기 순서를 좌→우 단으로 맞추고 2단으로 조판합니다.",
-        );
-      }
-      const pdfChunks = await splitPdfToBuffers(pdfBuffer, {
-        signal: ac.signal,
-        onProgress,
-      });
-      result = await retypesetPdf({
-        pdfBuffer,
-        pdfChunks,
-        figures,
-        twoColumn: routing.twoColumn,
-        model,
-        signal: ac.signal,
-        onProgress,
-      });
-      if (result.figures) {
-        pushProgress(
-          job,
-          `🖼️ 원본 그림 ${result.figures}개를 재조판본에 복원했습니다.`,
-        );
+        effectiveMode = "inplace";
+        result = await translatePdf({
+          pdfBuffer,
+          model,
+          signal: ac.signal,
+          onProgress,
+        });
       }
     } else {
       result = await translatePdf({
