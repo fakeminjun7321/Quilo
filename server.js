@@ -343,7 +343,10 @@ function getSessionUser(req) {
 
 function requireAuth(req, res, next) {
   if (getSessionUser(req)) return next();
-  if (req.accepts("json") && req.path.startsWith("/api/")) {
+  // /api/* 는 Accept 헤더와 무관하게 **항상 JSON 401** 로 응답한다. (이전엔 EventSource
+  // 처럼 Accept 가 json 이 아니면 빈 본문 302 redirect 가 나가 프런트의 res.json() 이
+  // "Unexpected end of JSON input" 으로 깨졌다.) 페이지(비-/api) 네비게이션만 redirect.
+  if (req.path.startsWith("/api/")) {
     return res.status(401).json({ error: "로그인이 필요합니다." });
   }
   return res.redirect("/login.html");
@@ -3790,6 +3793,32 @@ app.get("/api/usage", requireAdmin, (req, res) => {
     totalUSDFormatted: fmtUSD(totalUsage.totalUSD),
     totalKRWFormatted: fmtKRW(totalUsage.totalUSD),
   });
+});
+
+// 알 수 없는 /api 경로는 HTML 404 대신 **JSON 404** 로 — 프런트의 res.json() 이
+// "Unexpected end of JSON input"/"Unexpected token <" 로 깨지지 않게 한다.
+app.use("/api", (req, res) => {
+  res.status(404).json({ error: "요청한 API 경로를 찾을 수 없습니다." });
+});
+
+// 터미널 에러 핸들러: 라우트에서 throw/reject 된 에러나 body-parser 오류(잘못된 JSON,
+// 1MB 초과 등)가 Express 기본(HTML/빈 본문) 핸들러로 빠지지 않게, /api 요청은 항상
+// JSON 으로 응답한다. (이게 없어서 어떤 액션이든 비-JSON 응답이 나오면 전역적으로
+// "Unexpected end of JSON input" 이 떴다.)
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+  const status = err.status || err.statusCode || 500;
+  const isApi = req.path && req.path.startsWith("/api/");
+  if (status >= 500) console.error("[unhandled]", req.method, req.path, err);
+  if (isApi || (req.accepts && req.accepts("json") && !req.accepts("html"))) {
+    return res.status(status).json({
+      error: err.expose ? err.message : err.message || "서버 오류가 발생했습니다.",
+    });
+  }
+  return res
+    .status(status)
+    .type("text/plain; charset=utf-8")
+    .send(err.message || "서버 오류가 발생했습니다.");
 });
 
 // ── Start ────────────────────────────────────────────────────────────────────
