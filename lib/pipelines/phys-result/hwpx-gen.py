@@ -1170,6 +1170,26 @@ def build_conclusion(doc, content, target=None, include_heading=True):
     )
 
 
+def build_additional_investigations(doc, content, target=None):
+    """선택적 '추가 실험 및 의문점 해결' 섹션 (additional_investigations[])."""
+    target = target or doc
+    items = [
+        it
+        for it in as_list(content.get("additional_investigations"))
+        if isinstance(it, dict) and (it.get("title") or it.get("body"))
+    ]
+    if not items:
+        return
+    add_para_to(doc, target, "▶ 추가 실험 및 의문점 해결", base_size=pre.SIZE_HEADING, bold=True, space_after=240)
+    markers = ["가", "나", "다", "라", "마"]
+    for i, it in enumerate(items):
+        if it.get("title"):
+            label = markers[i] if i < len(markers) else str(i + 1)
+            add_para_to(doc, target, f"{label}. {it.get('title')}", bold=True, space_after=120)
+        if it.get("body"):
+            add_para_to(doc, target, str(it.get("body")), space_after=360, indent_left=pre.INDENT_5MM)
+
+
 def collect_preview_text(content):
     lines = [f"실험 주제 : {content.get('title') or '물리 결과보고서'}", "", "1. 실험 결과"]
     setup = content.get("experiment_setup") or {}
@@ -1239,6 +1259,7 @@ def generate_hwpx(content):
             clear_cell(result_cell)
             clear_cell(conclusion_cell)
             build_results(doc, content, target=result_cell, include_heading=False)
+            build_additional_investigations(doc, content, target=result_cell)
             build_conclusion(doc, content, target=conclusion_cell, include_heading=False)
             return doc
         clear_template_body(doc)
@@ -1252,6 +1273,7 @@ def generate_hwpx(content):
         )
         build_header(doc, content)
     build_results(doc, content)
+    build_additional_investigations(doc, content)
     build_conclusion(doc, content)
     if not using_template:
         add_phys_page_number_to_footer(doc)
