@@ -20,13 +20,28 @@
     "측정값이 이론값과 달랐어",
     "실험 중 특이사항이 있었어",
   ];
+  var STYLE_GREETING =
+    "내 글 '문체'를 정리해드려요. 평소 어떻게 쓰는지(말투·설명 방식·소제목·수식 표기 등)를 알려주시거나, 예전에 쓴 글을 붙여넣어 주세요. '스타일 메모'로 정리해드릴게요.";
+  var STYLE_SUGGESTIONS = [
+    "영어 소제목 + 구어체로 직관 먼저 쓰는 스타일이야",
+    "예전에 쓴 글을 붙여넣을게",
+    "사람들이 헷갈리는 지점을 짚는 편이야",
+  ];
 
   var messages = [];
   var busy = false;
   var openedOnce = false;
-  var currentMode = "help"; // 'help' | 'memo'
-  var memoTarget = null; // 메모를 넣을 textarea id (폼에서 열었을 때)
-  var panel, msgsEl, chipsEl, inputEl, sendBtn;
+  var currentMode = "help"; // 'help' | 'memo' | 'style'
+  var memoTarget = null; // 메모/스타일을 넣을 textarea id (폼/설정에서 열었을 때)
+  var waEnabled = false; // 유료 글쓰기 도우미(Sonnet/GPT) + 로그인 사용 가능
+  var helpEnabled = false; // 일반 사용법 도우미(Groq)
+  var waModels = []; // [{id,label}]
+  var waModel = null; // 선택된 모델 id
+  var panel, msgsEl, chipsEl, inputEl, sendBtn, modelSel;
+
+  function isAssist() {
+    return currentMode === "memo" || currentMode === "style";
+  }
 
   function el(tag, cls, text) {
     var e = document.createElement(tag);
@@ -64,9 +79,8 @@
   function restoreConversation() {
     msgsEl.innerHTML = "";
     chipsEl.style.display = "none";
-    var _mb = document.getElementById("qc-modebar");
-    if (_mb) _mb.style.display = currentMode === "memo" ? "flex" : "none";
-    var isMemo = currentMode === "memo";
+    updateModebar();
+    var isMemo = isAssist();
     for (var i = 0; i < messages.length; i++) {
       var m = messages[i];
       if (m.role === "user") {
@@ -99,6 +113,7 @@
       "#qc-modebar{display:none;align-items:center;justify-content:space-between;gap:8px;padding:7px 12px;background:#eef1fc;border-bottom:1px solid #dfe4fb;font-size:12.5px;color:#243ba2;font-weight:600}" +
       "#qc-modebar button{background:#fff;border:1px solid #c9d2f7;color:#243ba2;border-radius:7px;font-size:11.5px;padding:3px 9px;cursor:pointer;font-family:inherit;font-weight:500}" +
       "#qc-modebar button:hover{background:#e4e9fc}" +
+      "#qc-model{background:#fff;border:1px solid #c9d2f7;color:#243ba2;border-radius:7px;font-size:11.5px;padding:3px 6px;font-family:inherit;cursor:pointer}" +
       "#qc-msgs{flex:1;overflow-y:auto;padding:14px;background:#f6f7fb;display:flex;flex-direction:column;gap:10px}" +
       ".qc-row{display:flex}.qc-row.me{justify-content:flex-end}.qc-row.ai{flex-direction:column;align-items:flex-start}" +
       ".qc-b{max-width:84%;padding:9px 12px;border-radius:13px;font-size:13.5px;line-height:1.6;white-space:pre-wrap;word-break:break-word}" +
@@ -154,12 +169,31 @@
 
   function extractMemo(t) {
     t = t || "";
-    var i = t.indexOf("메모 초안");
-    if (i >= 0) {
-      var rest = t.slice(i).replace(/^메모\s*초안\s*[:：]?\s*/, "");
-      return rest.trim() || t.trim();
+    // "메모 초안:" 또는 "스타일 메모:" 뒤 본문만 추출(폼 칸에 넣기 좋게)
+    var markers = ["메모 초안", "스타일 메모"];
+    for (var k = 0; k < markers.length; k++) {
+      var i = t.indexOf(markers[k]);
+      if (i >= 0) {
+        var rest = t
+          .slice(i)
+          .replace(/^(메모\s*초안|스타일\s*메모)\s*[:：]?\s*/, "");
+        return rest.trim() || t.trim();
+      }
     }
     return t.trim();
+  }
+
+  // 모드 바: 메모/스타일 모드에서만 보이고 라벨·모델 선택을 갱신
+  function updateModebar() {
+    var mb = document.getElementById("qc-modebar");
+    if (!mb) return;
+    mb.style.display = isAssist() ? "flex" : "none";
+    var lbl = document.getElementById("qc-modelabel");
+    if (lbl)
+      lbl.textContent = currentMode === "style" ? "✍️ 글 스타일 도우미" : "📝 메모 작성 도우미";
+    if (modelSel) {
+      modelSel.style.display = waEnabled && waModels.length ? "" : "none";
+    }
   }
 
   function attachBar(row, snapshot, question, answer, isError, isMemo) {
@@ -178,13 +212,13 @@
         };
         bar.appendChild(copy);
         if (memoTarget) {
-          var ins = el("button", "prim", "↧ 메모칸에 넣기");
+          var ins = el("button", "prim", "↧ 입력칸에 넣기");
           ins.onclick = function () {
             var ta = document.getElementById(memoTarget);
             if (ta) {
               ta.value = extractMemo(answer);
               ta.dispatchEvent(new Event("input", { bubbles: true }));
-              row.appendChild(el("div", "qc-note", "메모칸에 넣었어요 ✓"));
+              row.appendChild(el("div", "qc-note", "입력칸에 넣었어요 ✓"));
             }
           };
           bar.appendChild(ins);
@@ -275,18 +309,25 @@
     if (sendBtn) sendBtn.disabled = true;
     var snapshot = messages.slice();
     var question = (snapshot[snapshot.length - 1] || {}).content || "";
-    var isMemo = currentMode === "memo";
+    var isMemo = isAssist();
     var ai = addAiRow();
     ai.bubble.textContent = "…";
+
+    var body = {
+      messages: snapshot.slice(-8),
+      mode: isAssist() ? "memo" : currentMode,
+      context: pageContext(),
+    };
+    // 메모/스타일 모드 + 유료 도우미 사용 가능 → Sonnet/GPT 라우팅
+    if (isAssist()) {
+      body.assistKind = currentMode === "style" ? "style" : "memo";
+      if (waEnabled && waModel) body.model = waModel;
+    }
 
     fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        messages: snapshot.slice(-8),
-        mode: currentMode,
-        context: pageContext(),
-      }),
+      body: JSON.stringify(body),
     })
       .then(function (resp) {
         if (!resp.ok || !resp.body) {
@@ -362,17 +403,27 @@
 
   function showIntro() {
     msgsEl.innerHTML = "";
-    addAiRow().bubble.textContent =
-      currentMode === "memo" ? MEMO_GREETING : HELP_GREETING;
-    renderChips(currentMode === "memo" ? MEMO_SUGGESTIONS : HELP_SUGGESTIONS);
+    var greet =
+      currentMode === "style"
+        ? STYLE_GREETING
+        : currentMode === "memo"
+          ? MEMO_GREETING
+          : HELP_GREETING;
+    var chips =
+      currentMode === "style"
+        ? STYLE_SUGGESTIONS
+        : currentMode === "memo"
+          ? MEMO_SUGGESTIONS
+          : HELP_SUGGESTIONS;
+    addAiRow().bubble.textContent = greet;
+    renderChips(chips);
   }
 
   function setMode(mode) {
     if (busy) return;
     currentMode = mode;
     if (mode === "help") memoTarget = null;
-    var _mb = document.getElementById("qc-modebar");
-    if (_mb) _mb.style.display = mode === "memo" ? "flex" : "none";
+    updateModebar();
     messages = [];
     showIntro();
     save();
@@ -393,15 +444,34 @@
     head.appendChild(close);
     panel.appendChild(head);
 
-    // 상시 토글 없음. 메모 모드일 때만 보이는 안내 바(일반 도움말로 돌아가기 포함).
+    // 메모/스타일 모드일 때만 보이는 안내 바(모델 선택 + 일반 도움말로 돌아가기).
     var modebar = el("div");
     modebar.id = "qc-modebar";
-    modebar.appendChild(el("span", null, "📝 메모 작성 도우미"));
+    var mlabel = el("span", null, "📝 메모 작성 도우미");
+    mlabel.id = "qc-modelabel";
+    modebar.appendChild(mlabel);
+    var mright = el("div");
+    mright.style.display = "flex";
+    mright.style.alignItems = "center";
+    mright.style.gap = "6px";
+    modelSel = el("select");
+    modelSel.id = "qc-model";
+    modelSel.title = "AI 모델 선택";
+    modelSel.style.display = "none";
+    modelSel.onchange = function () {
+      waModel = modelSel.value;
+      try {
+        localStorage.setItem("quiloWaModel", waModel);
+      } catch (e) {}
+    };
+    mright.appendChild(modelSel);
     var mback = el("button", null, "일반 도움말 ✕");
     mback.onclick = function () {
-      setMode("help");
+      if (helpEnabled) setMode("help");
+      else toggle();
     };
-    modebar.appendChild(mback);
+    mright.appendChild(mback);
+    modebar.appendChild(mright);
     panel.appendChild(modebar);
 
     msgsEl = el("div");
@@ -463,36 +533,70 @@
 
   function init() {
     injectStyles();
-    var launch = el("button", null, "💬");
-    launch.id = "qc-launch";
-    launch.setAttribute("aria-label", "Quilo 도우미 열기");
-    launch.onclick = toggle;
-    document.body.appendChild(launch);
+    // 일반 도움말(Groq)이 켜진 경우에만 떠 있는 런처 버튼 노출.
+    if (helpEnabled) {
+      var launch = el("button", null, "💬");
+      launch.id = "qc-launch";
+      launch.setAttribute("aria-label", "Quilo 도우미 열기");
+      launch.onclick = toggle;
+      document.body.appendChild(launch);
+    }
     buildPanel();
     load();
-    // 폼에 있는 'AI 메모 작성 도움' 버튼들을 노출 (챗이 켜졌을 때만)
-    var btns = document.querySelectorAll(".qc-memo-btn");
+    // 모델 셀렉터 채우기 (Sonnet / GPT-5.4-mini)
+    if (modelSel) {
+      modelSel.innerHTML = "";
+      waModels.forEach(function (m) {
+        var o = document.createElement("option");
+        o.value = m.id;
+        o.textContent = m.label;
+        modelSel.appendChild(o);
+      });
+      var saved = null;
+      try {
+        saved = localStorage.getItem("quiloWaModel");
+      } catch (e) {}
+      if (saved && waModels.some(function (m) { return m.id === saved; })) waModel = saved;
+      else if (waModels[0]) waModel = waModels[0].id;
+      if (waModel) modelSel.value = waModel;
+    }
+    // 폼/설정의 'AI 메모/스타일 작성 도움' 버튼들 노출
+    var btns = document.querySelectorAll(".qc-memo-btn, .qc-style-btn");
     for (var i = 0; i < btns.length; i++) btns[i].style.display = "";
   }
 
-  // 폼(보고서 입력칸)에서 호출: 메모 모드로 패널 열기
-  window.Quilo.openMemo = function (targetId) {
-    if (!panel) return; // 챗이 꺼져 있으면 무시
+  // 폼/설정에서 호출: 메모 또는 스타일 모드로 패널 열기. kind: "memo"(기본) | "style"
+  window.Quilo.openMemo = function (targetId, kind) {
+    if (!panel) return; // 위젯이 꺼져 있으면 무시
     memoTarget = targetId || null;
     openedOnce = true;
     panel.classList.add("open");
-    setMode("memo");
+    setMode(kind === "style" ? "style" : "memo");
     setTimeout(function () {
       if (inputEl) inputEl.focus();
     }, 60);
   };
+  window.Quilo.openStyle = function (targetId) {
+    window.Quilo.openMemo(targetId, "style");
+  };
 
-  fetch("/api/chat/status")
-    .then(function (r) {
-      return r.json();
-    })
-    .then(function (j) {
-      if (j && j.enabled) {
+  Promise.all([
+    fetch("/api/chat/status")
+      .then(function (r) { return r.json(); })
+      .catch(function () { return {}; }),
+    fetch("/api/write-assist/models")
+      .then(function (r) { return r.json(); })
+      .catch(function () { return {}; }),
+  ])
+    .then(function (arr) {
+      var cs = arr[0] || {};
+      var wa = arr[1] || {};
+      helpEnabled = !!cs.enabled;
+      waEnabled = !!(wa.enabled && wa.loggedIn);
+      waModels = (wa.models || []).map(function (m) {
+        return { id: m.id, label: m.label };
+      });
+      if (helpEnabled || waEnabled) {
         if (document.readyState === "loading")
           document.addEventListener("DOMContentLoaded", init);
         else init();

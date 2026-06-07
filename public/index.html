@@ -38,6 +38,7 @@
               <a href="#" data-report="chem-pre">화학 사전보고서</a>
               <a href="#" data-report="chem-result">화학 결과보고서</a>
               <a href="#" data-report="phys-result">물리 결과보고서</a>
+              <a href="#" data-report="phys-inquiry" id="navReportPhysInquiry" hidden>물리 수행평가 <span class="beta-pill">베타</span></a>
             </div>
           </div>
           <div class="nav-dd" data-dd>
@@ -59,6 +60,7 @@
               <a href="/changelog.html">패치노트</a>
             </div>
           </div>
+          <a class="nav-dd-btn" href="/community.html" style="text-decoration:none">커뮤니티</a>
           <!-- 로그아웃 상태: '로그인' 누르면 로그인 폼이 드롭다운으로 내려온다 -->
           <div class="nav-dd nav-dd-right" data-dd id="loginDd" hidden>
             <button type="button" class="nav-dd-btn nav-login-trigger">로그인 <span class="caret" aria-hidden="true">▾</span></button>
@@ -166,6 +168,12 @@
           <span class="rt-title">물리 결과보고서</span>
           <span class="rt-tag">.cap·엑셀 → 결과보고서</span>
         </label>
+        <label id="rtPhysInquiry" hidden>
+          <input type="radio" name="reportType" value="phys-inquiry" />
+          <span class="rt-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0-3.6 10.8c.5.4.8.9.9 1.5l.2 1.2h5l.2-1.2c.1-.6.4-1.1.9-1.5A6 6 0 0 0 12 3z"/><path d="M9.5 21h5"/><path d="M10 18h4"/></svg></span>
+          <span class="rt-title">물리 수행평가 <span class="beta-pill">베타</span></span>
+          <span class="rt-tag">주제·필기노트 → 탐구 성찰 보고서</span>
+        </label>
       </div>
     </div>
 
@@ -252,6 +260,35 @@
             <label><span class="field-label">기압 (hPa)</span>
               <input id="crPressure" name="pressure" type="number" step="0.1" placeholder="예: 1013.2" />
             </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-head">
+          <span class="form-section-title">내 글 스타일 (선택)</span>
+        </div>
+        <div class="notice" style="margin-bottom:12px">
+          내가 예전에 쓴 글이나 <strong>직접 작성한 예시 보고서</strong>를 올리면, 그 글의 <strong>문체·느낌</strong>으로 작성합니다.
+          <strong>내용·데이터는 가져오지 않고 스타일만</strong> 분석해 흉내 냅니다. (다른 주제·다른 실험 보고서여도 OK)
+        </div>
+        <div class="field-grid">
+          <div class="field">
+            <span class="field-label">내가 쓴 예시 보고서 · 글 스타일 (PDF·이미지·텍스트, 여러 개)</span>
+            <div class="dropzone">
+              <input id="crStyleRefs" name="styleRefs" type="file" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.txt,.md,.csv,application/pdf,image/*" multiple aria-label="내 글 스타일 참고 파일" />
+              <span class="dropzone-icon" aria-hidden="true">✍️</span>
+              <span class="dropzone-title">내 글/예시 보고서를 끌어다 놓거나 클릭</span>
+              <span class="dropzone-sub">문체만 흉내 · 내용 제외</span>
+              <span class="dropzone-file" data-dz-file></span>
+            </div>
+          </div>
+          <div class="field">
+            <label><span class="field-label">문체 메모 (선택)</span>
+              <textarea id="crStyleNote" name="styleNote" rows="3" maxlength="1500" placeholder="예: 구어체로 직관 먼저 설명하고, 헷갈리는 지점을 짚으며 수식은 단계별로 유도하는 느낌"></textarea>
+            </label>
+          <button type="button" class="qc-style-btn" style="display:none;align-self:flex-start;margin:6px 0 2px;font-size:12.5px;color:#243ba2;background:#eef1fc;border:1px solid #dfe4fb;border-radius:8px;padding:6px 11px;cursor:pointer" onclick="window.Quilo&&window.Quilo.openStyle('crStyleNote')">✨ AI로 내 문체 정리받기</button>
+            <small>샘플 없이 원하는 느낌만 글로 적어도 됩니다.</small>
           </div>
         </div>
       </div>
@@ -389,6 +426,35 @@
 
       <div class="form-section">
         <div class="form-section-head">
+          <span class="form-section-title">내 글 스타일 (선택)</span>
+        </div>
+        <div class="notice" style="margin-bottom:12px">
+          내가 예전에 쓴 글이나 <strong>직접 작성한 예시 보고서</strong>를 올리면, 그 글의 <strong>문체·느낌</strong>으로 작성합니다.
+          <strong>내용·데이터는 가져오지 않고 스타일만</strong> 분석해 흉내 냅니다. (다른 주제·다른 실험 보고서여도 OK)
+        </div>
+        <div class="field-grid">
+          <div class="field">
+            <span class="field-label">내가 쓴 예시 보고서 · 글 스타일 (PDF·이미지·텍스트, 여러 개)</span>
+            <div class="dropzone">
+              <input id="prStyleRefs" name="styleRefs" type="file" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.txt,.md,.csv,application/pdf,image/*" multiple aria-label="내 글 스타일 참고 파일" />
+              <span class="dropzone-icon" aria-hidden="true">✍️</span>
+              <span class="dropzone-title">내 글/예시 보고서를 끌어다 놓거나 클릭</span>
+              <span class="dropzone-sub">문체만 흉내 · 내용 제외</span>
+              <span class="dropzone-file" data-dz-file></span>
+            </div>
+          </div>
+          <div class="field">
+            <label><span class="field-label">문체 메모 (선택)</span>
+              <textarea id="prStyleNote" name="styleNote" rows="3" maxlength="1500" placeholder="예: 구어체로 직관 먼저 설명하고, 헷갈리는 지점을 짚으며 수식은 단계별로 유도하는 느낌"></textarea>
+            </label>
+          <button type="button" class="qc-style-btn" style="display:none;align-self:flex-start;margin:6px 0 2px;font-size:12.5px;color:#243ba2;background:#eef1fc;border:1px solid #dfe4fb;border-radius:8px;padding:6px 11px;cursor:pointer" onclick="window.Quilo&&window.Quilo.openStyle('prStyleNote')">✨ AI로 내 문체 정리받기</button>
+            <small>샘플 없이 원하는 느낌만 글로 적어도 됩니다.</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-head">
           <span class="form-section-title">출력 설정</span>
         </div>
         <div class="seg-group" style="margin-bottom: 12px">
@@ -430,6 +496,163 @@
       <div class="form-actions">
         <span class="hint">생성에는 보통 2~3분 정도 걸립니다. 첨부가 많으면 조금 더 걸릴 수 있습니다.</span>
         <button type="submit" id="prBtn">물리 결과보고서 생성</button>
+      </div>
+    </form>
+
+    <!-- ── 물리 수행평가 폼 (베타) — 탐구 및 사고 과정 성찰 보고서 ───────────── -->
+    <form id="physInquiryForm" class="report-form" data-report-form="phys-inquiry" hidden>
+      <div class="notice">
+        <strong>물리 수행평가 「일반물리학 탐구 및 사고 과정 성찰 보고서」 초안 (베타·무료).</strong>
+        주제 + 내가 공부한 필기노트 PDF + 참고자료를 주면, 오개념 → 오류 인식 → 정확한 개념으로의 해결 →
+        물리적 해석·성찰 흐름의 초안을 만들어 줍니다. <strong>그대로 제출하지 말고 본인 글로 다듬어 쓰세요.</strong>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-head">
+          <span class="form-section-title">탐구 주제</span>
+        </div>
+        <div class="field">
+          <label><span class="field-label">탐구 주제 / 문제 상황 <span class="req">*</span></span>
+            <input id="piTopic" name="topic" type="text" maxlength="300" required
+              placeholder="예: 특수 상대성 이론에서 동시성의 상대성 / 강체의 회전관성과 굴림운동 / 단진자에서 진폭이 주기에 미치는 영향" />
+          </label>
+          <small>일반물리학을 공부하며 깊이 고민했던 하나의 물리적 문제 상황을 한 줄로.</small>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-head">
+          <span class="form-section-title">자료 업로드</span>
+        </div>
+        <div class="field-grid">
+          <div class="field">
+            <span class="field-label">필기노트 PDF (여러 개)</span>
+            <div class="dropzone">
+              <input id="piNotes" name="notes" type="file" accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown" multiple aria-label="필기노트 파일" />
+              <span class="dropzone-icon" aria-hidden="true">📓</span>
+              <span class="dropzone-title">필기노트를 끌어다 놓거나 클릭</span>
+              <span class="dropzone-sub">.pdf · .txt · .md</span>
+              <span class="dropzone-file" data-dz-file></span>
+            </div>
+          </div>
+          <div class="field">
+            <span class="field-label">참고자료 (PDF·이미지·텍스트, 여러 개)</span>
+            <div class="dropzone">
+              <input id="piRefs" name="refs" type="file" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.txt,.md,.csv,application/pdf,image/*" multiple aria-label="참고자료 파일" />
+              <span class="dropzone-icon" aria-hidden="true">📎</span>
+              <span class="dropzone-title">참고자료를 끌어다 놓거나 클릭</span>
+              <span class="dropzone-sub">.pdf · .png/.jpg · .txt/.md</span>
+              <span class="dropzone-file" data-dz-file></span>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label><span class="field-label">참고 링크 (선택, 한 줄에 하나)</span>
+            <textarea id="piRefLinks" name="refLinks" rows="3" maxlength="4000" placeholder="https://en.wikipedia.org/wiki/Relativity_of_simultaneity&#10;https://... (참고한 웹페이지·강의 자료 주소)"></textarea>
+          </label>
+          <small>링크 내용은 참고문헌에 정리됩니다. 필요하면 AI가 웹 검색으로 확인합니다.</small>
+        </div>
+        <div class="field user-notes-field">
+          <label>
+            <span class="field-label">AI 참고 메모 / 내 생각 (선택)</span>
+            <textarea id="piUserNotes" name="userNotes" rows="4" maxlength="12000" placeholder="예: 처음엔 시간이 절대적이라고 생각했는데 기차 사고실험을 보고 헷갈렸음. 로런츠 변환으로 풀고 싶음."></textarea>
+          </label>
+          <button type="button" class="qc-memo-btn" style="display:none;align-self:flex-start;margin:6px 0 2px;font-size:12.5px;color:#243ba2;background:#eef1fc;border:1px solid #dfe4fb;border-radius:8px;padding:6px 11px;cursor:pointer" onclick="window.Quilo&&window.Quilo.openMemo('piUserNotes')">✨ AI로 메모 작성 도움받기</button>
+          <small>.md/.txt 파일로 길게 작성한 메모도 함께 첨부할 수 있습니다.</small>
+          <input id="piUserNotesFile" name="userNotesFile" type="file" accept=".md,.txt,text/markdown,text/plain" aria-label="참고 메모 파일" />
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-head">
+          <span class="form-section-title">내 글 스타일 (선택)</span>
+        </div>
+        <div class="notice" style="margin-bottom:12px">
+          내가 예전에 쓴 글(필기·노트·보고서 등)을 올리면, 보고서를 <strong>그 글의 문체·느낌</strong>으로 써 줍니다.
+          <strong>내용은 가져오지 않고 스타일만</strong> 흉내 냅니다. (예: 다른 주제 글이어도 OK)
+        </div>
+        <div class="field-grid">
+          <div class="field">
+            <span class="field-label">내 글 스타일 참고 파일 (PDF·이미지·텍스트, 여러 개)</span>
+            <div class="dropzone">
+              <input id="piStyleRefs" name="styleRefs" type="file" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.txt,.md,.csv,application/pdf,image/*" multiple aria-label="내 글 스타일 참고 파일" />
+              <span class="dropzone-icon" aria-hidden="true">✍️</span>
+              <span class="dropzone-title">내 글 샘플을 끌어다 놓거나 클릭</span>
+              <span class="dropzone-sub">문체만 흉내 · 내용 제외</span>
+              <span class="dropzone-file" data-dz-file></span>
+            </div>
+          </div>
+          <div class="field">
+            <label><span class="field-label">문체 메모 (선택, 한 줄)</span>
+              <textarea id="piStyleNote" name="styleNote" rows="3" maxlength="1500" placeholder="예: 영어 소제목 + 구어체로 직관 먼저 설명하고, 사람들이 헷갈리는 지점을 짚으며 수식은 단계별로 유도하는 느낌"></textarea>
+            </label>
+          <button type="button" class="qc-style-btn" style="display:none;align-self:flex-start;margin:6px 0 2px;font-size:12.5px;color:#243ba2;background:#eef1fc;border:1px solid #dfe4fb;border-radius:8px;padding:6px 11px;cursor:pointer" onclick="window.Quilo&&window.Quilo.openStyle('piStyleNote')">✨ AI로 내 문체 정리받기</button>
+            <small>샘플 없이 원하는 느낌만 글로 적어도 됩니다.</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-head">
+          <span class="form-section-title">보고서 정보</span>
+        </div>
+        <div class="field-grid">
+          <div class="field">
+            <label><span class="field-label">날짜</span>
+              <input id="piDate" name="date" type="date" />
+            </label>
+          </div>
+          <div class="field">
+            <span class="field-label">표지에 출력될 이름 · 학번</span>
+            <div id="piWhoPreview" style="padding:9px 12px;border:1px solid #e2e6f3;border-radius:8px;background:#f7f9ff;color:#243b5e;font-size:13.5px;min-height:38px;display:flex;align-items:center">개인 설정에 저장된 값으로 출력됩니다.</div>
+            <small>이름·학번은 <a href="#" data-tab="settings">개인 설정</a>에 저장한 값으로 자동 출력됩니다.</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-head">
+          <span class="form-section-title">출력 설정</span>
+        </div>
+        <div class="seg-group" style="margin-bottom: 12px">
+          <span class="field-label">AI 모델 (베타 기간 무료)</span>
+          <div class="segmented">
+            <label><input type="radio" name="piModel" value="claude-opus-4-8" checked /> Opus 4.8 · 무료(베타)</label>
+            <label><input type="radio" name="piModel" value="claude-sonnet-4-6" /> Sonnet 4.6 · 무료(베타)</label>
+          </div>
+        </div>
+        <div class="field-grid">
+          <div class="seg-group">
+            <span class="field-label">출력 형식</span>
+            <div class="segmented">
+              <label><input type="radio" name="piFormat" value="hwpx" checked /> .hwpx</label>
+              <label><input type="radio" name="piFormat" value="docx" /> .docx</label>
+            </div>
+          </div>
+          <div class="field">
+            <label><span class="field-label">글꼴</span>
+              <select id="piFontFace" name="fontFace">
+                <option value="malgun-gothic" selected>맑은 고딕</option>
+                <option value="nanum-gothic">나눔고딕</option>
+                <option value="nanum-myeongjo">나눔명조</option>
+                <option value="hamchorom-batang">함초롬바탕</option>
+              </select>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="policy-check">
+        <label>
+          <input type="checkbox" required />
+          본인이 이용 권한을 가진 파일만 업로드하며, 학교·교사·평가기준의 AI 사용 규정을 확인했고,
+          생성물은 학습 보조 초안으로만 사용합니다. 그대로 제출하지 않습니다.
+        </label>
+      </div>
+
+      <div class="form-actions">
+        <span class="hint">베타 기능입니다. 크레딧이 차감되지 않습니다. 생성에는 보통 1~3분 걸립니다.</span>
+        <button type="submit" id="piBtn">물리 수행평가 초안 생성</button>
       </div>
     </form>
 
@@ -483,6 +706,35 @@
             <label><span class="field-label">기압 (hPa, 선택)</span>
               <input id="pressure" name="pressure" type="text" placeholder="1013.2" />
             </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-head">
+          <span class="form-section-title">내 글 스타일 (선택)</span>
+        </div>
+        <div class="notice" style="margin-bottom:12px">
+          내가 예전에 쓴 글이나 <strong>직접 작성한 예시 보고서</strong>를 올리면, 그 글의 <strong>문체·느낌</strong>으로 작성합니다.
+          <strong>내용·데이터는 가져오지 않고 스타일만</strong> 분석해 흉내 냅니다. (다른 주제·다른 실험 보고서여도 OK)
+        </div>
+        <div class="field-grid">
+          <div class="field">
+            <span class="field-label">내가 쓴 예시 보고서 · 글 스타일 (PDF·이미지·텍스트, 여러 개)</span>
+            <div class="dropzone">
+              <input id="cpStyleRefs" name="styleRefs" type="file" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.txt,.md,.csv,application/pdf,image/*" multiple aria-label="내 글 스타일 참고 파일" />
+              <span class="dropzone-icon" aria-hidden="true">✍️</span>
+              <span class="dropzone-title">내 글/예시 보고서를 끌어다 놓거나 클릭</span>
+              <span class="dropzone-sub">문체만 흉내 · 내용 제외</span>
+              <span class="dropzone-file" data-dz-file></span>
+            </div>
+          </div>
+          <div class="field">
+            <label><span class="field-label">문체 메모 (선택)</span>
+              <textarea id="cpStyleNote" name="styleNote" rows="3" maxlength="1500" placeholder="예: 구어체로 직관 먼저 설명하고, 헷갈리는 지점을 짚으며 수식은 단계별로 유도하는 느낌"></textarea>
+            </label>
+          <button type="button" class="qc-style-btn" style="display:none;align-self:flex-start;margin:6px 0 2px;font-size:12.5px;color:#243ba2;background:#eef1fc;border:1px solid #dfe4fb;border-radius:8px;padding:6px 11px;cursor:pointer" onclick="window.Quilo&&window.Quilo.openStyle('cpStyleNote')">✨ AI로 내 문체 정리받기</button>
+            <small>샘플 없이 원하는 느낌만 글로 적어도 됩니다.</small>
           </div>
         </div>
       </div>
@@ -616,9 +868,15 @@
     </section>
 
     <section id="filesPanel" class="tab-panel" data-tab-panel="files" hidden>
+      <div class="settings-card" id="cloudCard" hidden>
+        <h2>클라우드 저장소</h2>
+        <p class="hint">연결하면 생성한 보고서가 24시간 파일함 대신 내 <b>Dropbox</b>(앱 전용 폴더)에 <b>영구 저장</b>됩니다.</p>
+        <div id="cloudStatus" style="font-size:14px;margin:8px 0">상태 확인 중…</div>
+        <div id="cloudActions"></div>
+      </div>
       <div class="settings-card">
         <h2>내 파일</h2>
-        <p class="hint">생성된 보고서는 최대 3개, 24시간만 보관됩니다.</p>
+        <p class="hint">생성된 보고서를 여기서 받을 수 있습니다. (기본 24시간 보관 · Dropbox 연결 시 영구 저장)</p>
         <div id="filesStatus" class="hint">불러오는 중...</div>
         <div id="filesList" class="file-list" aria-live="polite"></div>
       </div>
@@ -711,6 +969,21 @@
             저장한 학번은 보고서 표지와 파일명에 자동으로 들어갑니다.
           </p>
         </form>
+      </div>
+
+      <div class="settings-card">
+        <h2>내 기본 글 스타일</h2>
+        <p class="hint">저장해두면 모든 보고서의 '내 글 스타일' 칸에 자동으로 채워집니다. 생성할 때 바꿀 수 있어요. (문체만 반영 · 내용은 안 들어감)</p>
+        <div class="compact-form">
+          <p>
+            <textarea id="settingsStyleNote" rows="4" maxlength="1500" class="tool-input" style="width:100%;max-width:560px" placeholder="예: 영어 소제목 + 구어체로 직관 먼저 설명하고, 헷갈리는 지점을 짚으며 수식은 단계별로 유도하는 느낌"></textarea>
+          </p>
+          <p>
+            <button type="button" id="styleSaveBtn">저장</button>
+            <button type="button" class="qc-style-btn" style="display:none;margin-left:8px;font-size:12.5px;color:#243ba2;background:#eef1fc;border:1px solid #dfe4fb;border-radius:8px;padding:6px 11px;cursor:pointer" onclick="window.Quilo&&window.Quilo.openStyle('settingsStyleNote')">✨ AI로 내 스타일 정리받기</button>
+            <span id="styleSaveStatus" style="margin-left:10px"></span>
+          </p>
+        </div>
       </div>
 
       <div class="settings-card">
@@ -809,6 +1082,22 @@
         }
       }
 
+      function getLocalStyleNote() {
+        try { return localStorage.getItem("quiloStyleNote") || ""; } catch (_) { return ""; }
+      }
+      function saveLocalStyleNote(value) {
+        try { localStorage.setItem("quiloStyleNote", value || ""); } catch (_) {}
+      }
+      function applySavedStyleNote(serverNote) {
+        var note = serverNote != null && serverNote !== "" ? serverNote : getLocalStyleNote();
+        if (note) saveLocalStyleNote(note);
+        var s = document.getElementById("settingsStyleNote");
+        if (s && !s.value) s.value = note;
+        ["cpStyleNote", "crStyleNote", "prStyleNote", "piStyleNote"].forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el && !el.value) el.value = note;
+        });
+      }
       function saveLocalStudentId(value) {
         try {
           localStorage.setItem("studentId", normalizeStudentId(value));
@@ -845,6 +1134,14 @@
           document.getElementById("user").textContent = d.user + " 님 ";
           document.getElementById("settingsUserName").textContent = d.user;
           setStudentIdUi(d.studentId || getLocalStudentId());
+          applySavedStyleNote(d.styleNote);
+          const piWho = document.getElementById("piWhoPreview");
+          if (piWho) {
+            const sid = (d.studentId || getLocalStudentId() || "").trim();
+            piWho.textContent = sid
+              ? `${sid} ${d.user || ""}`.trim()
+              : `${d.user || "이름"} (학번 미설정 — 개인 설정에서 저장하세요)`;
+          }
           document.getElementById("settingsUserRole").textContent = d.isAdmin
             ? "관리자"
             : "일반 사용자";
@@ -855,6 +1152,7 @@
           applyReportTypeAccess(d.isAdmin ? [] : d.blockedReportTypes);
           if (!d.isAdmin) loadBalance();
           loadFiles();
+          loadCloudStatus();
         } else {
           applyReportTypeAccess([]);
         }
@@ -865,6 +1163,18 @@
         .then((r) => (r.ok ? r.json() : Promise.reject()))
         .then((d) => applyAuth(true, d))
         .catch(() => applyAuth(false));
+
+      // Dropbox 연결 콜백 결과 안내(+ URL 정리)
+      try {
+        const _cloud = new URLSearchParams(location.search).get("cloud");
+        if (_cloud === "connected") {
+          alert("✅ Dropbox가 연결되었습니다. 이제 생성한 보고서가 Dropbox 앱 폴더에 영구 저장됩니다.");
+          history.replaceState({}, "", location.pathname);
+        } else if (_cloud === "error") {
+          alert("Dropbox 연결에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+          history.replaceState({}, "", location.pathname);
+        }
+      } catch (_) {}
 
       // 로그인 유지 사용자: 저장된 이름 미리 채우기
       try {
@@ -1025,6 +1335,51 @@
         });
       }
 
+      async function loadCloudStatus() {
+        const card = document.getElementById("cloudCard");
+        if (!card) return;
+        const statusEl = document.getElementById("cloudStatus");
+        const actions = document.getElementById("cloudActions");
+        try {
+          const r = await fetch("/api/cloud/status");
+          if (!r.ok) {
+            card.hidden = true;
+            return;
+          }
+          const d = await r.json();
+          const dp = (d && d.dropbox) || {};
+          if (!dp.configured) {
+            card.hidden = true; // 서버에 Dropbox 미설정 → 카드 숨김
+            return;
+          }
+          card.hidden = false;
+          if (dp.connected) {
+            statusEl.innerHTML = `✅ Dropbox 연결됨${dp.email ? " — <b>" + dp.email + "</b>" : ""}<br><span class="hint">생성한 보고서가 Dropbox 앱 폴더에 영구 저장됩니다.</span>`;
+            actions.innerHTML = `<button type="button" id="dbxDisconnectBtn" class="secondary compact">연결 해제</button>`;
+            const btn = document.getElementById("dbxDisconnectBtn");
+            if (btn)
+              btn.addEventListener("click", async () => {
+                if (!confirm("Dropbox 연결을 해제할까요? (이미 저장된 파일은 Dropbox에 그대로 남습니다)")) return;
+                await fetch("/api/cloud/dropbox/disconnect", { method: "POST" });
+                loadCloudStatus();
+                if (typeof loadFiles === "function") loadFiles();
+              });
+          } else {
+            statusEl.innerHTML = `연결 안 됨 — 보고서는 <b>24시간 파일함</b>에 저장됩니다.`;
+            const isElectron = /electron|quilo/i.test(navigator.userAgent || "");
+            if (isElectron) {
+              // 데스크톱 앱(Electron)은 임베디드 브라우저라 Dropbox OAuth 가 막힌다.
+              // 연결은 계정 단위로 저장되므로 웹사이트에서 한 번만 연결하면 앱에도 적용됨.
+              actions.innerHTML = `<p class="hint" style="margin:0">📱 데스크톱 앱에서는 보안상 여기서 바로 연결되지 않습니다. <b>웹사이트(브라우저)</b>에서 같은 계정으로 로그인 후 한 번 연결하면, 이 앱에도 자동으로 적용됩니다.</p>`;
+            } else {
+              actions.innerHTML = `<a class="btn btn-primary" href="/api/cloud/dropbox/connect">Dropbox 연결</a>`;
+            }
+          }
+        } catch (_) {
+          card.hidden = true;
+        }
+      }
+
       async function loadFiles() {
         const status = document.getElementById("filesStatus");
         const list = document.getElementById("filesList");
@@ -1039,13 +1394,18 @@
             status.textContent = "파일 저장소가 아직 설정되지 않았습니다.";
             return;
           }
+          const isCloud = data.cloud === "dropbox";
           const files = data.files || [];
           const maxFiles = data.maxFilesPerUser || 3;
           if (files.length === 0) {
-            status.textContent = `보관 중인 파일이 없습니다. 최대 ${maxFiles}개까지 저장됩니다.`;
+            status.textContent = isCloud
+              ? "Dropbox 앱 폴더에 보관된 보고서가 없습니다."
+              : `보관 중인 파일이 없습니다. 최대 ${maxFiles}개까지 저장됩니다.`;
             return;
           }
-          status.textContent = `${files.length}/${maxFiles}개 보관 중`;
+          status.textContent = isCloud
+            ? `${files.length}개 · ☁ Dropbox(${data.account || "연결됨"})에 영구 저장`
+            : `${files.length}/${maxFiles}개 보관 중`;
           for (const file of files) {
             const item = document.createElement("div");
             item.className = "file-item";
@@ -1057,8 +1417,9 @@
             name.textContent = file.filename || "보고서";
 
             const detail = document.createElement("span");
-            detail.textContent =
-              `${formatBytes(file.size_bytes)} · ${formatDateTime(file.created_at)} 생성 · ${formatDateTime(file.expires_at)} 만료`;
+            detail.textContent = isCloud
+              ? `${formatBytes(file.size_bytes)} · ${formatDateTime(file.created_at)} 생성 · ☁ Dropbox`
+              : `${formatBytes(file.size_bytes)} · ${formatDateTime(file.created_at)} 생성 · ${formatDateTime(file.expires_at)} 만료`;
 
             meta.append(name, detail);
 
@@ -1066,31 +1427,68 @@
             actions.className = "file-actions";
 
             const download = document.createElement("a");
-            download.href = `/api/me/files/${file.id}/download`;
-            download.textContent = "다운로드";
-            download.download = file.filename || "";
+            if (isCloud) {
+              download.href = file.download_url || "#";
+              download.target = "_blank";
+              download.rel = "noopener";
+              download.textContent = file.download_url ? "다운로드" : "링크 없음";
+            } else {
+              download.href = `/api/me/files/${file.id}/download`;
+              download.download = file.filename || "";
+              download.textContent = "다운로드";
+            }
+            actions.append(download);
 
-            const del = document.createElement("button");
-            del.type = "button";
-            del.className = "secondary compact";
-            del.textContent = "삭제";
-            del.addEventListener("click", async () => {
-              const ok = await showConfirmDialog({
-                title: "파일 삭제",
-                rows: [["파일", file.filename || "보고서"]],
-                note: "파일함에서 바로 삭제합니다.",
-                okLabel: "삭제",
+            // 클라우드 파일: Dropbox 웹에서 바로 열기(온디맨드 공유 링크).
+            if (isCloud && file.path) {
+              const open = document.createElement("button");
+              open.type = "button";
+              open.className = "secondary compact";
+              open.textContent = "Dropbox에서 열기";
+              open.addEventListener("click", async () => {
+                const prev = open.textContent;
+                open.disabled = true;
+                open.textContent = "여는 중…";
+                try {
+                  const r = await fetch(
+                    `/api/cloud/dropbox/link?path=${encodeURIComponent(file.path)}`,
+                  );
+                  const d = await r.json().catch(() => ({}));
+                  if (r.ok && d.url) window.open(d.url, "_blank", "noopener");
+                  else alert(d.error || "링크를 만들 수 없습니다.");
+                } catch (_) {
+                  alert("링크 요청에 실패했습니다.");
+                }
+                open.disabled = false;
+                open.textContent = prev;
               });
-              if (!ok) return;
-              const r = await fetch(`/api/me/files/${file.id}`, { method: "DELETE" });
-              if (!r.ok) {
-                const body = await r.json().catch(() => ({}));
-                alert(body.error || "삭제 실패");
-              }
-              loadFiles();
-            });
+              actions.append(open);
+            }
 
-            actions.append(download, del);
+            // 클라우드 파일은 Dropbox에 영구 보관 — 앱에서 삭제 버튼은 제공하지 않는다.
+            if (!isCloud) {
+              const del = document.createElement("button");
+              del.type = "button";
+              del.className = "secondary compact";
+              del.textContent = "삭제";
+              del.addEventListener("click", async () => {
+                const ok = await showConfirmDialog({
+                  title: "파일 삭제",
+                  rows: [["파일", file.filename || "보고서"]],
+                  note: "파일함에서 바로 삭제합니다.",
+                  okLabel: "삭제",
+                });
+                if (!ok) return;
+                const r = await fetch(`/api/me/files/${file.id}`, { method: "DELETE" });
+                if (!r.ok) {
+                  const body = await r.json().catch(() => ({}));
+                  alert(body.error || "삭제 실패");
+                }
+                loadFiles();
+              });
+              actions.append(del);
+            }
+
             item.append(meta, actions);
             list.appendChild(item);
           }
@@ -1119,7 +1517,10 @@
           panel.classList.toggle("active", active);
           panel.hidden = !active;
         });
-        if (tabName === "files") loadFiles();
+        if (tabName === "files") {
+          loadFiles();
+          loadCloudStatus();
+        }
         if (tabName === "settings") loadUsage();
       }
       tabButtons.forEach((btn) => {
@@ -1263,6 +1664,13 @@
             const el2 = document.getElementById("navBetaEditor");
             if (el2) el2.hidden = false;
           }
+          // 물리 수행평가(베타): 관리자 또는 지정 테스터에게 보고서 종류 탭·메뉴 노출
+          if (b.admin === true || feats.includes("phys-inquiry")) {
+            const tab = document.getElementById("rtPhysInquiry");
+            if (tab) tab.hidden = false;
+            const nav = document.getElementById("navReportPhysInquiry");
+            if (nav) nav.hidden = false;
+          }
         })
         .catch(() => {});
 
@@ -1345,6 +1753,8 @@
       const crBtn = document.getElementById("crBtn");
       const prForm = document.getElementById("physResultForm");
       const prBtn = document.getElementById("prBtn");
+      const piForm = document.getElementById("physInquiryForm");
+      const piBtn = document.getElementById("piBtn");
 
       document
         .querySelectorAll('#form input[name="format"]')
@@ -1358,6 +1768,10 @@
         .querySelectorAll('#physResultForm input[name="prFormat"]')
         .forEach((el) => el.addEventListener("change", updatePhysResultFontOptions));
       updatePhysResultFontOptions();
+      document
+        .querySelectorAll('#physInquiryForm input[name="piFormat"]')
+        .forEach((el) => el.addEventListener("change", updatePhysInquiryFontOptions));
+      updatePhysInquiryFontOptions();
 
       // 파일 입력 → 드롭존: 파일명 표시 + 드래그 상태.
       // 네이티브 <input type=file>가 영역을 덮고 있어 클릭/드롭을 그대로 처리한다.
@@ -1471,6 +1885,46 @@
           profileBtn.disabled = false;
         }
       });
+
+      // ── 개인 설정: 내 기본 글 스타일 저장 ────────────────────────────────
+      (function () {
+        var btn = document.getElementById("styleSaveBtn");
+        var ta = document.getElementById("settingsStyleNote");
+        var status = document.getElementById("styleSaveStatus");
+        if (!btn || !ta) return;
+        btn.addEventListener("click", async function () {
+          var note = (ta.value || "").trim();
+          btn.disabled = true;
+          status.style.color = "#666";
+          status.textContent = "저장 중...";
+          saveLocalStyleNote(note);
+          ["cpStyleNote", "crStyleNote", "prStyleNote", "piStyleNote"].forEach(function (id) {
+            var e = document.getElementById(id);
+            if (e) e.value = note;
+          });
+          try {
+            var res = await fetch("/api/me/profile", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ studentId: currentStudentId, styleNote: note }),
+            });
+            var data = await res.json();
+            if (!res.ok) throw new Error(data.error || "저장 실패");
+            if (data.styleNotePersisted === false) {
+              status.style.color = "#9a6700";
+              status.textContent = "이 브라우저에 저장됨(서버 컬럼 미설정)";
+            } else {
+              status.style.color = "green";
+              status.textContent = "저장 완료";
+            }
+          } catch (err) {
+            status.style.color = "#9a6700";
+            status.textContent = "이 브라우저에 저장됨";
+          } finally {
+            btn.disabled = false;
+          }
+        });
+      })();
 
       // ── 개인 설정: 기본 모델 · 양식 선호 (이 브라우저에 저장) ──────────────
       (function () {
@@ -1819,6 +2273,17 @@
         updateHwpxOnlyFontOptions("prFontFace", getPhysResultFormat());
       }
 
+      function getPhysInquiryFormat() {
+        const formatEl = document.querySelector(
+          '#physInquiryForm input[name="piFormat"]:checked, #physInquiryForm input[name="piFormat"][type="hidden"]'
+        );
+        return formatEl ? formatEl.value : "hwpx";
+      }
+
+      function updatePhysInquiryFontOptions() {
+        updateHwpxOnlyFontOptions("piFontFace", getPhysInquiryFormat());
+      }
+
       function costRangeText(est, krwLo, krwHi) {
         return `$${est.lo.toFixed(2)} ~ $${est.hi.toFixed(2)} (약 ₩${krwLo.toLocaleString()} ~ ₩${krwHi.toLocaleString()})`;
       }
@@ -1830,6 +2295,7 @@
         "chem-pre": [6000, 10000],
         "chem-result": [8000, 13000],
         "phys-result": [6000, 10000],
+        "phys-inquiry": [6000, 11000],
       };
       function estimateGenSeconds(type, modelId, extraInputTokens = 0) {
         const perK = modelId === "claude-sonnet-4-6" ? 9 : 16; // 초/1k 출력토큰
@@ -1984,6 +2450,8 @@
 
         const fd = new FormData();
         fd.append("type", "chem-pre");
+        Array.from(document.getElementById("cpStyleRefs").files).forEach((f) => fd.append("styleRefs", f));
+        { const sn = (document.getElementById("cpStyleNote").value || "").trim(); if (sn) fd.append("styleNote", sn); }
         fd.append("manual", file);
         const dateStr = document.getElementById("date").value;
         const [y, m, d] = dateStr.split("-");
@@ -2096,6 +2564,8 @@
 
         const fd = new FormData();
         fd.append("type", "chem-result");
+        Array.from(document.getElementById("crStyleRefs").files).forEach((f) => fd.append("styleRefs", f));
+        { const sn = (document.getElementById("crStyleNote").value || "").trim(); if (sn) fd.append("styleNote", sn); }
         fd.append("preReport", preReport);
         if (dataFile) fd.append("data", dataFile);
         photos.forEach((p) => fd.append("photos", p));
@@ -2208,6 +2678,8 @@
 
         const fd = new FormData();
         fd.append("type", "phys-result");
+        Array.from(document.getElementById("prStyleRefs").files).forEach((f) => fd.append("styleRefs", f));
+        { const sn = (document.getElementById("prStyleNote").value || "").trim(); if (sn) fd.append("styleNote", sn); }
         if (cap) fd.append("cap", cap);
         dataFiles.forEach((f) => fd.append("data", f));
         if (manual) fd.append("manual", manual);
@@ -2235,6 +2707,103 @@
         }
       });
 
+      // ── 물리 수행평가(베타) submit ───────────────────────────────────────
+      if (piForm) {
+        piForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          if (currentJobId) return;
+
+          const topic = document.getElementById("piTopic").value.trim();
+          const notes = Array.from(document.getElementById("piNotes").files);
+          const refs = Array.from(document.getElementById("piRefs").files);
+          const refLinks = document.getElementById("piRefLinks").value.trim();
+          const styleRefs = Array.from(document.getElementById("piStyleRefs").files);
+          const styleNote = document.getElementById("piStyleNote").value.trim();
+
+          if (!topic) {
+            alert("탐구 주제를 입력하세요.");
+            document.getElementById("piTopic").focus();
+            return;
+          }
+          if (notes.length === 0 && refs.length === 0 && !refLinks) {
+            alert("필기노트 PDF, 참고자료 파일, 참고 링크 중 하나는 첨부하세요.");
+            return;
+          }
+
+          const piModel =
+            document.querySelector('input[name="piModel"]:checked')?.value ||
+            "claude-opus-4-8";
+          const modelLabel = getModelLabel(piModel);
+          const piFormat = getPhysInquiryFormat();
+          updatePhysInquiryFontOptions();
+          const piFontFace = document.getElementById("piFontFace").value;
+          const piUserNotes = getUserNotesValue("piUserNotes");
+          const piUserNotesFile = getUserNotesFile("piUserNotesFile");
+          if (!validateUserNotesFile(piUserNotesFile)) return;
+
+          const inputBits = [];
+          if (notes.length) inputBits.push(`필기노트 ${notes.length}개`);
+          if (refs.length) inputBits.push(`참고자료 ${refs.length}개`);
+          if (refLinks) inputBits.push(`링크 ${refLinks.split(/\s*\n\s*/).filter(Boolean).length}개`);
+
+          const ok = await showConfirmDialog({
+            title: "물리 수행평가 초안 생성 (베타)",
+            rows: [
+              ["모델", modelLabel],
+              ["형식", piFormat === "hwpx" ? ".hwpx (한글)" : ".docx (MS Word)"],
+              ["글꼴", getFontLabel(piFontFace)],
+              ["주제", topic.length > 40 ? topic.slice(0, 40) + "…" : topic],
+              ["입력", inputBits.join(", ") || "주제만"],
+              ["참고 메모", userNotesSummary(piUserNotes, piUserNotesFile)],
+              ["내 문체", styleRefs.length || styleNote ? `반영${styleRefs.length ? ` (샘플 ${styleRefs.length}개)` : ""}` : "기본"],
+              ["예상 비용", "무료 (베타)"],
+              ["예상 시간", formatDuration(estimateGenSeconds("phys-inquiry", piModel))],
+            ],
+            note: `탐구·사고 과정 성찰 보고서 양식으로 작성합니다. ${USE_POLICY_NOTE}`,
+          });
+          if (!ok) return;
+
+          lockForm(piForm);
+          piBtn.textContent = "생성 중...";
+          progressArea.style.display = "block";
+          progressEl.textContent = "";
+          resultArea.innerHTML = "";
+          statusTitle.textContent = "생성 중...";
+
+          const fd = new FormData();
+          fd.append("type", "phys-inquiry");
+          fd.append("topic", topic);
+          notes.forEach((f) => fd.append("notes", f));
+          refs.forEach((f) => fd.append("refs", f));
+          fd.append("refLinks", refLinks);
+          styleRefs.forEach((f) => fd.append("styleRefs", f));
+          if (styleNote) fd.append("styleNote", styleNote);
+          const piDateStr = document.getElementById("piDate").value;
+          if (piDateStr) {
+            const [y, m, d] = piDateStr.split("-");
+            fd.append("date", `${y}/ ${m} / ${d}`);
+          }
+          if (currentStudentId) fd.append("studentId", currentStudentId);
+          fd.append("model", piModel);
+          fd.append("format", piFormat);
+          fd.append("fontFace", piFontFace);
+          fd.append("userNotes", piUserNotes);
+          if (piUserNotesFile) fd.append("userNotesFile", piUserNotesFile);
+          appendPolicyAcknowledgements(fd);
+
+          try {
+            const res = await fetch("/api/generate", { method: "POST", body: fd });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "요청 실패");
+            currentJobId = data.jobId;
+            streamJob(data.jobId);
+          } catch (err) {
+            appendLine("오류: " + err.message);
+            resetForm();
+          }
+        });
+      }
+
       function appendLine(text) {
         progressEl.textContent += text + "\n";
         progressEl.scrollTop = progressEl.scrollHeight;
@@ -2245,6 +2814,7 @@
         btn.textContent = "사전보고서 생성";
         if (crBtn) crBtn.textContent = "결과보고서 생성";
         if (prBtn) prBtn.textContent = "물리 결과보고서 생성";
+        if (piBtn) piBtn.textContent = "물리 수행평가 초안 생성";
         stopBtn.textContent = "중지";
         const genSpinner = document.getElementById("genSpinner");
         if (genSpinner) genSpinner.style.display = "none";

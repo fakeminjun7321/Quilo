@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#243ba2" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <title>커뮤니티 — Quilo</title>
+    <script>
+      // 다크모드 깜빡임 방지(다른 페이지와 동일 패턴)
+      try {
+        var t = localStorage.getItem("theme");
+        if (t) document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {}
+    </script>
+    <link rel="stylesheet" href="/style.css" />
+    <style>
+      .cmwrap { max-width: 860px; margin: 0 auto; padding: 18px 16px 80px; }
+      .cmhead { display: flex; align-items: center; gap: 12px; margin: 8px 0 18px; }
+      .cmhead a.logo { display: flex; align-items: center; gap: 8px; text-decoration: none; color: inherit; font-weight: 800; font-size: 19px; }
+      .cmhead .qmark { width: 30px; height: 30px; border-radius: 8px; background: #2950e6; color: #fff; display: grid; place-items: center; font-weight: 800; }
+      .cmtabs { display: flex; gap: 6px; border-bottom: 1px solid #e2e6f3; margin-bottom: 16px; }
+      .cmtabs button { background: none; border: 0; padding: 10px 14px; font-size: 15px; font-weight: 600; color: #64748b; cursor: pointer; border-bottom: 2px solid transparent; }
+      .cmtabs button.active { color: #2950e6; border-bottom-color: #2950e6; }
+      .cmcard { border: 1px solid #e2e6f3; border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; background: var(--card-bg, #fff); }
+      .cmpost-title { font-weight: 700; font-size: 16px; margin: 0 0 4px; }
+      .cmpost-body { white-space: pre-wrap; word-break: break-word; color: #334155; font-size: 14.5px; line-height: 1.6; }
+      .cmmeta { font-size: 12.5px; color: #94a3b8; margin-top: 8px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+      .cmbadge { display: inline-block; font-size: 11.5px; padding: 1px 8px; border-radius: 999px; background: #eef2ff; color: #3958d6; font-weight: 600; }
+      .cmbadge.suggestion { background: #fff4e5; color: #b45309; }
+      .vote { display: inline-flex; align-items: center; gap: 5px; border: 1px solid #d7ddf0; border-radius: 999px; padding: 3px 11px; background: none; cursor: pointer; font-size: 13px; color: #475569; }
+      .vote.on { background: #2950e6; color: #fff; border-color: #2950e6; }
+      .linkbtn { background: none; border: 0; color: #2950e6; cursor: pointer; font-size: 13px; padding: 0; }
+      .cmtextarea, .cminput { width: 100%; box-sizing: border-box; border: 1px solid #d7ddf0; border-radius: 8px; padding: 9px 11px; font: inherit; font-size: 14px; }
+      .cmtextarea { min-height: 90px; resize: vertical; }
+      .cmrow { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+      .comments { margin-top: 12px; border-top: 1px dashed #e2e6f3; padding-top: 10px; }
+      .comment { font-size: 13.5px; padding: 6px 0; border-bottom: 1px solid #f1f4fb; }
+      .comment .who { color: #64748b; font-size: 12px; }
+      .muted { color: #94a3b8; font-size: 13px; }
+      .err { color: #dc2626; font-size: 13px; margin: 6px 0; }
+      .pill-filter { display: flex; gap: 6px; margin-bottom: 12px; }
+      .pill-filter button { border: 1px solid #d7ddf0; background: none; border-radius: 999px; padding: 4px 12px; font-size: 13px; cursor: pointer; color: #475569; }
+      .pill-filter button.active { background: #2950e6; color: #fff; border-color: #2950e6; }
+      .labbody { white-space: pre-wrap; word-break: break-word; line-height: 1.7; font-size: 14.5px; color: #334155; }
+      .labtag { font-size: 11.5px; color: #2950e6; font-weight: 700; letter-spacing: .02em; }
+      /* 랩(기술 공개) 아코디언 + 마크다운 + 코드 */
+      .labitem { border:1px solid #e2e6f3; border-radius:12px; margin-bottom:10px; overflow:hidden; background:var(--card-bg,#fff); }
+      .labhead { width:100%; text-align:left; background:none; border:0; padding:13px 15px; cursor:pointer; display:flex; align-items:center; gap:10px; flex-wrap:wrap; font:inherit; }
+      .labhead:hover { background:#f7f9ff; }
+      .labhead .labtag { font-size:11px; color:#2950e6; font-weight:700; background:#eef2ff; border-radius:999px; padding:2px 9px; white-space:nowrap; }
+      .labhead .labtitle { font-weight:700; font-size:15.5px; color:#1e293b; }
+      .labhead .labsummary { color:#94a3b8; font-size:12.5px; flex-basis:100%; margin-left:2px; }
+      .labhead .labchevron { margin-left:auto; color:#94a3b8; transition:transform .15s; }
+      .labitem.open .labhead .labchevron { transform:rotate(90deg); }
+      .labbodywrap { padding:4px 16px 16px; border-top:1px solid #eef1f8; }
+      .md-h { margin:16px 0 6px; font-weight:700; color:#1e293b; }
+      h3.md-h { font-size:16px; } h4.md-h { font-size:14.5px; color:#334155; }
+      .labbodywrap p { line-height:1.7; font-size:14px; color:#334155; margin:7px 0; }
+      .labbodywrap ul { margin:6px 0 10px 2px; padding-left:18px; }
+      .labbodywrap li { line-height:1.6; font-size:14px; color:#334155; margin:3px 0; }
+      .labbodywrap code { background:#f1f3f9; border-radius:5px; padding:1px 5px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12.5px; color:#b91c5c; }
+      pre.md-code { background:#0f172a; color:#e2e8f0; border-radius:10px; padding:12px 14px; overflow-x:auto; margin:10px 0; }
+      pre.md-code code { background:none; color:inherit; padding:0; font-size:12.5px; line-height:1.55; white-space:pre; }
+      .labfiles { margin-top:14px; border-top:1px dashed #e2e6f3; padding-top:12px; }
+      .labfiles h4 { margin:0 0 8px; font-size:13.5px; color:#475569; }
+      .labfile { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:6px 0; border-bottom:1px solid #f1f4fb; }
+      .labfile .fpath { font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12.5px; color:#334155; }
+      .labfile .flabel { color:#94a3b8; font-size:12px; }
+      .labfile .fsize { color:#cbd5e1; font-size:11.5px; }
+      .labfile .fspring { flex:1; }
+      .labfile a.dl, .labfile button.fview { font-size:12px; border:1px solid #d7ddf0; background:#fff; color:#2950e6; border-radius:7px; padding:4px 10px; cursor:pointer; text-decoration:none; }
+      .labfile a.dl:hover, .labfile button.fview:hover { background:#eef2ff; }
+    </style>
+  </head>
+  <body>
+    <div class="cmwrap">
+      <div class="cmhead">
+        <a class="logo" href="/"><span class="qmark">Q</span> Quilo</a>
+        <span class="muted">· 커뮤니티</span>
+        <span style="flex:1"></span>
+        <a href="/" class="muted" style="text-decoration:none">← 홈으로</a>
+      </div>
+
+      <div class="cmtabs">
+        <button id="tabSuggest" class="active" onclick="showTab('suggest')">건의 · 기능요청</button>
+        <button id="tabLab" onclick="showTab('lab')">랩 (기술 공개)</button>
+      </div>
+
+      <!-- 건의 · 기능요청 -->
+      <section id="paneSuggest">
+        <div class="pill-filter">
+          <button data-cat="" class="active">전체</button>
+          <button data-cat="feature">기능 요청</button>
+          <button data-cat="suggestion">건의사항</button>
+        </div>
+
+        <div id="writeBox" class="cmcard" style="display:none">
+          <input id="newTitle" class="cminput" maxlength="200" placeholder="제목" />
+          <textarea id="newBody" class="cmtextarea" maxlength="5000" placeholder="개발자에게 추가했으면 하는 기능이나 건의사항을 적어주세요." style="margin-top:8px"></textarea>
+          <div class="cmrow">
+            <select id="newCat" class="cminput" style="max-width:160px">
+              <option value="feature">기능 요청</option>
+              <option value="suggestion">건의사항</option>
+            </select>
+            <button id="postBtn" class="btn btn-primary" onclick="submitPost()">등록</button>
+            <span id="postErr" class="err"></span>
+          </div>
+        </div>
+        <div id="loginHint" class="cmcard muted" style="display:none">
+          글을 쓰려면 <a href="/">로그인</a>이 필요합니다. (읽기는 누구나 가능)
+        </div>
+
+        <div id="postList"><p class="muted">불러오는 중…</p></div>
+      </section>
+
+      <!-- 랩 -->
+      <section id="paneLab" style="display:none">
+        <p class="muted" style="margin-top:0">개발자가 직접 공개하는 기술·구현 노트입니다.</p>
+        <div id="labList"></div>
+      </section>
+    </div>
+
+    <script>
+      // ── 랩(기술 공개): /api/lab 에서 목록·본문·코드 파일을 불러온다(GitHub식) ──
+      let labLoaded = false;
+
+      let me = null; // {id, isAdmin} or null
+      let curCat = "";
+
+      function esc(s) {
+        return String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+      }
+      function fmtDate(s) {
+        try { return new Date(s).toLocaleString("ko-KR", { dateStyle: "short", timeStyle: "short" }); } catch (e) { return ""; }
+      }
+      function showTab(t) {
+        document.getElementById("paneSuggest").style.display = t === "suggest" ? "" : "none";
+        document.getElementById("paneLab").style.display = t === "lab" ? "" : "none";
+        document.getElementById("tabSuggest").classList.toggle("active", t === "suggest");
+        document.getElementById("tabLab").classList.toggle("active", t === "lab");
+        if (t === "lab") renderLab();
+      }
+
+      // ── 랩(기술 공개): 제목 목록 → 클릭 시 본문(마크다운) + 코드(보기·다운로드) ──
+      function fmtSize(n) {
+        n = Number(n) || 0;
+        if (n < 1024) return n + " B";
+        if (n < 1024 * 1024) return (n / 1024).toFixed(1) + " KB";
+        return (n / 1024 / 1024).toFixed(1) + " MB";
+      }
+
+      // 안전한 마크다운 렌더(먼저 escape → 정해진 태그만 부여). XSS 방지.
+      function mdEsc(s) {
+        return String(s == null ? "" : s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+      }
+      function mdInline(s) {
+        return mdEsc(s)
+          .replace(/`([^`]+)`/g, "<code>$1</code>")
+          .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+      }
+      function mdProse(seg) {
+        const lines = seg.split("\n");
+        let html = "", inList = false, para = [];
+        const flush = () => { if (para.length) { html += "<p>" + mdInline(para.join(" ")) + "</p>"; para = []; } };
+        const closeList = () => { if (inList) { html += "</ul>"; inList = false; } };
+        for (const raw of lines) {
+          const line = raw.replace(/\s+$/, "");
+          if (!line.trim()) { flush(); closeList(); continue; }
+          let m;
+          if ((m = line.match(/^(#{1,6})\s+(.*)$/))) {
+            flush(); closeList();
+            const tag = m[1].length <= 2 ? "h3" : "h4";
+            html += "<" + tag + ' class="md-h">' + mdInline(m[2]) + "</" + tag + ">";
+          } else if ((m = line.match(/^\s*[-•]\s+(.*)$/))) {
+            flush(); if (!inList) { html += "<ul>"; inList = true; }
+            html += "<li>" + mdInline(m[1]) + "</li>";
+          } else { para.push(line.trim()); }
+        }
+        flush(); closeList();
+        return html;
+      }
+      function mdToHtml(md) {
+        const parts = String(md || "").split("```");
+        let out = "";
+        for (let i = 0; i < parts.length; i++) {
+          if (i % 2 === 1) {
+            const code = parts[i].replace(/^(js|javascript|ts|typescript|python|py|json|sql|css|html|bash|sh|text|md)\b[^\n]*\n/i, "");
+            out += '<pre class="md-code"><code>' + mdEsc(code.replace(/\n$/, "")) + "</code></pre>";
+          } else {
+            out += mdProse(parts[i]);
+          }
+        }
+        return out;
+      }
+
+      async function renderLab() {
+        const el = document.getElementById("labList");
+        if (labLoaded) return;
+        el.innerHTML = '<p class="muted">불러오는 중…</p>';
+        try {
+          const r = await fetch("/api/lab/entries");
+          const d = await r.json();
+          if (!r.ok) throw new Error(d.error || "오류");
+          const entries = d.entries || [];
+          if (!entries.length) { el.innerHTML = '<p class="muted">아직 공개된 기술 노트가 없습니다.</p>'; return; }
+          el.innerHTML = "";
+          entries.forEach((e) => {
+            const item = document.createElement("div");
+            item.className = "labitem";
+            item.dataset.id = e.id;
+            item.innerHTML =
+              '<button class="labhead">' +
+                '<span class="labtag">' + esc(e.tag) + " · " + esc(e.date) + "</span>" +
+                '<span class="labtitle">' + esc(e.title) + "</span>" +
+                (e.fileCount ? '<span class="fsize">📎 코드 ' + e.fileCount + "개</span>" : "") +
+                '<span class="labchevron">▸</span>' +
+                (e.summary ? '<span class="labsummary">' + esc(e.summary) + "</span>" : "") +
+              "</button>" +
+              '<div class="labbodywrap" style="display:none"></div>';
+            item.querySelector(".labhead").addEventListener("click", () => toggleLab(e.id, item));
+            el.appendChild(item);
+          });
+          labLoaded = true;
+        } catch (e) {
+          el.innerHTML = '<p class="err">' + esc(e.message) + "</p>";
+        }
+      }
+
+      async function toggleLab(id, item) {
+        const wrap = item.querySelector(".labbodywrap");
+        const isOpen = item.classList.contains("open");
+        if (isOpen) { item.classList.remove("open"); wrap.style.display = "none"; return; }
+        item.classList.add("open");
+        wrap.style.display = "";
+        if (wrap.dataset.loaded) return;
+        wrap.innerHTML = '<p class="muted">불러오는 중…</p>';
+        try {
+          const r = await fetch("/api/lab/entry/" + encodeURIComponent(id));
+          const d = await r.json();
+          if (!r.ok) throw new Error(d.error || "오류");
+          let html = mdToHtml(d.body_markdown);
+          if (d.files && d.files.length) {
+            html += '<div class="labfiles"><h4>📎 코드 파일 (' + d.files.length + "개)</h4>";
+            d.files.forEach((f) => {
+              const q = "/api/lab/file?path=" + encodeURIComponent(f.path);
+              html +=
+                '<div class="labfile">' +
+                  '<span class="fpath">' + esc(f.path) + "</span>" +
+                  '<span class="flabel">' + esc(f.label || "") + "</span>" +
+                  '<span class="fspring"></span>' +
+                  '<span class="fsize">' + fmtSize(f.size) + "</span>" +
+                  '<button class="fview" data-path="' + esc(f.path) + '">코드 보기</button>' +
+                  '<a class="dl" href="' + q + '&download=1">⬇ 다운로드</a>' +
+                "</div>" +
+                '<div class="fcode" style="display:none"></div>';
+            });
+            html += "</div>";
+          }
+          wrap.innerHTML = html;
+          wrap.dataset.loaded = "1";
+          wrap.querySelectorAll(".fview").forEach((btn) =>
+            btn.addEventListener("click", () => viewLabFile(btn))
+          );
+        } catch (e) {
+          wrap.innerHTML = '<p class="err">' + esc(e.message) + "</p>";
+        }
+      }
+
+      async function viewLabFile(btn) {
+        const codeBox = btn.closest(".labfile").nextElementSibling;
+        if (codeBox.style.display !== "none") { codeBox.style.display = "none"; btn.textContent = "코드 보기"; return; }
+        btn.textContent = "닫기";
+        codeBox.style.display = "";
+        if (codeBox.dataset.loaded) return;
+        codeBox.innerHTML = '<p class="muted">불러오는 중…</p>';
+        try {
+          const r = await fetch("/api/lab/file?path=" + encodeURIComponent(btn.dataset.path));
+          const text = await r.text();
+          if (!r.ok) throw new Error("불러오기 실패");
+          codeBox.innerHTML = '<pre class="md-code"><code>' + mdEsc(text) + "</code></pre>";
+          codeBox.dataset.loaded = "1";
+        } catch (e) {
+          codeBox.innerHTML = '<p class="err">코드를 불러오지 못했습니다.</p>';
+        }
+      }
+
+      async function loadMe() {
+        try {
+          const r = await fetch("/api/me");
+          if (r.ok) { const d = await r.json(); me = { id: d.id, isAdmin: !!d.isAdmin, name: d.user }; }
+        } catch (e) {}
+        document.getElementById("writeBox").style.display = me ? "" : "none";
+        document.getElementById("loginHint").style.display = me ? "none" : "";
+      }
+
+      async function loadPosts() {
+        const list = document.getElementById("postList");
+        list.innerHTML = '<p class="muted">불러오는 중…</p>';
+        try {
+          const r = await fetch("/api/community/posts" + (curCat ? "?category=" + curCat : ""));
+          const d = await r.json();
+          if (!r.ok) throw new Error(d.error || "오류");
+          if (d.me) me = d.me;
+          const posts = d.posts || [];
+          if (!d.storage) { list.innerHTML = '<p class="muted">커뮤니티 저장소가 아직 설정되지 않았습니다.</p>'; return; }
+          if (!posts.length) { list.innerHTML = '<p class="muted">아직 글이 없습니다. 첫 글을 남겨보세요!</p>'; return; }
+          list.innerHTML = "";
+          posts.forEach((p) => list.appendChild(renderPost(p)));
+        } catch (e) {
+          list.innerHTML = '<p class="err">' + esc(e.message) + "</p>";
+        }
+      }
+
+      function renderPost(p) {
+        const card = document.createElement("div");
+        card.className = "cmcard";
+        const canDel = me && (me.isAdmin || me.id === p.user_id);
+        const catLabel = p.category === "feature" ? "기능 요청" : "건의사항";
+        card.innerHTML =
+          `<div class="cmpost-title">${esc(p.title)} <span class="cmbadge ${p.category === "feature" ? "" : "suggestion"}">${catLabel}</span></div>` +
+          `<div class="cmpost-body">${esc(p.body)}</div>` +
+          `<div class="cmmeta">` +
+            `<button class="vote ${p.voted ? "on" : ""}" data-id="${p.id}">▲ 공감 <b>${p.upvotes || 0}</b></button>` +
+            `<button class="linkbtn toggle-comments" data-id="${p.id}">💬 댓글 ${p.comment_count || 0}</button>` +
+            `<span>${esc(p.author_name || "익명")}</span><span>${fmtDate(p.created_at)}</span>` +
+            (canDel ? `<button class="linkbtn del-post" data-id="${p.id}" style="color:#dc2626">삭제</button>` : "") +
+          `</div>` +
+          `<div class="comments" id="cm-${p.id}" style="display:none"></div>`;
+        card.querySelector(".vote").addEventListener("click", () => votePost(p.id, card));
+        card.querySelector(".toggle-comments").addEventListener("click", () => toggleComments(p.id));
+        const dp = card.querySelector(".del-post");
+        if (dp) dp.addEventListener("click", () => delPost(p.id));
+        return card;
+      }
+
+      async function votePost(id, card) {
+        if (!me) { alert("로그인이 필요합니다."); return; }
+        try {
+          const r = await fetch(`/api/community/posts/${id}/vote`, { method: "POST" });
+          const d = await r.json();
+          if (!r.ok) throw new Error(d.error || "오류");
+          const btn = card.querySelector(".vote");
+          btn.classList.toggle("on", d.voted);
+          btn.querySelector("b").textContent = d.upvotes;
+        } catch (e) { alert(e.message); }
+      }
+
+      async function delPost(id) {
+        if (!confirm("이 글을 삭제할까요?")) return;
+        const r = await fetch(`/api/community/posts/${id}`, { method: "DELETE" });
+        if (r.ok) loadPosts(); else { const d = await r.json().catch(() => ({})); alert(d.error || "삭제 실패"); }
+      }
+
+      async function toggleComments(id) {
+        const box = document.getElementById("cm-" + id);
+        if (box.style.display !== "none") { box.style.display = "none"; return; }
+        box.style.display = "";
+        box.innerHTML = '<p class="muted">댓글 불러오는 중…</p>';
+        try {
+          const r = await fetch(`/api/community/posts/${id}/comments`);
+          const d = await r.json();
+          if (d.me) me = d.me;
+          const cs = d.comments || [];
+          box.innerHTML =
+            cs.map((c) => {
+              const canDel = me && (me.isAdmin || me.id === c.user_id);
+              return `<div class="comment"><span class="who">${esc(c.author_name || "익명")} · ${fmtDate(c.created_at)}</span>` +
+                (canDel ? ` <button class="linkbtn del-cm" data-cid="${c.id}" style="color:#dc2626;font-size:11px">삭제</button>` : "") +
+                `<div>${esc(c.body)}</div></div>`;
+            }).join("") +
+            (me
+              ? `<div class="cmrow"><input class="cminput cm-input" maxlength="2000" placeholder="댓글 달기" style="flex:1" /><button class="btn cm-send">등록</button></div><span class="err cm-err"></span>`
+              : `<p class="muted" style="margin:6px 0 0">댓글을 쓰려면 <a href="/">로그인</a>하세요.</p>`);
+          box.querySelectorAll(".del-cm").forEach((b) =>
+            b.addEventListener("click", async () => {
+              if (!confirm("댓글을 삭제할까요?")) return;
+              const r2 = await fetch(`/api/community/comments/${b.dataset.cid}`, { method: "DELETE" });
+              if (r2.ok) toggleComments(id), toggleComments(id);
+            })
+          );
+          const send = box.querySelector(".cm-send");
+          if (send)
+            send.addEventListener("click", async () => {
+              const input = box.querySelector(".cm-input");
+              const errEl = box.querySelector(".cm-err");
+              const body = input.value.trim();
+              if (!body) return;
+              send.disabled = true;
+              try {
+                const r2 = await fetch(`/api/community/posts/${id}/comments`, {
+                  method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body }),
+                });
+                const d2 = await r2.json();
+                if (!r2.ok) {
+                  errEl.textContent = d2.error || "등록 실패";
+                  if (d2.profanity) showAppeal(errEl.parentNode, "comment", body);
+                } else { box.style.display = "none"; toggleComments(id); loadPosts(); }
+              } catch (e) { errEl.textContent = "등록 실패"; }
+              send.disabled = false;
+            });
+        } catch (e) { box.innerHTML = '<p class="err">댓글을 불러오지 못했습니다.</p>'; }
+      }
+
+      // 욕설 오탐으로 차단됐을 때, 사용자가 해명을 보낼 수 있는 폼을 띄운다.
+      function showAppeal(container, kind, blockedText) {
+        if (!container || container.querySelector(".appeal-box")) return;
+        const box = document.createElement("div");
+        box.className = "appeal-box";
+        box.style.cssText =
+          "margin-top:10px;padding:11px 12px;border:1px dashed #e7a3c0;border-radius:9px;background:#fff7fb";
+        box.innerHTML =
+          '<div class="muted" style="margin-bottom:6px">욕설이 아닌데 차단됐다면, 상황을 적어 <b>해명</b>을 보낼 수 있어요. 관리자가 검토 후 해제합니다.</div>' +
+          '<textarea class="cmtextarea appeal-reason" maxlength="2000" placeholder="예: \'시발점\'이라는 단어였는데 욕설로 잘못 감지된 것 같습니다." style="min-height:60px"></textarea>' +
+          '<div class="cmrow"><button type="button" class="btn appeal-send">해명 보내기</button><span class="appeal-msg muted"></span></div>';
+        container.appendChild(box);
+        box.querySelector(".appeal-send").addEventListener("click", async () => {
+          const reason = box.querySelector(".appeal-reason").value.trim();
+          const msg = box.querySelector(".appeal-msg");
+          if (!reason) { msg.textContent = "내용을 입력하세요."; return; }
+          const btn = box.querySelector(".appeal-send");
+          btn.disabled = true;
+          try {
+            const r = await fetch("/api/community/appeal", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ kind, blockedText, reason }),
+            });
+            const d = await r.json().catch(() => ({}));
+            if (r.ok) box.innerHTML = '<div class="muted">✅ 해명이 접수됐습니다. 관리자 검토 후 처리됩니다.</div>';
+            else { msg.textContent = d.error || "제출 실패"; btn.disabled = false; }
+          } catch (e) { msg.textContent = "제출 실패"; btn.disabled = false; }
+        });
+      }
+
+      async function submitPost() {
+        const title = document.getElementById("newTitle").value.trim();
+        const body = document.getElementById("newBody").value.trim();
+        const category = document.getElementById("newCat").value;
+        const errEl = document.getElementById("postErr");
+        errEl.textContent = "";
+        if (!title || !body) { errEl.textContent = "제목과 내용을 입력하세요."; return; }
+        const btn = document.getElementById("postBtn");
+        btn.disabled = true;
+        try {
+          const r = await fetch("/api/community/posts", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title, body, category }),
+          });
+          const d = await r.json();
+          if (!r.ok) {
+            errEl.textContent = d.error || "등록 실패";
+            if (d.bannedUntil) errEl.textContent += ` (${fmtDate(d.bannedUntil)}까지)`;
+            if (d.profanity) showAppeal(errEl.parentNode, "post", title + "\n" + body);
+          } else {
+            document.getElementById("newTitle").value = "";
+            document.getElementById("newBody").value = "";
+            loadPosts();
+          }
+        } catch (e) { errEl.textContent = "등록 실패"; }
+        btn.disabled = false;
+      }
+
+      // 카테고리 필터
+      document.querySelectorAll(".pill-filter button").forEach((b) =>
+        b.addEventListener("click", () => {
+          document.querySelectorAll(".pill-filter button").forEach((x) => x.classList.remove("active"));
+          b.classList.add("active");
+          curCat = b.dataset.cat || "";
+          loadPosts();
+        })
+      );
+
+      (async function init() {
+        await loadMe();
+        await loadPosts();
+      })();
+    </script>
+  </body>
+</html>

@@ -215,6 +215,7 @@
       <button class="atab" data-go="users">👤 사용자</button>
       <button class="atab" data-go="beta">🧪 베타</button>
       <button class="atab" data-go="logs">📊 로그</button>
+      <button class="atab" data-go="appeals">🛡 소명·제재</button>
       <button class="atab" data-go="editor">🧩 코드 에디터</button>
     </nav>
 
@@ -335,6 +336,15 @@
         </table>
       </div>
       <p id="logStatus" class="hint"></p>
+    </section>
+
+    <section class="settings-card" id="adminAppealsSection">
+      <div class="card-head">
+        <h2>🛡 커뮤니티 소명·제재</h2>
+        <button id="appealsRefresh" class="secondary compact">새로고침</button>
+      </div>
+      <p class="hint">비속어 감지로 제재된 사용자가 보낸 해명입니다. 오탐(욕설이 아닌데 차단)이면 ‘밴 해제’로 풀어주세요.</p>
+      <div id="appealsList"><p class="hint">불러오는 중…</p></div>
     </section>
 
     <section class="settings-card" id="adminEditorSection">
@@ -1211,6 +1221,7 @@
           "사용자 목록": "users",
           "베타 기능": "beta",
           "보고서 생성 로그": "logs",
+          "커뮤니티 소명": "appeals",
           "코드 에디터": "editor",
         };
         var sections = Array.prototype.slice.call(
@@ -1237,6 +1248,7 @@
           try {
             localStorage.setItem("adminTab", tab);
           } catch (e) {}
+          if (tab === "appeals") loadAppeals();
           if (tab === "editor") {
             initEditor();
             if (window.__ceCM)
@@ -1250,6 +1262,96 @@
             showTab(b.getAttribute("data-go"));
           };
         });
+
+        // ── 커뮤니티 소명·제재 ──
+        function escA(s) {
+          return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
+            return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+          });
+        }
+        async function loadAppeals() {
+          var el = document.getElementById("appealsList");
+          if (!el) return;
+          el.innerHTML = '<p class="hint">불러오는 중…</p>';
+          try {
+            var r = await fetch("/api/community/appeals");
+            var d = await r.json();
+            if (!r.ok) throw new Error(d.error || "오류");
+            var ap = d.appeals || [];
+            if (!ap.length) {
+              el.innerHTML = '<p class="hint">접수된 해명이 없습니다.</p>';
+              return;
+            }
+            el.innerHTML = "";
+            ap.forEach(function (a) {
+              var card = document.createElement("div");
+              card.style.cssText =
+                "border:1px solid #e6e8f0;border-radius:9px;padding:11px 13px;margin-bottom:10px;background:" +
+                (a.status === "resolved" ? "#f3f6f4" : "#fff");
+              var banned = a.banned_until
+                ? '<span style="color:#b45309">제재중 (~' +
+                  new Date(a.banned_until).toLocaleString("ko-KR") +
+                  ")</span>"
+                : '<span style="color:#16a34a">제재 없음</span>';
+              card.innerHTML =
+                '<div style="font-size:12.5px;color:#64748b">' +
+                escA(a.author_name || "익명") +
+                " · " +
+                (a.kind === "comment" ? "댓글" : "글") +
+                " · " +
+                new Date(a.created_at).toLocaleString("ko-KR") +
+                " · " +
+                (a.status === "resolved" ? "✅ 처리됨" : "⏳ 대기") +
+                " · " +
+                banned +
+                "</div>" +
+                '<div style="margin:6px 0"><b>해명:</b> ' +
+                escA(a.reason) +
+                "</div>" +
+                (a.blocked_text
+                  ? '<details style="margin:4px 0"><summary style="cursor:pointer;color:#64748b;font-size:12.5px">차단된 원문 보기</summary><div style="white-space:pre-wrap;font-size:13px;background:#f8fafc;padding:8px;border-radius:6px;margin-top:4px">' +
+                    escA(a.blocked_text) +
+                    "</div></details>"
+                  : "") +
+                (a.status === "resolved"
+                  ? ""
+                  : '<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><button class="secondary compact unban-resolve" data-id="' +
+                    a.id +
+                    '">밴 해제 + 처리완료</button><button class="secondary compact just-resolve" data-id="' +
+                    a.id +
+                    '">처리완료(밴 유지)</button></div>');
+              el.appendChild(card);
+            });
+            el.querySelectorAll(".unban-resolve").forEach(function (b) {
+              b.onclick = function () {
+                resolveAppeal(b.getAttribute("data-id"), true);
+              };
+            });
+            el.querySelectorAll(".just-resolve").forEach(function (b) {
+              b.onclick = function () {
+                resolveAppeal(b.getAttribute("data-id"), false);
+              };
+            });
+          } catch (e) {
+            el.innerHTML =
+              '<p class="hint" style="color:#dc2626">' + escA(e.message) + "</p>";
+          }
+        }
+        async function resolveAppeal(id, unban) {
+          if (!confirm(unban ? "밴을 해제하고 처리 완료할까요?" : "처리 완료로 표시할까요? (밴 유지)")) return;
+          var r = await fetch("/api/community/appeals/" + id + "/resolve", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ unban: unban }),
+          });
+          if (r.ok) loadAppeals();
+          else {
+            var d = await r.json().catch(function () { return {}; });
+            alert(d.error || "처리 실패");
+          }
+        }
+        var appealsRefreshBtn = document.getElementById("appealsRefresh");
+        if (appealsRefreshBtn) appealsRefreshBtn.onclick = loadAppeals;
         var start = "ai";
         try {
           var st = localStorage.getItem("adminTab");
