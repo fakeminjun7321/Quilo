@@ -89,10 +89,23 @@
               <div class="status" id="status"></div>
             </div>
             <div class="card" style="margin-top:12px">
+              <label>🖼 이미지 (선택) — 만들기에 사용</label>
+              <div class="row">
+                <input type="text" id="imgPrompt" placeholder="생성할 이미지 설명 (예: 비커 아이콘, 플랫)" style="flex:1; min-width:140px" />
+                <button id="imgGenBtn" class="sec">생성</button>
+                <button id="imgUpBtn" class="ghost">업로드</button>
+                <input type="file" id="imgFile" accept="image/*" hidden />
+              </div>
+              <div class="status" id="imgStatus"></div>
+              <div id="imgThumbs" class="row" style="margin-top:8px"></div>
+            </div>
+            <div class="card" style="margin-top:12px">
               <label>제목</label>
               <input type="text" id="title" placeholder="예: 실험 일정 위젯" />
               <label>주소(slug) — 비우면 자동</label>
               <input type="text" id="slug" placeholder="exp-schedule" />
+              <label>분류</label>
+              <select id="category" style="width:100%"></select>
               <div class="row" style="margin-top:10px; justify-content:space-between">
                 <label class="toggle"><input type="checkbox" id="pub" checked /> 공개</label>
                 <button id="saveBtn" disabled>게시</button>
@@ -116,12 +129,15 @@
 
       <!-- 갤러리 (모두 공개) -->
       <div class="secthead"><h2>🌐 모두의 창작</h2><span class="muted" id="galcount"></span></div>
+      <div id="chips" class="row" style="margin-bottom:12px"></div>
       <div class="gallery" id="gallery"><span class="muted">불러오는 중…</span></div>
     </div>
 
     <script>
       const $ = (id) => document.getElementById(id);
       let currentHtml = "", lastSlug = "", canCreate = false;
+      let galItems = [], curCat = "전체", mediaUrls = [];
+      const CATS = ["학습도구", "게임", "위젯", "계산기", "데이터/차트", "기타"];
 
       async function api(path, opts) {
         const r = await fetch(path, { credentials: "same-origin", headers: { "Content-Type": "application/json" }, ...opts });
@@ -140,7 +156,8 @@
         } catch (e) { canCreate = false; }
         if (canCreate) {
           $("builderWrap").style.display = "block";
-          try { const m = await api("/api/artifacts/models"); $("model").innerHTML = m.models.map((x)=>`<option${x===m.default?" selected":""}>${x}</option>`).join(""); } catch {}
+          $("category").innerHTML = CATS.map((c)=>`<option>${c}</option>`).join("");
+          try { const m = await api("/api/artifacts/models"); $("model").innerHTML = m.models.map((x)=>`<option value="${x}"${x===m.default?" selected":""}>${x==="auto"?"⚡ 자동 (비용 최소)":x}</option>`).join(""); } catch {}
           loadMine();
         } else {
           $("betaNotice").style.display = "block";
@@ -157,9 +174,10 @@
         $("status").innerHTML=`<span class="spin"></span> 생성 중… (20~60초)`;
         try{
           const body={ prompt, model:$("model").value };
+          if(mediaUrls.length) body.images=mediaUrls;
           if(iterate && currentHtml) body.currentHtml=currentHtml;
           const j=await api("/api/artifacts/build",{method:"POST",body:JSON.stringify(body)});
-          setPreview(j.html); $("pvmodel").textContent="· "+(j.model||"");
+          setPreview(j.html); $("pvmodel").textContent="· "+(j.model||"")+(j.auto?" (자동)":"");
           $("status").textContent="완성! 미리보기 확인 후 게시하세요.";
           if(!$("title").value.trim()) $("title").value=prompt.slice(0,30);
         }catch(e){ $("status").textContent = e.status===429 ? "오늘 베타 사용 한도를 다 썼어요." : ("오류: "+e.message); }
@@ -170,7 +188,7 @@
         if(!currentHtml) return;
         $("saveBtn").disabled=true; $("saveStatus").innerHTML=`<span class="spin"></span> 게시 중…`;
         try{
-          const j=await api("/api/artifacts",{method:"POST",body:JSON.stringify({ title:$("title").value.trim(), slug:$("slug").value.trim(), html:currentHtml, isPublic:$("pub").checked, overwrite:$("slug").value.trim()&&$("slug").value.trim()===lastSlug })});
+          const j=await api("/api/artifacts",{method:"POST",body:JSON.stringify({ title:$("title").value.trim(), slug:$("slug").value.trim(), html:currentHtml, isPublic:$("pub").checked, category:$("category").value, overwrite:$("slug").value.trim()&&$("slug").value.trim()===lastSlug })});
           lastSlug=j.slug; const full=location.origin+j.url;
           $("saveStatus").innerHTML=`게시됨 → <a href="${j.url}" target="_blank">${full}</a>`+(j.persistent?"":" <span class='muted'>(임시 저장)</span>");
           $("openBtn").disabled=false; $("openBtn").onclick=()=>window.open(j.url,"_blank"); $("slug").value=j.slug;
@@ -203,17 +221,69 @@
       async function loadGallery(){
         try{
           const j=await api("/api/artifacts/gallery");
-          const items=j.items||[];
-          $("galcount").textContent = items.length ? `· ${items.length}개` : "";
-          if(!items.length){ $("gallery").innerHTML=`<span class="muted">아직 만든 것이 없어요.</span>`; return; }
-          $("gallery").innerHTML = items.map((x)=>`
-            <a class="g-card" href="/p/${encodeURIComponent(x.slug)}" target="_blank">
-              <div class="g-thumb"><iframe loading="lazy" sandbox="allow-scripts" src="/p/${encodeURIComponent(x.slug)}"></iframe></div>
-              <div class="g-meta"><div class="t">${esc(x.title)}</div><div class="b">${esc(x.owner||"")}</div></div>
-            </a>`).join("");
+          galItems=j.items||[];
+          $("galcount").textContent = galItems.length ? `· ${galItems.length}개` : "";
+          renderChips(); renderGallery();
         }catch(e){ $("gallery").innerHTML=`<span class="muted">갤러리 오류: ${esc(e.message)}</span>`; }
       }
+      function renderChips(){
+        const cats=["전체",...CATS.filter((c)=>galItems.some((x)=>(x.category||"기타")===c))];
+        $("chips").innerHTML=cats.map((c)=>`<button class="${c===curCat?'sec':'ghost'}" data-cat="${esc(c)}" style="padding:5px 12px;font-size:13px">${esc(c)}</button>`).join("");
+        $("chips").querySelectorAll("[data-cat]").forEach((b)=>b.onclick=()=>{ curCat=b.dataset.cat; renderChips(); renderGallery(); });
+      }
+      function renderGallery(){
+        const items=galItems.filter((x)=>curCat==="전체"||(x.category||"기타")===curCat);
+        if(!items.length){ $("gallery").innerHTML=`<span class="muted">아직 없어요.</span>`; return; }
+        const liked=JSON.parse(localStorage.getItem("quilo_liked")||"{}");
+        $("gallery").innerHTML = items.map((x)=>`
+          <div class="g-card">
+            <a href="/p/${encodeURIComponent(x.slug)}" target="_blank" style="text-decoration:none;color:inherit">
+              <div class="g-thumb"><iframe loading="lazy" sandbox="allow-scripts" src="/p/${encodeURIComponent(x.slug)}"></iframe></div>
+              <div class="g-meta"><div class="t">${esc(x.title)}</div><div class="b">${esc(x.owner||"")} · <span class="pill">${esc(x.category||"기타")}</span></div></div>
+            </a>
+            <div class="myrow" style="padding:0 12px 10px">
+              <button class="ghost" data-like="${esc(x.slug)}">❤ <span>${x.likes||0}</span></button>
+              <button class="ghost" data-embed="${esc(x.slug)}">📋 임베드</button>
+            </div>
+          </div>`).join("");
+        $("gallery").querySelectorAll("[data-like]").forEach((b)=>b.onclick=()=>like(b.dataset.like,b));
+        $("gallery").querySelectorAll("[data-embed]").forEach((b)=>b.onclick=()=>embed(b.dataset.embed));
+      }
+      async function like(slug,btn){
+        const liked=JSON.parse(localStorage.getItem("quilo_liked")||"{}");
+        if(liked[slug]){ return; }
+        try{ const j=await api("/api/artifacts/"+encodeURIComponent(slug)+"/like",{method:"POST"});
+          liked[slug]=1; localStorage.setItem("quilo_liked",JSON.stringify(liked));
+          btn.querySelector("span").textContent=j.likes; btn.classList.add("sec");
+        }catch{}
+      }
+      function embed(slug){
+        const code=`<iframe src="${location.origin}/p/${encodeURIComponent(slug)}" style="width:100%;height:600px;border:0"></iframe>`;
+        navigator.clipboard?.writeText(code).then(()=>alert("임베드 코드를 복사했어요:\n\n"+code),()=>prompt("임베드 코드",code));
+      }
 
+      function renderThumbs(){
+        $("imgThumbs").innerHTML = mediaUrls.map((u,i)=>`<span style="position:relative;display:inline-block"><img src="${esc(u)}" style="width:54px;height:54px;object-fit:cover;border-radius:6px;border:1px solid var(--bd)"/><button data-rm="${i}" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;padding:0;border-radius:50%;background:#b42318;font-size:11px;line-height:1">×</button></span>`).join("");
+        $("imgThumbs").querySelectorAll("[data-rm]").forEach((b)=>b.onclick=()=>{ mediaUrls.splice(+b.dataset.rm,1); renderThumbs(); });
+      }
+      async function genImage(){
+        const p=$("imgPrompt").value.trim(); if(!p){ $("imgStatus").textContent="이미지 설명을 적어주세요."; return; }
+        $("imgGenBtn").disabled=true; $("imgStatus").innerHTML=`<span class="spin"></span> 이미지 생성 중…`;
+        try{ const j=await api("/api/artifacts/image",{method:"POST",body:JSON.stringify({prompt:p})}); mediaUrls.push(j.url); renderThumbs(); $("imgStatus").textContent="이미지 추가됨. '생성/이어서 수정' 시 만들기에 반영돼요."; $("imgPrompt").value=""; }
+        catch(e){ $("imgStatus").textContent="오류: "+e.message; }
+        finally{ $("imgGenBtn").disabled=false; }
+      }
+      function uploadImage(){
+        const f=$("imgFile").files[0]; if(!f) return;
+        const rd=new FileReader();
+        rd.onload=async()=>{ $("imgStatus").innerHTML=`<span class="spin"></span> 업로드 중…`;
+          try{ const j=await api("/api/artifacts/upload",{method:"POST",body:JSON.stringify({dataUrl:rd.result})}); mediaUrls.push(j.url); renderThumbs(); $("imgStatus").textContent="이미지 추가됨."; }
+          catch(e){ $("imgStatus").textContent="오류: "+e.message; } };
+        rd.readAsDataURL(f); $("imgFile").value="";
+      }
+      $("imgGenBtn").onclick=genImage;
+      $("imgUpBtn").onclick=()=>$("imgFile").click();
+      $("imgFile").onchange=uploadImage;
       $("genBtn").onclick=()=>build(false);
       $("iterBtn").onclick=()=>build(true);
       $("saveBtn").onclick=save;
