@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>창작 — AI로 만들고 공유하기</title>
+    <style>
+      :root { --bg:#f6f7fb; --card:#fff; --bd:#e3e6ef; --ink:#1c2333; --mut:#6b7280; --acc:#3b5bdb; --accd:#2f49b0; }
+      * { box-sizing: border-box; }
+      body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Apple SD Gothic Neo","맑은 고딕",sans-serif; background:var(--bg); color:var(--ink); }
+      header { display:flex; align-items:center; gap:14px; padding:14px 20px; background:var(--card); border-bottom:1px solid var(--bd); position:sticky; top:0; z-index:5; }
+      header .brand { font-weight:800; font-size:17px; text-decoration:none; color:var(--ink); }
+      header nav { margin-left:auto; display:flex; gap:14px; align-items:center; }
+      header nav a { color:var(--mut); text-decoration:none; font-size:14px; }
+      header nav a.on { color:var(--acc); font-weight:700; }
+      .container { max-width:1200px; margin:0 auto; padding:18px 16px 60px; }
+      .hero { margin:6px 0 18px; }
+      .hero h1 { margin:0 0 4px; font-size:22px; }
+      .hero p { margin:0; color:var(--mut); font-size:14px; }
+      .card { background:var(--card); border:1px solid var(--bd); border-radius:14px; padding:16px; }
+      .builder { display:grid; grid-template-columns: 380px 1fr; gap:14px; margin-bottom:26px; }
+      @media (max-width:880px){ .builder{ grid-template-columns:1fr; } }
+      textarea { width:100%; min-height:110px; resize:vertical; padding:10px; border:1px solid var(--bd); border-radius:8px; font:inherit; }
+      input[type=text]{ width:100%; padding:8px 10px; border:1px solid var(--bd); border-radius:8px; font:inherit; }
+      label { font-size:13px; color:var(--mut); display:block; margin:10px 0 4px; }
+      select { padding:8px 10px; border:1px solid var(--bd); border-radius:8px; font:inherit; }
+      .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+      button { background:var(--acc); color:#fff; border:0; border-radius:8px; padding:9px 14px; font:inherit; font-weight:600; cursor:pointer; }
+      button:hover { background:var(--accd); }
+      button.sec { background:#eef1fb; color:var(--accd); }
+      button.ghost { background:transparent; color:var(--mut); border:1px solid var(--bd); }
+      button:disabled { opacity:.5; cursor:not-allowed; }
+      .preview { background:var(--card); border:1px solid var(--bd); border-radius:14px; overflow:hidden; display:flex; flex-direction:column; min-height:62vh; }
+      .preview .bar { display:flex; align-items:center; gap:8px; padding:8px 12px; border-bottom:1px solid var(--bd); font-size:13px; color:var(--mut); }
+      .preview iframe { border:0; width:100%; flex:1; min-height:54vh; background:#fff; }
+      .status { font-size:13px; color:var(--mut); margin-top:8px; min-height:18px; }
+      .muted { color:var(--mut); font-size:13px; }
+      .spin { display:inline-block; width:14px; height:14px; border:2px solid #c9d2f5; border-top-color:var(--acc); border-radius:50%; animation:sp .7s linear infinite; vertical-align:-2px; }
+      @keyframes sp { to { transform:rotate(360deg);} }
+      .toggle { display:inline-flex; align-items:center; gap:6px; font-size:13px; }
+      .gallery { display:grid; grid-template-columns: repeat(auto-fill, minmax(240px,1fr)); gap:14px; }
+      .g-card { background:var(--card); border:1px solid var(--bd); border-radius:14px; overflow:hidden; text-decoration:none; color:inherit; transition:transform .12s, box-shadow .12s; display:flex; flex-direction:column; }
+      .g-card:hover { transform:translateY(-3px); box-shadow:0 10px 24px #1c233314; }
+      .g-thumb { height:150px; border-bottom:1px solid var(--bd); background:#fafbff; overflow:hidden; position:relative; }
+      .g-thumb iframe { border:0; width:200%; height:300px; transform:scale(.5); transform-origin:top left; pointer-events:none; background:#fff; }
+      .g-meta { padding:10px 12px; }
+      .g-meta .t { font-weight:700; font-size:14px; margin-bottom:3px; }
+      .g-meta .b { color:var(--mut); font-size:12px; }
+      .secthead { display:flex; align-items:center; gap:10px; margin:6px 0 12px; }
+      .secthead h2 { font-size:16px; margin:0; }
+      .notice { background:#eef1fb; border:1px solid #d7defb; color:#33408a; border-radius:10px; padding:12px 14px; font-size:13.5px; margin-bottom:20px; }
+      .myrow { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+      .myrow button { padding:4px 9px; font-size:12px; font-weight:500; }
+      .item { border:1px solid var(--bd); border-radius:8px; padding:8px 10px; font-size:13px; margin-top:8px; }
+      .pill { display:inline-block; font-size:11px; padding:1px 7px; border-radius:99px; background:#eef1fb; color:var(--accd); }
+      .pill.priv { background:#fdeaea; color:#b42318; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="/">Quilo</a>
+      <nav>
+        <a href="/">메인</a>
+        <a href="/community.html">커뮤니티</a>
+        <a href="/create.html" class="on">창작</a>
+      </nav>
+    </header>
+
+    <div class="container">
+      <div class="hero">
+        <h1>✨ 창작</h1>
+        <p>AI로 웹페이지·위젯·작은 도구를 만들어 공유하는 공간. 누구나 구경할 수 있고, 만들기는 베타 사용자에게 열려 있어요.</p>
+      </div>
+
+      <!-- 만들기(빌더) — 권한 있을 때만 표시 -->
+      <div id="builderWrap" style="display:none">
+        <div class="secthead"><h2>🛠 만들기</h2><span class="muted" id="whoami"></span></div>
+        <div class="builder">
+          <div>
+            <div class="card">
+              <label>무엇을 만들까요?</label>
+              <textarea id="prompt" placeholder="예) 학생들이 실험 일정을 입력하면 D-day 카드로 보여주는 위젯. 단원별 색, 마감 임박은 빨강."></textarea>
+              <label>AI 모델</label>
+              <div class="row">
+                <select id="model"></select>
+                <button id="genBtn">생성</button>
+                <button id="iterBtn" class="sec" disabled>이어서 수정</button>
+              </div>
+              <div class="status" id="status"></div>
+            </div>
+            <div class="card" style="margin-top:12px">
+              <label>제목</label>
+              <input type="text" id="title" placeholder="예: 실험 일정 위젯" />
+              <label>주소(slug) — 비우면 자동</label>
+              <input type="text" id="slug" placeholder="exp-schedule" />
+              <div class="row" style="margin-top:10px; justify-content:space-between">
+                <label class="toggle"><input type="checkbox" id="pub" checked /> 공개</label>
+                <button id="saveBtn" disabled>게시</button>
+              </div>
+              <div class="status" id="saveStatus"></div>
+              <div id="mylist"></div>
+            </div>
+          </div>
+          <div class="preview">
+            <div class="bar"><span>미리보기 (sandbox)</span><span id="pvmodel" class="muted"></span>
+              <button id="openBtn" class="ghost" style="margin-left:auto;padding:4px 10px;font-size:12px" disabled>새 탭</button></div>
+            <iframe id="preview" sandbox="allow-scripts allow-forms allow-popups allow-modals" srcdoc="<!doctype html><meta charset=utf-8><body style='font-family:sans-serif;color:#9aa1b2;display:grid;place-items:center;height:80vh'>왼쪽에서 설명을 적고 <b>생성</b>을 누르세요.</body>"></iframe>
+          </div>
+        </div>
+      </div>
+
+      <!-- 비베타/비로그인 안내 -->
+      <div id="betaNotice" class="notice" style="display:none">
+        🔒 <b>만들기</b>는 현재 <b>베타 사용자</b>에게만 열려 있어요. 아래 갤러리는 누구나 구경할 수 있습니다. 베타 참여를 원하면 관리자에게 요청하세요.
+      </div>
+
+      <!-- 갤러리 (모두 공개) -->
+      <div class="secthead"><h2>🌐 모두의 창작</h2><span class="muted" id="galcount"></span></div>
+      <div class="gallery" id="gallery"><span class="muted">불러오는 중…</span></div>
+    </div>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      let currentHtml = "", lastSlug = "", canCreate = false;
+
+      async function api(path, opts) {
+        const r = await fetch(path, { credentials: "same-origin", headers: { "Content-Type": "application/json" }, ...opts });
+        let j = null; try { j = await r.json(); } catch {}
+        if (!r.ok) { const e = new Error((j && j.error) || r.status); e.status = r.status; throw e; }
+        return j;
+      }
+      function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,(c)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+      async function init() {
+        // 권한 확인
+        try {
+          const b = await api("/api/me/beta");
+          canCreate = !!b.admin || (Array.isArray(b.features) && b.features.includes("create"));
+          if (b.admin) $("whoami").textContent = "· 관리자";
+        } catch (e) { canCreate = false; }
+        if (canCreate) {
+          $("builderWrap").style.display = "block";
+          try { const m = await api("/api/artifacts/models"); $("model").innerHTML = m.models.map((x)=>`<option${x===m.default?" selected":""}>${x}</option>`).join(""); } catch {}
+          loadMine();
+        } else {
+          $("betaNotice").style.display = "block";
+        }
+        loadGallery();
+      }
+
+      function setPreview(html){ currentHtml=html; $("preview").srcdoc=html; $("iterBtn").disabled=!html; $("saveBtn").disabled=!html; $("openBtn").disabled=true; }
+
+      async function build(iterate){
+        const prompt=$("prompt").value.trim();
+        if(!prompt){ $("status").textContent="무엇을 만들지 적어주세요."; return; }
+        $("genBtn").disabled=$("iterBtn").disabled=true;
+        $("status").innerHTML=`<span class="spin"></span> 생성 중… (20~60초)`;
+        try{
+          const body={ prompt, model:$("model").value };
+          if(iterate && currentHtml) body.currentHtml=currentHtml;
+          const j=await api("/api/artifacts/build",{method:"POST",body:JSON.stringify(body)});
+          setPreview(j.html); $("pvmodel").textContent="· "+(j.model||"");
+          $("status").textContent="완성! 미리보기 확인 후 게시하세요.";
+          if(!$("title").value.trim()) $("title").value=prompt.slice(0,30);
+        }catch(e){ $("status").textContent = e.status===429 ? "오늘 베타 사용 한도를 다 썼어요." : ("오류: "+e.message); }
+        finally{ $("genBtn").disabled=false; $("iterBtn").disabled=!currentHtml; }
+      }
+
+      async function save(){
+        if(!currentHtml) return;
+        $("saveBtn").disabled=true; $("saveStatus").innerHTML=`<span class="spin"></span> 게시 중…`;
+        try{
+          const j=await api("/api/artifacts",{method:"POST",body:JSON.stringify({ title:$("title").value.trim(), slug:$("slug").value.trim(), html:currentHtml, isPublic:$("pub").checked, overwrite:$("slug").value.trim()&&$("slug").value.trim()===lastSlug })});
+          lastSlug=j.slug; const full=location.origin+j.url;
+          $("saveStatus").innerHTML=`게시됨 → <a href="${j.url}" target="_blank">${full}</a>`+(j.persistent?"":" <span class='muted'>(임시 저장)</span>");
+          $("openBtn").disabled=false; $("openBtn").onclick=()=>window.open(j.url,"_blank"); $("slug").value=j.slug;
+          loadMine(); loadGallery();
+        }catch(e){ $("saveStatus").textContent="오류: "+e.message; }
+        finally{ $("saveBtn").disabled=false; }
+      }
+
+      async function loadMine(){
+        try{
+          const j=await api("/api/artifacts");
+          const a=j.artifacts||[];
+          $("mylist").innerHTML = a.length ? `<div class="muted" style="margin-top:12px">내 창작${j.persistent?"":" (임시저장)"}</div>` + a.map((x)=>`
+            <div class="item"><b>${esc(x.title)}</b> <span class="pill ${x.is_public?"":"priv"}">${x.is_public?"공개":"비공개"}</span>
+            <div class="myrow"><a href="/p/${encodeURIComponent(x.slug)}" target="_blank"><button class="ghost">열기</button></a>
+            <button class="sec" data-edit="${esc(x.slug)}">수정</button><button class="ghost" data-del="${esc(x.id)}">삭제</button></div></div>`).join("") : "";
+          $("mylist").querySelectorAll("[data-edit]").forEach((b)=>b.onclick=()=>loadForEdit(b.dataset.edit));
+          $("mylist").querySelectorAll("[data-del]").forEach((b)=>b.onclick=()=>del(b.dataset.del));
+        }catch{}
+      }
+      async function loadForEdit(slug){
+        try{ const j=await api("/api/artifacts/"+encodeURIComponent(slug)+"/raw");
+          $("title").value=j.title||""; $("slug").value=j.slug||""; $("pub").checked=!!j.is_public; lastSlug=j.slug;
+          setPreview(j.html); $("status").textContent="불러왔습니다. 수정 요청 후 '이어서 수정' 또는 바로 게시.";
+          window.scrollTo({top:0,behavior:"smooth"});
+        }catch(e){ $("status").textContent="불러오기 오류: "+e.message; }
+      }
+      async function del(id){ if(!confirm("삭제할까요?"))return; try{ await api("/api/artifacts/"+encodeURIComponent(id),{method:"DELETE"}); loadMine(); loadGallery(); }catch(e){ alert(e.message);} }
+
+      async function loadGallery(){
+        try{
+          const j=await api("/api/artifacts/gallery");
+          const items=j.items||[];
+          $("galcount").textContent = items.length ? `· ${items.length}개` : "";
+          if(!items.length){ $("gallery").innerHTML=`<span class="muted">아직 만든 것이 없어요.</span>`; return; }
+          $("gallery").innerHTML = items.map((x)=>`
+            <a class="g-card" href="/p/${encodeURIComponent(x.slug)}" target="_blank">
+              <div class="g-thumb"><iframe loading="lazy" sandbox="allow-scripts" src="/p/${encodeURIComponent(x.slug)}"></iframe></div>
+              <div class="g-meta"><div class="t">${esc(x.title)}</div><div class="b">${esc(x.owner||"")}</div></div>
+            </a>`).join("");
+        }catch(e){ $("gallery").innerHTML=`<span class="muted">갤러리 오류: ${esc(e.message)}</span>`; }
+      }
+
+      $("genBtn").onclick=()=>build(false);
+      $("iterBtn").onclick=()=>build(true);
+      $("saveBtn").onclick=save;
+      init();
+    </script>
+  </body>
+</html>

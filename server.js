@@ -3727,7 +3727,7 @@ app.use(
 app.use("/api/lab", require("./lib/lab-routes")());
 
 // 관리자 "만들기"(AI 아티팩트 빌더): 웹페이지·위젯 생성 → /p/:slug 게시.
-app.use(require("./lib/artifacts-routes")({ requireAdmin, getSessionUser }));
+app.use(require("./lib/artifacts-routes")({ requireAdmin, requireAdminOrBeta, getSessionUser }));
 
 app.get("/api/cloud/status", requireAuth, async (req, res) => {
   const u = getSessionUser(req);
