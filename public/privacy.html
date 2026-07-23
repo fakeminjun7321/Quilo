@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="canonical" href="https://quilolab.com/privacy.html" />
+    <meta name="description" content="Quilo 개인정보처리방침." />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#2563eb" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>개인정보처리방침</title>
+    <script>
+      // FOUC 방지: CSS 적용 전에 테마를 먼저 설정한다.
+      (function () {
+        try {
+          var t = localStorage.getItem("theme");
+          if (!t)
+            t = window.matchMedia("(prefers-color-scheme: dark)").matches
+              ? "dark"
+              : "light";
+          document.documentElement.setAttribute("data-theme", t);
+        } catch (e) {}
+      })();
+    </script>
+
+    <link rel="stylesheet" href="/ui/foundation.css" />
+    <link rel="stylesheet" href="/ui/shell.css" />
+    <link rel="stylesheet" href="/ui/pages.css" />
+  </head>
+  <body class="q-shell-page ui-page">
+    <a class="ui-skip-link" href="#main-content">본문으로 건너뛰기</a>
+    <header class="ui-site-header" data-ui-shell></header>
+
+    <main class="legal-page" id="main-content">
+      <a href="/" class="legal-back">← Quilo로 돌아가기</a>
+      <h1>개인정보처리방침</h1>
+      <p class="hint">시행일: 2026년 7월 15일 · 최종 변경: 2026년 7월 15일</p>
+
+      <p>Quilo는 서비스 제공에 필요한 운영 기록과 사용자가 별도로 동의한 제품 이용 분석을 분리합니다. 서비스 개선 분석에는 업로드 파일명·파일 내용·사용자 메모·생성 보고서 본문을 저장하지 않습니다.</p>
+
+      <section>
+        <h2>1. 처리하는 개인정보</h2>
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th scope="col">구분</th><th scope="col">항목</th><th scope="col">수집 시점</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">계정·인증</th><td>이름, 로그인 아이디, 학번, 학교 이메일, 이메일 인증·승인 상태, 비밀번호 해시, 계정 권한·등급, 프로필 사진·소개</td><td>가입, 인증, 프로필 변경</td></tr>
+              <tr><th scope="row">생성 입력·결과</th><td>사용자가 입력한 지시·메모, 업로드한 문서·데이터·사진·CAP 파일, 선택한 모델·형식·설정, 생성 결과 파일, 학업윤리·저작권 확인 기록</td><td>보고서·문서 생성 요청</td></tr>
+              <tr><th scope="row">필수 운영 기록</th><td>요청·작업 ID, 보고서 종류, 모델·제공자·출력 형식, 성공·실패·중단 상태, 오류 단계·코드, 처리 단계별 시간, 업로드 파일 개수·확장자·용량 구간, 결과 용량 구간, 경고·산출물 검사 결과, 미리보기·다운로드 횟수, 릴리스 버전</td><td>요청 접수와 처리 과정에서 자동 생성</td></tr>
+              <tr><th scope="row">선택형 이용 분석</th><td>세션별 기능 선택, 폼 시작, 생성 제출·접수·거절·완료·실패, 미리보기·다운로드·재시도·중단, 품질평가 제출 여부와 제한된 코드형 속성</td><td>계정 센터에서 별도 동의한 경우에만</td></tr>
+              <tr><th scope="row">품질평가·문의</th><td>1~5점 평점, 수정 정도, 선택형 문제 태그, 문의 분류·제목·내용·연락 이메일·처리 결과</td><td>사용자가 평가 또는 문의를 제출</td></tr>
+              <tr><th scope="row">이용·정산</th><td>크레딧 잔액·차감·환불·비용·토큰 사용량, 구독·권한·학교 도입 신청 정보</td><td>기능 이용, 충전·신청·처리</td></tr>
+              <tr><th scope="row">개발자·연동</th><td>API 토큰 식별자·권한·마지막 사용 시각, API 요청 경로·상태·시간·오류 코드, 암호화된 BYOK 키와 클라우드 OAuth 토큰, 연결 계정 메타데이터</td><td>API 키 발급, 외부 서비스 연결·호출</td></tr>
+              <tr><th scope="row">접속·보안</th><td>IP 주소, User-Agent, 로그인 성공 여부, 세션 쿠키, 관리자 API 접근 기록</td><td>접속·로그인·관리자 기능 사용 시 자동 생성</td></tr>
+              <tr><th scope="row">공개 활동</th><td>커뮤니티·콘텐츠의 작성자 표시명, 게시글·댓글·공감, 신고·소명, 작성 시각</td><td>사용자가 공개 활동을 수행</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><strong>서비스 개선 분석에서 제외되는 항목:</strong> 업로드 파일명과 파일 내용, 사용자 메모·자유서술, 보고서 제목과 본문, 이메일·학번, 전체 URL 쿼리, 쿠키·API 키·OAuth 토큰.</p>
+      </section>
+
+      <section>
+        <h2>2. 이용 목적</h2>
+        <ul>
+          <li>본인 인증, 계정·권한·구독·개인 설정 관리</li>
+          <li>사용자가 요청한 AI 생성, 파일 변환·저장·다운로드, 외부 서비스 연동</li>
+          <li>크레딧·비용 정산, 사용량 안내, 환불·고객지원</li>
+          <li>장애 탐지, 품질 검증, 용량 계획, 부정 사용·보안 사고 방지와 조사</li>
+          <li>사용자가 선택 동의한 경우 기능 이용 흐름 분석과 UI·제품 개선</li>
+          <li>법령상 의무 이행, 권리 침해·학업윤리·저작권 관련 분쟁 대응</li>
+        </ul>
+        <p>선택형 이용 분석에 동의하지 않아도 보고서 생성 등 핵심 기능은 동일하게 이용할 수 있습니다. 동의 철회 후에는 새로운 선택형 이벤트를 수집하지 않습니다.</p>
+      </section>
+
+      <section>
+        <h2>3. 보관 기간과 파기</h2>
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th scope="col">정보</th><th scope="col">기본 보관 기간</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">업로드 원본과 생성 중 메모리</th><td>요청 처리 중에만 사용하고 작업 종료 후 서버의 영속 저장소에 별도 보관하지 않음. 다만 선택한 AI 제공자의 API 처리 기록은 해당 제공자 정책이 적용될 수 있음</td></tr>
+              <tr><th scope="row">기본 파일함 생성 결과</th><td>최대 24시간 또는 사용자가 먼저 삭제할 때까지. 사용자별 개수 제한을 넘으면 오래된 파일부터 삭제</td></tr>
+              <tr><th scope="row">Dropbox·Google Drive·Notion 저장 결과</th><td>사용자가 해당 외부 서비스에서 삭제하거나 연결을 해제할 때까지 해당 서비스 정책에 따라 보관</td></tr>
+              <tr><th scope="row">생성 운영 기록</th><td>90일</td></tr>
+              <tr><th scope="row">선택형 제품 이벤트</th><td>90일</td></tr>
+              <tr><th scope="row">결과 품질평가</th><td>180일</td></tr>
+              <tr><th scope="row">로그인 IP·User-Agent</th><td>30일</td></tr>
+              <tr><th scope="row">외부 API 요청 로그</th><td>90일</td></tr>
+              <tr><th scope="row">관리자 감사 로그</th><td>365일</td></tr>
+              <tr><th scope="row">계정·프로필·동의 이력·크레딧·사용량·연동 정보</th><td>계정 삭제 또는 처리 목적 달성 시까지. 정산·분쟁·법령상 의무가 있으면 필요한 최소 범위에서 해당 기간까지</td></tr>
+              <tr><th scope="row">문의·학교 신청·공개 활동</th><td>답변·운영·분쟁 대응 목적 달성 또는 계정 삭제 시까지. 공개 글은 사용자가 직접 삭제하거나 운영상 삭제할 때까지</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>보관기간이 끝난 운영·분석 로그는 자동 정리 작업으로 삭제합니다. 백업에 남은 정보는 정해진 백업 순환 주기에 따라 덮어쓰며, 법령상 보존 또는 진행 중인 분쟁이 있으면 필요한 최소 정보만 분리 보관할 수 있습니다.</p>
+      </section>
+
+      <section>
+        <h2>4. AI 처리와 학습 데이터 사용</h2>
+        <ul>
+          <li>사용자가 선택한 기능·모델에 필요한 범위에서 업로드 파일에서 추출한 내용, 입력 지시, 대화 맥락을 해당 AI 제공자에게 전송합니다.</li>
+          <li>Quilo는 업로드 자료와 생성 결과를 자체 AI 모델 학습용 데이터셋으로 재사용하거나 판매하지 않습니다.</li>
+          <li>선택한 AI 제공자가 API 보안·남용 방지 로그를 보관할 수 있으며, 구체적인 처리 조건은 각 제공자의 API 계약과 개인정보 정책이 적용됩니다.</li>
+          <li>BYOK를 사용하면 사용자가 등록한 키로 해당 제공자에 요청합니다. 키는 서버에서 암호화해 보관하고 분석 이벤트에 포함하지 않습니다.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>5. 처리위탁·국외 처리·외부 연동</h2>
+        <p>Quilo는 기능 제공을 위해 아래 서비스를 사용합니다. 전송은 TLS 등 암호화된 네트워크로 이루어지며, 실제 처리 국가는 공급자의 서버와 프로젝트 리전에 따라 미국·유럽 등일 수 있습니다.</p>
+        <div class="table-wrapper">
+        <table>
+          <caption class="ui-inline-privacy-1">처리위탁·국외 처리·외부 연동 현황</caption>
+          <thead>
+            <tr>
+              <th scope="col">서비스</th><th scope="col">역할</th><th scope="col">처리 정보</th><th scope="col">시점·기간</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Supabase</th><td>데이터베이스·인증 데이터·임시 파일 저장</td><td>계정, 운영·분석 로그, 크레딧, 생성 파일</td><td>서비스 이용 시, 제3조의 Quilo 보관기간</td></tr>
+            <tr><th scope="row">Render</th><td>웹 애플리케이션 호스팅</td><td>접속·세션 정보와 요청 처리 중 데이터</td><td>접속·생성 요청 시, 호스팅 운영 로그 정책에 따른 기간</td></tr>
+            <tr><th scope="row">Anthropic·OpenAI·Google·Groq·Mistral AI</th><td>선택한 AI 생성, 채팅, OCR·문서 해석</td><td>기능 수행에 필요한 입력·추출 내용·이미지와 생성 요청</td><td>사용자가 해당 기능을 요청할 때, 각 제공자의 API 정책에 따른 기간</td></tr>
+            <tr><th scope="row">Resend</th><td>이메일 인증·알림·문의 전달</td><td>수신 이메일, 이름, 이메일 본문과 전송 상태</td><td>이메일 발송 시, 제공자 정책과 분쟁 대응에 필요한 기간</td></tr>
+            <tr><th scope="row">Dropbox·Google Drive/Docs·Notion</th><td>사용자가 선택한 외부 저장·문서 연동</td><td>OAuth 토큰, 연결 계정 정보, 사용자가 저장·선택한 파일·문서</td><td>사용자가 연결·저장 요청 시, 연결 해제·외부 서비스 삭제까지</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p>필수 AI·호스팅 처리를 원하지 않으면 해당 생성 기능을 이용하지 않을 수 있습니다. Dropbox·Google·Notion 연동과 선택형 제품 분석은 사용자가 선택하지 않아도 됩니다. 업로드 파일에는 주민등록번호, 건강정보 등 불필요한 민감정보를 넣지 마세요.</p>
+      </section>
+
+      <section>
+        <h2>6. 만 14세 미만 아동</h2>
+        <p>본 서비스는 만 14세 미만 사용자의 가입과 이용을 허용하지 않습니다. 만 14세 미만인 경우 서비스를 이용할 수 없습니다.</p>
+      </section>
+
+      <section>
+        <h2>7. 이용자의 권리와 동의 철회</h2>
+        <ul>
+          <li>사용자는 개인정보의 열람, 정정, 삭제, 처리정지를 요청할 수 있습니다.</li>
+          <li>생성 파일은 내 파일 화면에서 직접 삭제할 수 있습니다.</li>
+          <li>계정 센터의 ‘개인정보’에서 선택형 이용 분석 동의를 언제든 켜거나 끌 수 있습니다.</li>
+          <li>계정 삭제, 사용 로그 삭제 가능 범위, 연동 해제, 크레딧 환불은 고객센터에 요청할 수 있습니다.</li>
+          <li>법령상 보관이 필요한 정보나 분쟁 대응에 필요한 최소 정보는 삭제 요청 후에도 제한적으로 보관될 수 있습니다.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>8. 안전성 확보 조치</h2>
+        <ul>
+          <li>비밀번호는 해시 처리해 저장합니다.</li>
+          <li>BYOK·OAuth 토큰은 암호화해 저장하며 운영·분석 로그에 원문을 남기지 않습니다.</li>
+          <li>생성 파일은 사용자 본인만 접근할 수 있도록 서버에서 권한을 확인합니다.</li>
+          <li>파일 크기·개수 제한, 요청 속도 제한, 로그인·비밀번호 변경 제한, 세션 쿠키 보호, 관리자 접근 감사를 적용합니다.</li>
+          <li>보안 사고가 확인되면 영향 범위 확인, 접근 차단, 사용자 안내, 관련 기록 보존 등 필요한 조치를 진행합니다.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>9. 쿠키와 브라우저 저장소</h2>
+        <p>로그인 상태 유지를 위해 HttpOnly 세션 쿠키를 사용합니다. 테마·최근 설정·선택형 분석 세션 식별자는 브라우저의 localStorage 또는 sessionStorage에 저장될 수 있습니다. 학번, 작성 중인 초안, 코드와 채팅 같은 계정 관련 브라우저 데이터는 계정 전환 또는 로그아웃 때 삭제하여 공용 기기의 다음 사용자에게 노출되지 않도록 합니다. Quilo는 이 제품 분석을 위해 제3자 광고 쿠키를 설치하지 않습니다. 쿠키를 차단하면 로그인이 필요한 기능을 이용할 수 없습니다.</p>
+      </section>
+
+      <section>
+        <h2>10. 개인정보 보호 문의</h2>
+        <p>개인정보 열람·정정·삭제·처리정지, 동의 철회, 보안 사고 문의는 <a href="/support.html">고객센터</a> 또는 <a href="mailto:fakeminjun7321@quilolab.com">fakeminjun7321@quilolab.com</a>으로 보내 주세요. 본인 확인 후 가능한 범위에서 처리합니다.</p>
+      </section>
+
+      <section>
+        <h2>11. 방침 변경</h2>
+        <p>처리 항목, 목적, 보관기간 또는 외부 제공자가 중요하게 바뀌는 경우 시행 전에 서비스 화면으로 알립니다. 선택형 분석의 목적이나 항목이 실질적으로 바뀌면 새 버전 동의를 다시 받습니다.</p>
+      </section>
+    </main>
+    <footer class="ui-site-footer">
+      <div class="ui-site-footer__inner">
+        <nav class="ui-site-footer__links" aria-label="푸터 메뉴"><a href="/terms.html">이용약관</a><a href="/privacy.html">개인정보처리방침</a><a href="/refund.html">환불정책</a><a href="/guide.html">이용 가이드</a><a href="/community.html">커뮤니티</a><a href="https://github.com/fakeminjun7321/Quilo" target="_blank" rel="noopener">GitHub</a></nav>
+        <div class="ui-site-footer__copy">© 2026 Quilo · <span data-site-version>버전 확인 중...</span></div>
+      </div>
+    </footer>
+    <script src="/ui/shell.js"></script>
+</body>
+</html>

@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="canonical" href="https://quilolab.com/apps/live-translator.html" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#2563eb" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Live Translator — 로컬 실시간 음성 번역</title>
+    <meta
+      name="description"
+      content="마이크와 시스템 오디오를 로컬에서 인식·번역해 항상 최상단 자막으로 보여주는 macOS·Windows 데스크톱 앱."
+    />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("theme");
+          if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          document.documentElement.setAttribute("data-theme", t);
+        } catch (e) {}
+      })();
+    </script>
+
+    <link rel="stylesheet" href="/ui/foundation.css" />
+    <link rel="stylesheet" href="/ui/shell.css" />
+    <link rel="stylesheet" href="/ui/pages.css" />
+  </head>
+  <body class="landing q-shell-page ui-page">
+    <div class="landing-bg" aria-hidden="true"></div>
+    <a class="ui-skip-link" href="#main-content">본문으로 건너뛰기</a>
+    <header class="ui-site-header" data-ui-shell></header>
+
+    <main class="app-product-page" id="main-content">
+      <section class="app-product-hero" aria-labelledby="translator-title">
+        <div class="app-product-copy">
+          <h1 id="translator-title">Live Translator</h1>
+          <p class="app-product-deck">
+            마이크나 시스템 오디오를 듣고, 음성을 인식하고, 번역한 내용을 화면 위 자막으로 보여주는
+            로컬 데스크톱 앱입니다.
+          </p>
+          <div class="app-product-actions">
+            <a class="btn btn-primary btn-lg" href="/api/apps/live-translator/download?platform=mac" data-app-download data-app="live-translator" data-platform="mac">macOS용 다운로드</a>
+            <a class="btn btn-lg" href="/api/apps/live-translator/download?platform=windows" data-app-download data-app="live-translator" data-platform="windows">Windows용 다운로드</a>
+            <a class="btn btn-lg" href="/apps/quilo.html">Quilo Desktop 보기</a>
+          </div>
+          <p class="app-product-note" data-app-download-status aria-live="polite">운영체제에 맞는 설치 파일을 직접 받을 수 있습니다.</p>
+        </div>
+
+        <dl class="app-product-facts" aria-label="Live Translator 제품 정보">
+          <div>
+            <dt>제품명</dt>
+            <dd>Live Translator</dd>
+          </div>
+          <div>
+            <dt>확인 버전</dt>
+            <dd>0.1.4</dd>
+          </div>
+          <div>
+            <dt>플랫폼</dt>
+            <dd>macOS Apple Silicon · Windows x64</dd>
+          </div>
+          <div>
+            <dt>처리 방식</dt>
+            <dd>음성 인식·번역 로컬 처리</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="app-product-section" aria-labelledby="translator-workflow">
+        <div class="app-product-section-head">
+          <h2 id="translator-workflow">듣고, 인식하고, 자막으로</h2>
+          <div class="app-product-prose">
+            <p>
+              마이크 입력과 시스템 오디오를 받아 발화 단위로 음성을 인식하고,
+              로컬 번역 모델을 거쳐 항상 최상단 자막 오버레이에 표시하도록 설계돼 있습니다.
+            </p>
+            <p>
+              <strong>필요한 모델을 처음 내려받은 뒤 음성 인식과 번역은 컴퓨터 안에서 처리됩니다.</strong>
+              별도의 API 키를 요구하지 않는 구성을 기준으로 합니다.
+            </p>
+          </div>
+        </div>
+
+        <ol class="app-product-steps">
+          <li>
+            <span class="app-product-step-number">01</span>
+            <h3>오디오 입력</h3>
+            <p>마이크 또는 시스템에서 재생되는 소리를 입력으로 받습니다.</p>
+          </li>
+          <li>
+            <span class="app-product-step-number">02</span>
+            <h3>로컬 처리</h3>
+            <p>Whisper 기반 음성 인식과 로컬 언어 모델 번역을 순서대로 실행합니다.</p>
+          </li>
+          <li>
+            <span class="app-product-step-number">03</span>
+            <h3>자막 표시</h3>
+            <p>번역한 문장을 다른 앱 위에 놓이는 자막 오버레이로 보여줍니다.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section class="app-product-section" aria-labelledby="translator-platforms">
+        <div class="app-product-section-head">
+          <h2 id="translator-platforms">확인된 플랫폼 구성</h2>
+          <div class="app-product-prose">
+            <p>
+              앱 패키지 설정에서는 macOS Apple Silicon용 DMG와 Windows x64용 설치 프로그램을 대상으로 합니다.
+              첫 실행 시 필요한 음성·번역 모델을 내려받는 흐름이 포함돼 있습니다.
+            </p>
+          </div>
+        </div>
+
+        <div class="app-product-release-list">
+          <article class="app-product-release-item">
+            <h3>macOS</h3>
+            <p>Apple Silicon용 DMG 설치 파일을 제공합니다.</p>
+          </article>
+          <article class="app-product-release-item">
+            <h3>Windows</h3>
+            <p>x64용 Windows 설치 프로그램을 제공합니다.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="app-product-closing" aria-labelledby="translator-release">
+        <div>
+          <h2 id="translator-release">내 컴퓨터에서 바로 시작하기</h2>
+          <p>운영체제에 맞는 최신 설치 파일을 선택해 바로 내려받으세요.</p>
+        </div>
+        <div class="app-product-actions app-product-actions--compact">
+          <a class="btn btn-primary btn-lg" href="/api/apps/live-translator/download?platform=mac" data-app-download data-app="live-translator" data-platform="mac">macOS</a>
+          <a class="btn btn-lg" href="/api/apps/live-translator/download?platform=windows" data-app-download data-app="live-translator" data-platform="windows">Windows</a>
+        </div>
+      </section>
+    </main>
+    <footer class="ui-site-footer">
+      <div class="ui-site-footer__inner">
+        <nav class="ui-site-footer__links" aria-label="푸터 메뉴"><a href="/terms.html">이용약관</a><a href="/privacy.html">개인정보처리방침</a><a href="/refund.html">환불정책</a><a href="/guide.html">이용 가이드</a><a href="/community.html">커뮤니티</a><a href="https://github.com/fakeminjun7321/Quilo" target="_blank" rel="noopener">GitHub</a></nav>
+        <div class="ui-site-footer__copy">© 2026 Quilo · <span data-site-version>버전 확인 중...</span></div>
+      </div>
+    </footer>
+    <script src="/ui/shell.js"></script>
+  </body>
+</html>

@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="canonical" href="https://quilolab.com/create.html" />
+    <meta name="description" content="창작 — AI로 미니 웹앱·시각자료를 대화로 만들고 공유하는 바이브 코딩 스튜디오." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="/ui/foundation.css" />
+    <link rel="stylesheet" href="/ui/shell.css" />
+    <link rel="stylesheet" href="/ui/app-shell.css" />
+    <link rel="stylesheet" href="/ui/app-workbench.css" />
+    <title>창작 — AI로 만들고 공유하기</title>
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("theme");
+          if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          document.documentElement.setAttribute("data-theme", t);
+        } catch (e) {}
+      })();
+    </script>
+
+</head>
+  <body id="appShell" class="app-shell app-shell--create" data-app-shell>
+    <header class="ui-site-header" data-ui-shell data-shell-mode="fixed"></header>
+    <script src="/ui/shell.js"></script>
+<main class="container" id="main-content" aria-label="창작 갤러리">
+      <section class="create-intro">
+        <h1>창작 갤러리</h1>
+        <p>스튜디오로 만든 웹앱과 도구를 모아 보는 공간입니다. Pro 권한이 있으면 직접 만들고, 없으면 공개 갤러리를 둘러볼 수 있습니다.</p>
+      </section>
+
+      <!-- 바이브 코딩 생성기 런처 (로그인 사용자 + 크레딧) -->
+      <a class="launch app-inline-create-1" href="/vibe-coding.html">
+        <div class="lt">
+          <h2>바이브 코딩 생성기</h2>
+          <p>만들고 싶은 걸 한 문장으로 적으면 AI가 프로젝트 설계·MVP·첫 작업·검증 루틴과 AI 코딩 도구용 작업 지시문까지 만들어 줘요.</p>
+          <span class="launch-req">🔑 로그인 · 크레딧 필요</span>
+        </div>
+        <span class="go app-inline-create-2">아이디어 정리하기 →</span>
+      </a>
+
+      <!-- 스튜디오 런처 (만들기 권한 있을 때) -->
+      <a id="launch" class="launch app-inline-create-3" href="/studio.html" hidden>
+        <div class="lt">
+          <h2>스튜디오</h2>
+          <p>대화하듯 AI에게 말하면 웹앱·위젯·도구를 만들어 줘요. 미리보기를 보며 "더 예쁘게", "다크모드로" 처럼 고쳐 나가세요.</p>
+          <span class="launch-req">🔑 로그인 · 크레딧 필요</span>
+        </div>
+        <span class="go">스튜디오에서 만들기 →</span>
+      </a>
+
+      <!-- 비베타/비로그인 안내 -->
+      <div id="betaNotice" class="notice app-inline-create-4" hidden>
+        🔒 <b>만들기</b>는 현재 <b>Pro 회원</b>에게만 열려 있어요. 아래 갤러리는 누구나 구경할 수 있습니다. Pro 참여를 원하면 관리자에게 요청하세요.
+      </div>
+
+      <!-- 내 창작 (관리) -->
+      <div id="mineWrap" class="app-inline-create-4" hidden>
+        <div class="secthead"><h2>내 창작</h2><span class="muted" id="whoami"></span></div>
+        <div id="mylist"><div class="empty"><strong>내 창작을 불러오는 중입니다.</strong>잠시만 기다려 주세요.</div></div>
+      </div>
+
+      <!-- 갤러리 (모두 공개) -->
+      <div class="secthead"><h2>모두의 창작</h2><span class="muted" id="galcount"></span>
+        <select id="sort" aria-label="정렬 기준" title="정렬 기준" class="app-inline-create-5"><option value="new">최신순</option><option value="likes">인기순(좋아요)</option><option value="views">조회순</option></select>
+      </div>
+      <div id="chips" class="row app-inline-create-6"></div>
+      <div class="gallery" id="gallery"><div class="empty"><strong>갤러리를 불러오는 중입니다.</strong>잠시만 기다려 주세요.</div></div>
+    </main>
+
+    <!-- 댓글 모달 -->
+    <div id="cmtModal" role="dialog" aria-modal="true" aria-labelledby="cmtTitle" class="app-inline-create-7" tabindex="-1" hidden>
+      <div class="card app-inline-create-8">
+        <div class="row app-inline-create-9">
+          <b id="cmtTitle">💬 댓글</b>
+          <button id="cmtClose" class="ghost app-inline-create-10" type="button" aria-label="댓글 닫기" title="닫기">✕</button>
+        </div>
+        <input type="hidden" id="cmtSlug" />
+        <div id="cmtList" class="app-inline-create-11"></div>
+        <div class="row app-inline-create-12">
+          <input id="cmtText" placeholder="댓글을 입력하세요 (로그인 필요)" aria-label="댓글 입력" maxlength="1000"  class="app-inline-create-13"/>
+          <button id="cmtSend" type="button">등록</button>
+        </div>
+      </div>
+    </div>
+
+    <footer class="app-statusbar" aria-label="앱 상태">
+      <span class="app-statusbar__dot" aria-hidden="true"></span>
+      <span>준비됨</span>
+      <span class="app-statusbar__meta">창작 갤러리 · Quilo</span>
+    </footer>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      let galItems = [], curCat = "전체", canCreate = false;
+      const CATS = ["학습도구", "게임", "위젯", "계산기", "데이터/차트", "이미지", "기타"];
+
+      async function api(path, opts) {
+        const r = await fetch(path, { credentials: "same-origin", headers: { "Content-Type": "application/json" }, ...opts });
+        let j = null; try { j = await r.json(); } catch {}
+        if (!r.ok) { const e = new Error((j && j.error) || r.status); e.status = r.status; throw e; }
+        return j;
+      }
+      function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,(c)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+      async function init() {
+        try {
+          const b = await api("/api/me/beta");
+          canCreate = !!b.admin || String(b.tier || "").toLowerCase() === "max" || (Array.isArray(b.features) && b.features.includes("create"));
+          if (b.admin) $("whoami").textContent = "· 관리자";
+        } catch (e) { canCreate = false; }
+        if (canCreate) { $("launch").hidden = false; $("mineWrap").hidden = false; loadMine(); }
+        else { $("betaNotice").hidden = false; }
+        loadGallery();
+      }
+
+      async function loadMine(){
+        try{
+          const j=await api("/api/artifacts");
+          const a=j.artifacts||[];
+          $("mylist").innerHTML = a.length ? (j.persistent?"":`<div class="muted">임시저장 상태</div>`) + a.map((x)=>`
+            <div class="item"><b>${esc(x.title)}</b> <span class="pill ${x.is_public?"":"priv"}">${x.is_public?"공개":"비공개"}</span>
+            <div class="myrow"><a href="/p/${encodeURIComponent(x.slug)}" target="_blank"><button class="ghost">열기</button></a>
+            <a href="/studio.html?edit=${encodeURIComponent(x.slug)}"><button class="sec">수정</button></a>
+            <button class="ghost" data-del="${esc(x.id)}">삭제</button></div></div>`).join("")
+            : `<div class="empty"><strong>아직 만든 작품이 없습니다.</strong><a href="/studio.html">스튜디오에서 첫 작품 만들기 →</a></div>`;
+          $("mylist").querySelectorAll("[data-del]").forEach((b)=>b.onclick=()=>del(b.dataset.del));
+        }catch{ $("mylist").innerHTML = `<span class="muted">목록을 불러오지 못했어요.</span>`; }
+      }
+      async function del(id){ if(!confirm("삭제할까요?"))return; try{ await api("/api/artifacts/"+encodeURIComponent(id),{method:"DELETE"}); loadMine(); loadGallery(); }catch(e){ alert(e.message);} }
+
+      async function loadGallery(){
+        try{
+          const j=await api("/api/artifacts/gallery");
+          galItems=j.items||[];
+          $("galcount").textContent = galItems.length ? `· ${galItems.length}개` : "";
+          renderChips(); renderGallery();
+        }catch(e){ $("gallery").innerHTML=`<span class="muted">갤러리 오류: ${esc(e.message)}</span>`; }
+      }
+      function renderChips(){
+        const cats=["전체",...CATS.filter((c)=>galItems.some((x)=>(x.category||"기타")===c))];
+        $("chips").innerHTML=cats.map((c)=>`<button class="${c===curCat?'sec':'ghost'} app-runtime-filter-chip" data-cat="${esc(c)}">${esc(c)}</button>`).join("");
+        $("chips").querySelectorAll("[data-cat]").forEach((b)=>b.onclick=()=>{ curCat=b.dataset.cat; renderChips(); renderGallery(); });
+      }
+      function renderGallery(){
+        let items=galItems.filter((x)=>curCat==="전체"||(x.category||"기타")===curCat);
+        const sort=$("sort").value;
+        if(sort==="likes") items=items.slice().sort((a,b)=>(b.likes||0)-(a.likes||0));
+        else if(sort==="views") items=items.slice().sort((a,b)=>(b.views||0)-(a.views||0));
+        if(!items.length){ $("gallery").innerHTML=`<div class="empty"><strong>아직 공개된 창작물이 없습니다.</strong>필터를 바꾸거나 나중에 다시 확인해 주세요.</div>`; return; }
+        $("gallery").innerHTML = items.map((x)=>`
+          <div class="g-card">
+            <a href="/p/${encodeURIComponent(x.slug)}" target="_blank" class="app-runtime-card-link">
+              <div class="g-thumb"><iframe loading="lazy" sandbox="allow-scripts" title="${esc(x.title)} 미리보기" data-src="/p/${encodeURIComponent(x.slug)}"></iframe></div>
+              <div class="g-meta"><div class="t">${esc(x.title)}${x.forked_from?' <span class="pill">리믹스</span>':''}</div><div class="b">${esc(x.owner||"")} · <span class="pill">${esc(x.category||"기타")}</span> · 👁 ${x.views||0}</div></div>
+            </a>
+            <div class="myrow app-runtime-card-row">
+              <button class="ghost" data-like="${esc(x.slug)}" aria-label="좋아요" title="좋아요">❤ <span>${x.likes||0}</span></button>
+              ${canCreate?`<a href="/studio.html?remix=${encodeURIComponent(x.slug)}"><button class="ghost" aria-label="리믹스" title="리믹스">🔀 리믹스</button></a>`:""}
+              <button class="ghost" data-cmt="${esc(x.slug)}" data-title="${esc(x.title)}" aria-label="댓글" title="댓글">💬</button>
+              <button class="ghost" data-embed="${esc(x.slug)}" aria-label="임베드 코드 복사" title="임베드 코드 복사">📋 임베드</button>
+              <button class="ghost app-runtime-push" data-report="${esc(x.slug)}" aria-label="신고" title="신고">🚩</button>
+            </div>
+          </div>`).join("");
+        $("gallery").querySelectorAll("[data-like]").forEach((b)=>b.onclick=()=>like(b.dataset.like,b));
+        $("gallery").querySelectorAll("[data-embed]").forEach((b)=>b.onclick=()=>embed(b.dataset.embed));
+        $("gallery").querySelectorAll("[data-report]").forEach((b)=>b.onclick=()=>report(b.dataset.report));
+        $("gallery").querySelectorAll("[data-cmt]").forEach((b)=>b.onclick=()=>openComments(b.dataset.cmt,b.dataset.title));
+        lazyThumbs();
+      }
+      // 썸네일 iframe 지연 로드: 뷰포트 진입 시에만 src 주입(모바일 발열/데이터 절약)
+      let thumbObserver = null;
+      function lazyThumbs(){
+        const frames = $("gallery").querySelectorAll("iframe[data-src]");
+        if(!("IntersectionObserver" in window)){
+          // 폴백: 관찰자 미지원 환경은 즉시 로드
+          frames.forEach((f)=>{ f.src=f.dataset.src; f.removeAttribute("data-src"); });
+          return;
+        }
+        if(thumbObserver) thumbObserver.disconnect();
+        thumbObserver = new IntersectionObserver((entries,obs)=>{
+          entries.forEach((en)=>{
+            if(!en.isIntersecting) return;
+            const f=en.target;
+            if(f.dataset.src){ f.src=f.dataset.src; f.removeAttribute("data-src"); }
+            obs.unobserve(f);
+          });
+        }, { rootMargin: "200px 0px" });
+        frames.forEach((f)=>thumbObserver.observe(f));
+      }
+      // ── 댓글 모달 ──
+      let commentModalReturnFocus = null;
+      let commentModalInerted = [];
+
+      function setCommentModalBackgroundInert(isOpen){
+        if (!("inert" in HTMLElement.prototype)) return;
+        if (isOpen) {
+          commentModalInerted = [...document.body.children].filter((element) =>
+            element !== $("cmtModal") && element.tagName !== "SCRIPT" && !element.inert
+          );
+          commentModalInerted.forEach((element) => { element.inert = true; });
+          return;
+        }
+        commentModalInerted.forEach((element) => { element.inert = false; });
+        commentModalInerted = [];
+      }
+
+      function commentModalFocusable(){
+        return [...$("cmtModal").querySelectorAll(
+          'a[href], button:not([disabled]), input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )].filter((element) => element.getClientRects().length > 0);
+      }
+
+      function closeComments(){
+        const modal = $("cmtModal");
+        if (modal.hidden) return;
+        setCommentModalBackgroundInert(false);
+        modal.hidden = true;
+        const returnFocus = commentModalReturnFocus;
+        commentModalReturnFocus = null;
+        if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
+      }
+
+      async function openComments(slug,title){
+        commentModalReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        $("cmtTitle").textContent="💬 "+(title||"댓글");
+        $("cmtSlug").value=slug; $("cmtList").innerHTML='<span class="muted">불러오는 중…</span>';
+        $("cmtModal").hidden = false;
+        $("cmtClose").focus({ preventScroll: true });
+        setCommentModalBackgroundInert(true);
+        await loadComments(slug);
+      }
+      async function loadComments(slug){
+        try{
+          const j=await api("/api/artifacts/"+encodeURIComponent(slug)+"/comments");
+          const cs=j.comments||[];
+          $("cmtList").innerHTML = cs.length ? cs.map((c)=>`
+            <div class="app-runtime-comment">
+              <div class="app-runtime-comment-author">${esc(c.author||"익명")} <span class="muted app-runtime-comment-meta">· ${esc((c.at||"").slice(0,10))}</span></div>
+              <div class="app-runtime-comment-text">${esc(c.text||"")}</div>
+            </div>`).join("") : '<span class="muted">첫 댓글을 남겨보세요.</span>';
+          $("cmtList").scrollTop=$("cmtList").scrollHeight;
+        }catch(e){ $("cmtList").innerHTML='<span class="muted">불러오지 못했습니다.</span>'; }
+      }
+      async function sendComment(){
+        const slug=$("cmtSlug").value, text=$("cmtText").value.trim();
+        if(!text) return;
+        $("cmtSend").disabled=true;
+        try{
+          await api("/api/artifacts/"+encodeURIComponent(slug)+"/comments",{method:"POST",body:JSON.stringify({text})});
+          $("cmtText").value=""; await loadComments(slug);
+        }catch(e){ alert(/401/.test(e.message)?"로그인 후 댓글을 쓸 수 있어요.":"댓글 오류: "+e.message); }
+        finally{ $("cmtSend").disabled=false; }
+      }
+      async function report(slug){
+        const reason=prompt("신고 사유(선택):"); if(reason===null) return;
+        try{ await api("/api/artifacts/"+encodeURIComponent(slug)+"/report",{method:"POST",body:JSON.stringify({reason})}); alert("신고가 접수되었습니다."); }
+        catch(e){ alert("신고 오류: "+e.message); }
+      }
+      async function like(slug,btn){
+        const liked=JSON.parse(localStorage.getItem("quilo_liked")||"{}");
+        if(liked[slug]){ return; }
+        try{ const j=await api("/api/artifacts/"+encodeURIComponent(slug)+"/like",{method:"POST"});
+          liked[slug]=1; localStorage.setItem("quilo_liked",JSON.stringify(liked));
+          btn.querySelector("span").textContent=j.likes; btn.classList.add("sec");
+        }catch{}
+      }
+      function embed(slug){
+        const code=`<iframe src="${location.origin}/p/${encodeURIComponent(slug)}" width="100%" height="600" frameborder="0"></iframe>`;
+        navigator.clipboard?.writeText(code).then(()=>alert("임베드 코드를 복사했어요:\n\n"+code),()=>prompt("임베드 코드",code));
+      }
+
+      $("sort").onchange=renderGallery;
+      $("cmtClose").onclick=closeComments;
+      $("cmtModal").onclick=(e)=>{ if(e.target===$("cmtModal")) closeComments(); };
+      document.addEventListener("keydown",(e)=>{
+        const modal = $("cmtModal");
+        if (modal.hidden) return;
+        if (e.key === "Escape") {
+          e.preventDefault();
+          closeComments();
+          return;
+        }
+        if (e.key !== "Tab") return;
+        const focusable = commentModalFocusable();
+        if (!focusable.length) {
+          e.preventDefault();
+          modal.focus();
+          return;
+        }
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        } else if (!modal.contains(document.activeElement)) {
+          e.preventDefault();
+          first.focus();
+        }
+      });
+      $("cmtSend").onclick=sendComment;
+      $("cmtText").onkeydown=(e)=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); sendComment(); } };
+      init();
+    </script>
+
+  </body>
+</html>

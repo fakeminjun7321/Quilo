@@ -1,0 +1,107 @@
+{
+  "__meta": {
+    "id": "fixture-chem-pre",
+    "type": "chem-pre",
+    "synthetic": true,
+    "render": {
+      "studentId": "0000",
+      "studentName": "",
+      "temperature": "",
+      "pressure": "",
+      "date": "2026-01-15"
+    },
+    "expect": {
+      "docxIncludes": [
+        "Redox Titration",
+        "산화 환원 적정",
+        "적정 장치"
+      ]
+    },
+    "sidecar": null
+  },
+  "content": {
+    "title_kr": "산화 환원 적정",
+    "title_en": "Redox Titration",
+    "purpose": [
+      "과망간산 이온의 산화력을 정량적으로 확인한다."
+    ],
+    "theory": [
+      {
+        "topic": "산화 환원 반응",
+        "items": [
+          "산화 환원 반응에서는 전자의 이동으로 산화수가 변한다.",
+          "과망간산 이온의 환원 반쪽 반응은 {{EQ:MnO_4^- + 8H^+ + 5e^- = Mn^2+ + 4H_2O}} 로 표현된다.",
+          {
+            "figure": 1
+          }
+        ]
+      }
+    ],
+    "apparatus": [
+      {
+        "name": "뷰렛",
+        "name_en": "Buret",
+        "description": "50 mL, 최소 눈금 0.1 mL"
+      }
+    ],
+    "chemicals": [
+      {
+        "name": "과망간산 칼륨",
+        "iupac": "Potassium permanganate",
+        "formula": "KMnO4",
+        "molar_mass": "158.03 g/mol",
+        "mp_bp": "약 240 C에서 분해",
+        "density": "2.70 g/cm3 (20 C)",
+        "properties": "짙은 보라색 결정, 강한 산화제",
+        "toxicity": "피부, 눈 접촉 주의",
+        "source_url": "https://example.org/kmno4"
+      }
+    ],
+    "chemicals_summary_table": [
+      {
+        "name": "과망간산 칼륨",
+        "formula": "KMnO4",
+        "molar_mass": "158.03 g/mol",
+        "mp_bp": "약 240 C에서 분해",
+        "properties": "강한 산화제"
+      }
+    ],
+    "procedure": [
+      {
+        "title": "적정 준비 및 수행",
+        "steps": [
+          {
+            "text": "뷰렛에 표준 용액을 채운다.",
+            "notes": [
+              "기포를 제거한다."
+            ]
+          },
+          {
+            "text": "종말점에서 옅은 분홍색이 30초 이상 유지되는지 확인한다."
+          }
+        ]
+      }
+    ],
+    "data_table": [
+      {
+        "item": "표준 용액 농도",
+        "value": "0.02 M"
+      }
+    ],
+    "figures_needed": [
+      {
+        "number": 1,
+        "caption": "적정 장치",
+        "description": "뷰렛, 스탠드, 삼각 플라스크가 배치된 적정 장치 모습",
+        "search_query": "titration setup buret flask"
+      }
+    ],
+    "references": [
+      {
+        "label": "일반화학실험 표준 교재",
+        "url": "https://example.org/ref"
+      }
+    ],
+    "date": "2026-01-15"
+  }
+}

@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="canonical" href="https://quilolab.com/filechat.html" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#2563eb" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="/ui/foundation.css" />
+    <link rel="stylesheet" href="/ui/shell.css" />
+    <link rel="stylesheet" href="/ui/app-shell.css" />
+    <link rel="stylesheet" href="/ui/app-chat.css" />
+    <script src="/ui/entitlement-gate.js"></script>
+    <title>파일 챗봇 (Pro) · Quilo</title>
+    <meta
+      name="description"
+      content="파일을 올리고 Claude와 대화하세요. PDF·이미지·표·텍스트를 분석합니다."
+    />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("theme");
+          if (!t)
+            t = window.matchMedia("(prefers-color-scheme: dark)").matches
+              ? "dark"
+              : "light";
+          document.documentElement.setAttribute("data-theme", t);
+        } catch (e) {}
+      })();
+    </script>
+
+</head>
+  <body id="appShell" class="app-shell app-shell--filechat" data-app-shell>
+    <div class="landing-bg" aria-hidden="true"></div>
+    <header class="ui-site-header" data-ui-shell data-shell-mode="fixed"></header>
+    <script src="/ui/shell.js"></script>
+    <main id="main-content" aria-label="파일 챗봇">
+      <div id="gate" aria-live="polite"></div>
+
+      <div id="tool" class="fc-workspace" hidden>
+        <aside class="fc-sidebar" aria-label="파일과 모델 설정">
+          <div class="fc-sidebar__head">
+            <p class="fc-sidebar__eyebrow">Chat with files</p>
+            <h1>파일 챗봇 <span class="beta-pill">Pro</span></h1>
+            <p class="fc-sidebar__copy">PDF·이미지·표·텍스트를 첨부하면 대화 전체에서 함께 참고합니다.</p>
+          </div>
+          <div class="fc-sidebar__body">
+            <label class="fc-attach-btn">
+              ＋ 파일 첨부
+              <input
+                type="file"
+                id="fcFiles"
+                multiple
+                accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.txt,.md,.csv,.tsv,.json,.log,image/*"
+                hidden
+              />
+            </label>
+            <span class="fc-sidebar__label">Attached files</span>
+            <div id="fcFileChips" class="fc-files" aria-live="polite" aria-label="첨부 파일 목록"></div>
+            <div class="fc-sidebar__footer">
+              <label class="fc-sidebar__label" for="fcModel">Model</label>
+              <select id="fcModel">
+                <option value="claude-sonnet-5">Sonnet 5 · 빠른 분석</option>
+                <option value="claude-opus-4-8">Opus 4.8 · 정밀 분석</option>
+              </select>
+              <button id="fcClear" class="secondary" type="button">새 대화</button>
+            </div>
+          </div>
+        </aside>
+
+        <section class="fc-main" aria-label="파일 대화">
+          <div class="fc-main__topbar">
+            <strong>Quilo Bot</strong>
+            <span>첨부 자료를 근거로 답변합니다</span>
+            <span id="accessNote" aria-live="polite"></span>
+          </div>
+          <div id="fcChat" class="fc-chat" role="log" aria-live="polite" aria-relevant="additions text" aria-label="대화 내용">
+            <div class="fc-msg empty">파일을 첨부하고 질문해 보세요.<br />예: “이 PDF의 핵심 주장과 근거를 정리해 줘.”</div>
+          </div>
+          <div class="fc-composer">
+            <div class="fc-row">
+              <textarea id="fcInput" placeholder="파일에 관해 질문하세요" aria-label="메시지 입력"></textarea>
+              <button id="fcSend" class="btn btn-primary" type="button">보내기</button>
+            </div>
+            <p class="fc-hint">Enter 전송 · Shift+Enter 줄바꿈 · 파일은 최대 6개</p>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="app-statusbar" aria-label="앱 상태">
+      <span class="app-statusbar__dot" aria-hidden="true"></span>
+      <span>준비됨</span>
+      <span class="app-statusbar__meta">파일 챗봇 · Quilo</span>
+    </footer>
+
+    <script>
+      (function () {
+        var gate = document.getElementById("gate");
+        var tool = document.getElementById("tool");
+
+        (async function guard() {
+          var access = await window.QuiloEntitlement.require({
+            accessEndpoint: "/api/filechat/access",
+            gate: gate,
+            content: tool,
+            forbiddenTitle: "파일 챗봇은 Pro 권한이 필요합니다",
+            forbiddenMessage: "관리자 키 위임, Pro 또는 Max 권한이 있는 계정에서 사용할 수 있습니다."
+          });
+          if (!access.allowed) return;
+          var note = document.getElementById("accessNote");
+          if (access.reason === "grant") note.innerHTML = '관리자 키 위임 <span class="fc-badge">무료</span>';
+          else if (access.reason === "admin") note.textContent = "관리자 모드";
+          else note.textContent = "Pro · Max 이용 가능";
+          initTool();
+        })();
+
+        function initTool() {
+          var chatEl = document.getElementById("fcChat");
+          var inputEl = document.getElementById("fcInput");
+          var sendBtn = document.getElementById("fcSend");
+          var fileInput = document.getElementById("fcFiles");
+          var chipsEl = document.getElementById("fcFileChips");
+          var modelSel = document.getElementById("fcModel");
+          var clearBtn = document.getElementById("fcClear");
+
+          var messages = []; // {role, content} — 텍스트 히스토리
+          var attached = []; // File 객체
+          var busy = false;
+
+          function renderChips() {
+            chipsEl.innerHTML = "";
+            attached.forEach(function (f, i) {
+              var chip = document.createElement("span");
+              chip.className = "fc-file-chip";
+              chip.textContent = f.name + " ";
+              var x = document.createElement("button");
+              x.type = "button";
+              x.textContent = "✕";
+              x.setAttribute("aria-label", f.name + " 첨부 제거");
+              x.onclick = function () {
+                attached.splice(i, 1);
+                renderChips();
+              };
+              chip.appendChild(x);
+              chipsEl.appendChild(chip);
+            });
+          }
+
+          fileInput.addEventListener("change", function () {
+            Array.from(fileInput.files || []).forEach(function (f) {
+              if (attached.length < 6) attached.push(f);
+            });
+            fileInput.value = "";
+            renderChips();
+          });
+
+          function addBubble(role, text) {
+            var empty = chatEl.querySelector(".fc-msg.empty");
+            if (empty) empty.remove();
+            var b = document.createElement("div");
+            b.className = "fc-msg " + (role === "user" ? "user" : "ai");
+            b.textContent = text;
+            chatEl.appendChild(b);
+            chatEl.scrollTop = chatEl.scrollHeight;
+            return b;
+          }
+
+          clearBtn.addEventListener("click", function () {
+            if (busy) return;
+            messages = [];
+            attached = [];
+            renderChips();
+            inputEl.value = "";
+            chatEl.innerHTML =
+              '<div class="fc-msg empty">대화를 초기화했습니다. 새로 시작하세요.</div>';
+            inputEl.focus();
+          });
+
+          async function send() {
+            if (busy) return;
+            var text = inputEl.value.trim();
+            if (!text && !attached.length) return;
+            busy = true;
+            sendBtn.disabled = true;
+            sendBtn.textContent = "...";
+
+            var shownUser =
+              text || "(첨부 파일 " + attached.length + "개)";
+            addBubble("user", shownUser);
+            inputEl.value = "";
+
+            var fd = new FormData();
+            fd.append("messages", JSON.stringify(messages.slice(-10)));
+            fd.append("message", text);
+            fd.append("model", modelSel.value);
+            attached.forEach(function (f) {
+              fd.append("files", f, f.name);
+            });
+
+            var aiBubble = addBubble("ai", "");
+            aiBubble.textContent = "…";
+            var acc = "";
+            try {
+              var resp = await fetch("/api/filechat", {
+                method: "POST",
+                body: fd,
+              });
+              if (!resp.ok || !resp.body) {
+                var err = await resp.json().catch(function () {
+                  return {};
+                });
+                aiBubble.textContent =
+                  "오류: " + (err.error || "응답을 받지 못했습니다.");
+                throw new Error(err.error || "request failed");
+              }
+              var reader = resp.body.getReader();
+              var dec = new TextDecoder();
+              while (true) {
+                var r = await reader.read();
+                if (r.done) break;
+                acc += dec.decode(r.value, { stream: true });
+                aiBubble.textContent = acc;
+                chatEl.scrollTop = chatEl.scrollHeight;
+              }
+              if (!acc) aiBubble.textContent = "(빈 응답)";
+              // 히스토리에 반영(텍스트만)
+              messages.push({ role: "user", content: shownUser });
+              messages.push({ role: "assistant", content: acc || "" });
+            } catch (e) {
+              if (!acc && aiBubble.textContent === "…")
+                aiBubble.textContent = "오류가 발생했습니다. 다시 시도해 주세요.";
+            } finally {
+              busy = false;
+              sendBtn.disabled = false;
+              sendBtn.textContent = "보내기";
+            }
+          }
+
+          sendBtn.addEventListener("click", send);
+          inputEl.addEventListener("keydown", function (e) {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              send();
+            }
+          });
+        }
+      })();
+    </script>
+
+  </body>
+</html>

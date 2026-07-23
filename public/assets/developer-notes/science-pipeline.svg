@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-labelledby="title desc">
+  <title id="title">실험 자료 처리 흐름</title>
+  <desc id="desc">실험 도구, 그래프, 표가 보고서로 이어지는 과학 문서 처리 흐름</desc>
+  <defs><linearGradient id="bg" x1="0" x2="1" y2="1"><stop stop-color="#091b38"/><stop offset=".55" stop-color="#123a70"/><stop offset="1" stop-color="#0b675f"/></linearGradient></defs>
+  <rect width="1200" height="675" rx="34" fill="url(#bg)"/>
+  <g fill="none" stroke="#d7ebff" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M195 135v122l-86 177c-25 51 12 111 69 111h197c57 0 94-60 69-111l-86-177V135" stroke-width="12"/><path d="M164 135h225M149 391h254" stroke-width="12"/><path d="M166 442c49-29 78 24 126-6s80 19 119-7" stroke="#68dbcb" stroke-width="9"/>
+    <rect x="513" y="118" width="252" height="430" rx="28" stroke-width="6"/><path d="M553 196h170M553 254h170M553 312h170M553 370h170M553 428h170M610 169v318M667 169v318" stroke-width="3" opacity=".55"/>
+    <rect x="842" y="118" width="266" height="430" rx="28" stroke-width="6"/><path d="M887 469V341l52-68 45 35 72-112" stroke="#68dbcb" stroke-width="8"/><path d="M887 469h170M887 196v273" stroke-width="4" opacity=".55"/>
+  </g>
+  <g fill="#fff"><circle cx="108" cy="455" r="7"/><circle cx="164" cy="475" r="10"/><circle cx="221" cy="447" r="6"/></g>
+</svg>

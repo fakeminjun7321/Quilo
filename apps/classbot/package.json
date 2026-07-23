@@ -1,0 +1,42 @@
+{
+  "name": "quilo-schedule",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Quilo 2학년 4반 시간표 및 카카오톡 알림 서비스",
+  "scripts": {
+    "dev": "concurrently -k \"npm:dev:server\" \"npm:dev:web\"",
+    "dev:server": "node --watch server/index.js",
+    "dev:web": "vite",
+    "build": "vite build",
+    "start": "node server/index.js",
+    "test": "node --test",
+    "check": "npm run test && npm run build",
+    "preflight": "node scripts/preflight.js",
+    "preflight:production": "NODE_ENV=production node scripts/preflight.js",
+    "smoke": "node scripts/smoke.js",
+    "cron:notifications": "node scripts/run-notification-cron.js",
+    "release:check": "npm run check && npm run preflight && npm audit --omit=dev"
+  },
+  "engines": {
+    "node": ">=20.0.0 <25"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.57.4",
+    "cookie-session": "^2.1.1",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "helmet": "^8.1.0",
+    "lucide-react": "^0.468.0",
+    "multer": "^2.0.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.4.1",
+    "concurrently": "^9.2.1",
+    "express4": "npm:express@^4.22.2",
+    "supertest": "^7.1.4",
+    "vite": "^6.1.0"
+  }
+}

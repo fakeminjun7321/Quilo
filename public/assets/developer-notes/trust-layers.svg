@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 760" role="img" aria-labelledby="title desc">
+  <title id="title">Quilo 신뢰성 계층</title><desc id="desc">사용자 경험부터 권한, 데이터, 생성, 문서 검증까지 이어지는 다섯 계층</desc>
+  <defs><linearGradient id="bg" x1="0" x2="1"><stop stop-color="#fbfcff"/><stop offset="1" stop-color="#f2f6fc"/></linearGradient><linearGradient id="blue" x1="0" x2="1"><stop stop-color="#155ee8"/><stop offset="1" stop-color="#3485f5"/></linearGradient></defs>
+  <rect width="1440" height="760" rx="34" fill="url(#bg)"/>
+  <g font-family="Pretendard,Apple SD Gothic Neo,Noto Sans KR,sans-serif">
+    <text x="88" y="102" fill="#1763e8" font-size="20" font-weight="800" letter-spacing="2">TRUST BY DESIGN</text>
+    <text x="88" y="160" fill="#0b1930" font-size="46" font-weight="850" letter-spacing="-2">신뢰는 한 기능이 아니라 여러 방어선의 합입니다</text>
+    <text x="88" y="202" fill="#66758b" font-size="21">사용자가 보는 화면부터 최종 파일까지, 실패를 조용히 숨기지 않도록 설계합니다.</text>
+    <g transform="translate(120 278)">
+      <rect x="0" y="0" width="1200" height="74" rx="18" fill="#e8f0ff"/><text x="34" y="46" fill="#155ee8" font-size="21" font-weight="850">01 · 경험</text><text x="250" y="46" fill="#314057" font-size="19">같은 탐색 · 진행 상태 · 복구 가능한 작업 · 명확한 오류</text>
+      <rect x="70" y="86" width="1060" height="74" rx="18" fill="#dce9ff"/><text x="104" y="132" fill="#155ee8" font-size="21" font-weight="850">02 · 권한</text><text x="320" y="132" fill="#314057" font-size="19">학생 · 스탭 · Quilo 개발자 · 관리자 역할 분리</text>
+      <rect x="140" y="172" width="920" height="74" rx="18" fill="#cfe1ff"/><text x="174" y="218" fill="#155ee8" font-size="21" font-weight="850">03 · 데이터</text><text x="390" y="218" fill="#314057" font-size="19">업로드 원본 우선 · 수치 충돌 검출 · 개인정보 최소화</text>
+      <rect x="210" y="258" width="780" height="74" rx="18" fill="url(#blue)"/><text x="244" y="304" fill="#fff" font-size="21" font-weight="850">04 · 생성</text><text x="460" y="304" fill="#e8f1ff" font-size="19">모델 화이트리스트 · 비용 한도 · 구조화 출력</text>
+      <rect x="280" y="344" width="640" height="74" rx="18" fill="#0d3f9d"/><text x="314" y="390" fill="#fff" font-size="21" font-weight="850">05 · 문서</text><text x="530" y="390" fill="#d6e5ff" font-size="19">수식 · 표 · 이미지 · 파일 열림 검증</text>
+    </g>
+    <text x="720" y="728" text-anchor="middle" fill="#65748a" font-size="18">어느 한 계층이 실패하면 최종 결과를 성공으로 가장하지 않습니다.</text>
+  </g>
+</svg>

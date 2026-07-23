@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>새 글 작성 — Quilo</title>
+  <link rel="icon" href="/favicon.png">
+  <script>
+    (function () {
+      try {
+        var theme = localStorage.getItem("theme");
+        if (!theme) theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", theme);
+      } catch (_) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="/ui/foundation.css">
+  <link rel="stylesheet" href="/ui/shell.css">
+  <link rel="stylesheet" href="/ui/editorial.css">
+</head>
+<body data-editorial-page="write" class="q-shell-page editorial-page ed-writing-page">
+  <a class="ui-skip-link" href="#editorTitle">제목으로 건너뛰기</a>
+  <header class="ui-site-header" data-ui-shell></header>
+  <div class="ed-editor-header" role="toolbar" aria-label="글 저장 및 발행">
+    <div class="ed-editor-header__left">
+      <a class="ed-editor-back" href="/developer-notes.html" id="leaveEditor" aria-label="목록으로 돌아가기"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg></a><strong id="editorKindLabel">개발 노트</strong>
+    </div>
+    <div class="ed-save-state" id="saveState" role="status" aria-live="polite"><i></i><span>새 글</span></div>
+    <div class="ed-editor-actions">
+      <button type="button" class="ed-text-button" id="previewButton">미리보기</button>
+      <button type="button" class="ed-secondary-button" id="saveDraftButton">초안 저장</button>
+      <button type="button" class="ed-primary-action" id="publishButton">발행</button>
+      <button class="ed-editor-more" type="button" aria-label="문서 메뉴" aria-expanded="false" data-editor-more><span></span><span></span><span></span></button>
+    </div>
+    <div class="ed-editor-menu" data-editor-menu hidden><button type="button" id="discardLocal">로컬 임시 저장 삭제</button></div>
+  </div>
+
+  <main class="ed-editor-shell" id="editorShell" aria-label="글 작성" hidden>
+    <section class="ed-document-column" aria-label="글 편집">
+      <div id="recoveryNotice" class="ed-recovery" hidden><div><strong>작성 중이던 글이 있습니다</strong><span id="recoveryTime"></span></div><button type="button" data-recover>복구</button><button type="button" data-dismiss-recovery>삭제</button></div>
+      <div class="ed-cover-editor" id="coverEditor">
+        <input id="coverFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+        <button type="button" id="coverButton"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="8.5" cy="10" r="1.5"></circle><path d="m5 17 5-5 3 3 2-2 4 4"></path></svg><span>커버 이미지 추가</span></button>
+        <figure hidden><img src="/favicon.png" alt="글 커버 미리보기"><div><button type="button" data-change-cover>교체</button><button type="button" data-remove-cover>삭제</button></div></figure>
+        <div class="ed-cover-progress" hidden><span></span></div>
+      </div>
+      <input id="editorTitle" class="ed-title-input" type="text" maxlength="140" placeholder="제목을 입력하세요" aria-label="글 제목">
+      <textarea id="editorSummary" class="ed-summary-input" maxlength="320" rows="2" placeholder="목록에 표시할 짧은 소개를 입력하세요" aria-label="글 소개"></textarea>
+
+      <div class="ed-editor-toolbar" role="toolbar" aria-label="글 서식 도구" id="editorToolbar">
+        <select data-format-block aria-label="제목 단계" title="문단 형식"><option value="p">본문</option><option value="h2">제목 2</option><option value="h3">제목 3</option><option value="h4">제목 4</option></select>
+        <select data-font-name aria-label="글꼴" title="글꼴"><option value="inherit">기본 글꼴</option><option value="Pretendard">Pretendard</option><option value="Nanum Gothic">나눔고딕</option><option value="Nanum Myeongjo">나눔명조</option><option value="monospace">고정폭</option></select>
+        <select data-font-size aria-label="글자 크기" title="글자 크기"><option value="3">16</option><option value="2">14</option><option value="4">18</option><option value="5">24</option><option value="6">32</option></select>
+        <span class="ed-tool-divider"></span>
+        <button type="button" data-command="bold" aria-label="굵게" title="굵게 (⌘B)"><b>B</b></button>
+        <button type="button" data-command="italic" aria-label="기울임" title="기울임 (⌘I)"><i>I</i></button>
+        <button type="button" data-command="underline" aria-label="밑줄" title="밑줄 (⌘U)"><u>U</u></button>
+        <button type="button" data-command="strikeThrough" aria-label="취소선" title="취소선"><s>S</s></button>
+        <label class="ed-color-tool" aria-label="글자색" title="글자색"><span>A</span><input type="color" value="#0a1730" data-fore-color></label>
+        <label class="ed-color-tool ed-highlight-tool" aria-label="형광펜" title="형광펜"><span>A</span><input type="color" value="#fff0a6" data-back-color></label>
+        <span class="ed-tool-divider"></span>
+        <button type="button" data-command="justifyLeft" aria-label="왼쪽 정렬" title="왼쪽 정렬"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 10h11M4 14h16M4 18h9"></path></svg></button>
+        <button type="button" data-command="justifyCenter" aria-label="가운데 정렬" title="가운데 정렬"><svg viewBox="0 0 24 24"><path d="M4 6h16M7 10h10M4 14h16M7 18h10"></path></svg></button>
+        <button type="button" data-command="justifyRight" aria-label="오른쪽 정렬" title="오른쪽 정렬"><svg viewBox="0 0 24 24"><path d="M4 6h16M9 10h11M4 14h16M11 18h9"></path></svg></button>
+        <button type="button" data-command="insertUnorderedList" aria-label="글머리표" title="글머리표"><svg viewBox="0 0 24 24"><circle cx="5" cy="7" r="1"></circle><circle cx="5" cy="12" r="1"></circle><circle cx="5" cy="17" r="1"></circle><path d="M9 7h11M9 12h11M9 17h11"></path></svg></button>
+        <button type="button" data-command="insertOrderedList" aria-label="번호 목록" title="번호 목록"><svg viewBox="0 0 24 24"><path d="M4 7h1V4M3.5 12h2L4 14h2M3.5 18h2.5M9 7h11M9 12h11M9 17h11"></path></svg></button>
+        <span class="ed-tool-divider"></span>
+        <button type="button" data-block="blockquote" aria-label="인용문" title="인용문"><svg viewBox="0 0 24 24"><path d="M5 7h5v5H7c0 2 1 3 3 4M14 7h5v5h-3c0 2 1 3 3 4"></path></svg></button>
+        <button type="button" data-block="pre" aria-label="코드 블록" title="코드 블록"><svg viewBox="0 0 24 24"><path d="m8 7-5 5 5 5M16 7l5 5-5 5M14 4l-4 16"></path></svg></button>
+        <button type="button" data-create-link aria-label="링크" title="링크 (⌘K)"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1-1"></path></svg></button>
+        <button type="button" data-insert-hr aria-label="구분선" title="구분선"><svg viewBox="0 0 24 24"><path d="M3 12h18"></path></svg></button>
+        <button type="button" data-insert-table aria-label="표" title="표 삽입"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="1"></rect><path d="M3 9h18M3 14h18M9 4v16M15 4v16"></path></svg></button>
+        <button type="button" data-emoji aria-label="이모지" title="이모지">☺</button>
+        <button type="button" data-upload-image aria-label="이미지 삽입" title="이미지 삽입"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="8" cy="10" r="1"></circle><path d="m4 17 5-5 4 4 2-2 5 5"></path></svg></button>
+        <button type="button" data-upload-file aria-label="파일 첨부" title="파일 첨부"><svg viewBox="0 0 24 24"><path d="m8 12 5-5a3 3 0 0 1 4 4l-7 7a5 5 0 0 1-7-7l8-8"></path></svg></button>
+        <span class="ed-tool-divider"></span>
+        <button type="button" data-command="undo" aria-label="실행 취소" title="실행 취소"><svg viewBox="0 0 24 24"><path d="M9 7 4 12l5 5M5 12h8a6 6 0 0 1 6 6"></path></svg></button>
+        <button type="button" data-command="redo" aria-label="다시 실행" title="다시 실행"><svg viewBox="0 0 24 24"><path d="m15 7 5 5-5 5M19 12h-8a6 6 0 0 0-6 6"></path></svg></button>
+        <button type="button" data-command="removeFormat" aria-label="서식 지우기" title="서식 지우기"><svg viewBox="0 0 24 24"><path d="m4 20 16-16M7 6h9M11 6l-3 8M5 18h10"></path></svg></button>
+      </div>
+      <input id="inlineImageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
+      <input id="attachmentFile" type="file" multiple hidden>
+      <!-- [html-validate-disable-next prefer-native-element] -->
+      <div id="editorBody" class="ed-rich-editor" contenteditable="true" role="textbox" aria-multiline="true" aria-label="글 본문" data-placeholder="내용을 입력하세요. 슬래시 없이도 도구막대를 사용할 수 있습니다."><p><br></p></div>
+      <div class="ed-editor-count"><span id="wordCount">0자 · 0단어</span><span>자동 저장됨</span></div>
+    </section>
+
+    <aside class="ed-publish-rail" aria-label="글 설정">
+      <div class="ed-rail-section"><h2>발행 설정</h2><label for="kindSelect">공간</label><select id="kindSelect"><option value="developer">개발 노트</option><option value="resource">자료실</option></select></div>
+      <div class="ed-rail-section"><label for="categorySelect">카테고리</label><select id="categorySelect"><option value="Quilo 활용">Quilo 활용</option><option value="개발">개발</option><option value="보고서 작성">보고서 작성</option><option value="새 소식">새 소식</option></select></div>
+      <div class="ed-rail-section"><label for="tagInput">태그</label><input id="tagInput" type="text" maxlength="160" placeholder="쉼표로 구분"><small>최대 8개까지 입력할 수 있습니다.</small><div id="tagSuggestions" class="ed-tag-suggestions" role="group" aria-label="추천 주제"></div></div>
+      <div class="ed-rail-section"><label for="slugInput">고유 주소</label><div class="ed-slug-field"><span>/</span><input id="slugInput" type="text" maxlength="100" placeholder="자동 생성"></div></div>
+      <div class="ed-rail-section"><div class="ed-rail-heading"><h2>첨부 파일</h2><button type="button" data-upload-file>추가</button></div><div id="uploadStatus" class="ed-upload-status" role="status" aria-live="polite"></div><div id="attachmentList" class="ed-editor-attachments"><p>첨부된 파일이 없습니다.</p></div></div>
+      <div class="ed-rail-section" data-taxonomy-admin-section hidden><button class="ed-taxonomy-manage-trigger ed-taxonomy-manage-trigger--rail" type="button" data-manage-taxonomies data-taxonomy-kind="developer">분류와 주제 관리</button></div>
+      <div class="ed-rail-section ed-danger-zone" id="editorDangerZone" hidden><button type="button" id="deletePostButton">이 글 삭제</button></div>
+    </aside>
+  </main>
+
+  <section id="editorDenied" class="ed-denied" hidden><span>권한 확인</span><h1>글쓰기 권한이 필요합니다</h1><p>개발 노트는 Quilo 개발자, 자료실은 스탭과 관리자만 작성할 수 있습니다.</p><a href="/developer-notes.html">개발 노트로 돌아가기</a></section>
+
+  <dialog id="previewDialog" class="ed-preview-dialog"><div class="ed-dialog-header"><strong>글 미리보기</strong><button type="button" data-close-dialog aria-label="미리보기 닫기">×</button></div><article><p class="ed-article-category" data-preview-category></p><h1 data-preview-title>제목 없음</h1><p class="ed-article-summary" data-preview-summary></p><div class="ed-rich-body" data-preview-body></div></article></dialog>
+  <dialog id="tableDialog" class="ed-small-dialog"><form method="dialog"><h2>표 삽입</h2><label>행 수<input id="tableRows" type="number" min="1" max="20" value="3"></label><label>열 수<input id="tableCols" type="number" min="1" max="10" value="3"></label><div><button type="button" value="cancel" data-close-table>취소</button><button type="submit" value="default" id="insertTableConfirm">삽입</button></div></form></dialog>
+  <div id="emojiPopover" class="ed-emoji-popover" hidden role="dialog" aria-label="이모지 선택"></div>
+  <footer class="ui-site-footer"></footer>
+  <div id="editorialToast" class="ed-toast" role="status" aria-live="polite" hidden></div>
+  <script src="/ui/shell.js"></script>
+  <script src="/ui/editorial.js" defer></script>
+  <script src="/ui/rich-editor.js" defer></script>
+</body>
+</html>

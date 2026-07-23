@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 760" role="img" aria-labelledby="title desc">
+  <title id="title">Quilo 워크스페이스 지도</title><desc id="desc">제품, 학습, 창작, 개발자, 리소스, 지원 영역이 공통 셸로 연결된 구조</desc>
+  <defs><radialGradient id="bg"><stop stop-color="#153b77"/><stop offset="1" stop-color="#071322"/></radialGradient><filter id="glow"><feGaussianBlur stdDeviation="10" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+  <rect width="1440" height="760" rx="34" fill="url(#bg)"/>
+  <g font-family="Pretendard,Apple SD Gothic Neo,Noto Sans KR,sans-serif">
+    <text x="82" y="98" fill="#8eb8ff" font-size="20" font-weight="800" letter-spacing="2">ONE WORKSPACE · ONE SHELL</text>
+    <text x="82" y="156" fill="#fff" font-size="46" font-weight="850" letter-spacing="-2">기능은 많아져도 사용자는 한 사이트를 경험해야 합니다</text>
+    <text x="82" y="200" fill="#b7c9e4" font-size="21">공통 상단 탐색, 계정 상태, 정책, 서비스 상태를 모든 공개 화면에서 같은 방식으로 제공합니다.</text>
+    <g stroke="#79a7ef" stroke-opacity=".5" stroke-width="2"><path d="M720 410 300 300"/><path d="M720 410 1135 300"/><path d="M720 410 285 550"/><path d="M720 410 1150 550"/><path d="M720 410 720 625"/></g>
+    <g filter="url(#glow)"><rect x="572" y="330" width="296" height="160" rx="36" fill="#155be7"/><rect x="591" y="349" width="70" height="70" rx="20" fill="#fff" fill-opacity=".95"/><text x="612" y="400" fill="#155be7" font-size="41" font-weight="900">Q</text><text x="681" y="392" fill="#fff" font-size="36" font-weight="900">Quilo</text><text x="681" y="423" fill="#d7e5ff" font-size="17">공통 탐색 · 계정 · 상태 · 정책</text><text x="681" y="452" fill="#d7e5ff" font-size="17">일관된 Workspace Shell</text></g>
+    <g fill="#fff" font-size="18">
+      <g transform="translate(138 245)"><rect width="324" height="112" rx="22" fill="#fff" fill-opacity=".09" stroke="#8db5f3" stroke-opacity=".45"/><text x="26" y="44" font-size="22" font-weight="800">제품</text><text x="26" y="78" fill="#b7c9e4">보고서 · 문제집 · 번역 · 도구</text></g>
+      <g transform="translate(978 245)"><rect width="324" height="112" rx="22" fill="#fff" fill-opacity=".09" stroke="#8db5f3" stroke-opacity=".45"/><text x="26" y="44" font-size="22" font-weight="800">학습과 창작</text><text x="26" y="78" fill="#b7c9e4">수행평가 · 스튜디오 · Quilo Code</text></g>
+      <g transform="translate(122 500)"><rect width="324" height="112" rx="22" fill="#fff" fill-opacity=".09" stroke="#8db5f3" stroke-opacity=".45"/><text x="26" y="44" font-size="22" font-weight="800">개발자</text><text x="26" y="78" fill="#b7c9e4">API · SDK · MCP · 기능 카탈로그</text></g>
+      <g transform="translate(994 500)"><rect width="324" height="112" rx="22" fill="#fff" fill-opacity=".09" stroke="#8db5f3" stroke-opacity=".45"/><text x="26" y="44" font-size="22" font-weight="800">리소스</text><text x="26" y="78" fill="#b7c9e4">개발 노트 · 자료실 · 업데이트</text></g>
+      <g transform="translate(558 598)"><rect width="324" height="96" rx="22" fill="#4bd2b1" fill-opacity=".12" stroke="#61dec0" stroke-opacity=".6"/><text x="26" y="41" font-size="22" font-weight="800">고객지원</text><text x="26" y="72" fill="#bceee3">FAQ · 버그 · 기능 제안 · 학교 도입</text></g>
+    </g>
+  </g>
+</svg>

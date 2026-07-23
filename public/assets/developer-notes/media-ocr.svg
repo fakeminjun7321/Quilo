@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-labelledby="title desc">
+  <title id="title">이미지와 OCR 처리</title>
+  <desc id="desc">스캔 이미지에서 글자와 표, 그림 영역을 읽어 문서 요소로 나누는 장면</desc>
+  <defs><linearGradient id="bg" x1="0" y1="1" x2="1"><stop stop-color="#0b1a32"/><stop offset="1" stop-color="#213f72"/></linearGradient></defs>
+  <rect width="1200" height="675" rx="34" fill="url(#bg)"/>
+  <rect x="126" y="82" width="454" height="511" rx="28" fill="#fff"/>
+  <g fill="none" stroke="#a6bad8" stroke-width="5" stroke-linecap="round"><path d="M187 164h260M187 207h326M187 250h288"/><rect x="187" y="312" width="326" height="174" rx="8"/><path d="M187 370h326M295 312v174M404 312v174" stroke-width="3"/></g>
+  <g fill="none" stroke="#5fa1ff" stroke-width="8" stroke-linecap="round"><path d="M96 157v-48h48M562 109h48v48M96 518v48h48M610 518v48h-48"/></g>
+  <path d="M657 337h118" stroke="#7fafef" stroke-width="5" stroke-linecap="round"/><path d="m749 315 26 22-26 22" fill="none" stroke="#7fafef" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <g fill="#fff" fill-opacity=".08" stroke="#b9d4ff" stroke-opacity=".42"><rect x="813" y="102" width="274" height="142" rx="25"/><rect x="813" y="267" width="274" height="142" rx="25"/><rect x="813" y="432" width="274" height="142" rx="25"/></g>
+  <g fill="none" stroke="#d5e5ff" stroke-width="8" stroke-linecap="round"><path d="M859 150h180M859 180h135M859 210h160"/><path d="M859 309h180v58H859zM919 309v58M979 309v58"/><rect x="859" y="472" width="180" height="62" rx="8"/><circle cx="893" cy="499" r="11"/><path d="m861 530 48-39 31 26 22-18 74 34"/></g>
+</svg>

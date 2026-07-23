@@ -1,0 +1,108 @@
+{
+  "__meta": {
+    "id": "fixture-form-maker",
+    "type": "form-maker",
+    "synthetic": true,
+    "render": {
+      "studentId": "0000",
+      "studentName": "",
+      "temperature": "",
+      "pressure": "",
+      "date": "2026-01-15"
+    },
+    "expect": {
+      "docxIncludes": [
+        "실험 안전 점검표",
+        "보호 장구",
+        "P = F/A"
+      ],
+      "docxMinMedia": 1
+    },
+    "sidecar": "form-maker.bin"
+  },
+  "content": {
+    "doc_type": "양식",
+    "title": "실험 안전 점검표",
+    "title_size": 20,
+    "meta": {
+      "field": "공용 실험실",
+      "authors": [],
+      "keywords": [
+        "안전",
+        "점검"
+      ]
+    },
+    "page": {
+      "border": false,
+      "max_pages": 1
+    },
+    "blocks": [
+      {
+        "type": "heading",
+        "level": 1,
+        "text": "1. 점검 항목"
+      },
+      {
+        "type": "paragraph",
+        "text": "실험 전 보호 장구 착용 여부를 확인하고 결과를 아래 표에 기록한다. 압력 계산은 P = F/A 를 사용한다.",
+        "align": "justify"
+      },
+      {
+        "type": "table",
+        "headers": [
+          "항목",
+          "상태",
+          "비고"
+        ],
+        "rows": [
+          [
+            "보안경",
+            "양호",
+            ""
+          ],
+          [
+            "실험복",
+            "양호",
+            ""
+          ],
+          [
+            "환기 장치",
+            "점검 필요",
+            "필터 교체 예정"
+          ]
+        ],
+        "caption": "[표 1] 안전 점검 결과"
+      },
+      {
+        "type": "figure",
+        "photo_indices": [
+          0
+        ],
+        "caption": "점검 구역 배치"
+      },
+      {
+        "type": "summary_box",
+        "label": "요약",
+        "body": [
+          "모든 항목을 점검한 뒤 서명한다."
+        ]
+      },
+      {
+        "type": "spacer",
+        "lines": 1
+      }
+    ],
+    "date": "2026-01-15",
+    "$hidden$": {
+      "__photos": [
+        {
+          "buffer": {
+            "$bin$": "b0001.bin"
+          },
+          "name": "setup.png",
+          "mimetype": "image/png"
+        }
+      ]
+    }
+  }
+}

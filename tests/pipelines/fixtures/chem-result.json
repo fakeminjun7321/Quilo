@@ -1,0 +1,178 @@
+{
+  "__meta": {
+    "id": "fixture-chem-result",
+    "type": "chem-result",
+    "synthetic": true,
+    "render": {
+      "studentId": "0000",
+      "studentName": "",
+      "temperature": "",
+      "pressure": "",
+      "date": "2026-01-15"
+    },
+    "expect": {
+      "docxIncludes": [
+        "냉각 곡선 측정",
+        "Cooling Curve",
+        "과냉각"
+      ],
+      "docxMinMedia": 2,
+      "hwpxIncludes": [
+        "냉각 곡선"
+      ],
+      "hwpxMinBinData": 2
+    },
+    "sidecar": "chem-result.bin"
+  },
+  "content": {
+    "title_kr": "어는점 내림 측정",
+    "title_en": "Freezing Point Depression",
+    "date": "2026-01-15",
+    "conditions": {
+      "temperature": "23.5",
+      "pressure": "1.0"
+    },
+    "purpose": [],
+    "theory": [],
+    "apparatus": [],
+    "chemicals": [],
+    "procedure": [],
+    "data": {
+      "summary": "용매와 용액의 냉각 곡선을 비교하여 어는점 내림을 측정하였다.",
+      "experiments": [
+        {
+          "name": "냉각 곡선 측정",
+          "table": {
+            "headers": [
+              "시간 (s)",
+              "용매 온도 (C)",
+              "용액 온도 (C)"
+            ],
+            "rows": [
+              [
+                "0",
+                "25.0",
+                "25.1"
+              ],
+              [
+                "60",
+                "10.2",
+                "8.9"
+              ],
+              [
+                "120",
+                "5.5",
+                "3.1"
+              ],
+              [
+                "180",
+                "5.5",
+                "2.9"
+              ]
+            ]
+          },
+          "stats": [
+            {
+              "label": "어는점 내림",
+              "value": "2.4 C"
+            }
+          ],
+          "photo_indices": [
+            0
+          ],
+          "photo_captions": [
+            "냉각 장치 구성"
+          ]
+        }
+      ],
+      "summary_table": {
+        "headers": [
+          "항목",
+          "값"
+        ],
+        "rows": [
+          [
+            "용매 어는점",
+            "5.5 C"
+          ],
+          [
+            "용액 어는점",
+            "3.1 C"
+          ]
+        ]
+      },
+      "charts": [
+        {
+          "title": "Cooling Curve",
+          "type": "line",
+          "x_label": "Time (s)",
+          "y_label": "Temperature (C)",
+          "x_values": [
+            0,
+            60,
+            120,
+            180
+          ],
+          "series": [
+            {
+              "label": "Solvent",
+              "values": [
+                25,
+                10.2,
+                5.5,
+                5.5
+              ]
+            },
+            {
+              "label": "Solution",
+              "values": [
+                25.1,
+                8.9,
+                3.1,
+                2.9
+              ]
+            }
+          ],
+          "caption": "용매와 용액의 냉각 곡선 비교",
+          "$hidden$": {
+            "pngBuffer": {
+              "$bin$": "b0002.bin"
+            }
+          }
+        }
+      ]
+    },
+    "discussion": {
+      "analysis": [
+        "용액의 냉각 곡선은 용매보다 낮은 온도에서 평탄 구간이 나타났다.",
+        "어는점 내림은 용질 입자 수에 비례하며 {{EQ:Delta T_f = K_f m}} 관계를 따른다."
+      ],
+      "errors": [
+        "과냉각으로 어는점이 실제보다 낮게 관측될 수 있다."
+      ],
+      "improvements": [
+        "교반 속도를 일정하게 유지한다."
+      ]
+    },
+    "references": [
+      "일반화학실험 표준 교재"
+    ],
+    "pcei": {
+      "perception": "용액의 평탄 구간 온도가 용매보다 낮았다.",
+      "curiosity": "농도를 높이면 내림 폭이 비례하는지 궁금했다.",
+      "exploration": "농도 두 조건에서 반복 측정을 계획했다.",
+      "insight": "어는점 내림은 총괄성임을 확인했다."
+    },
+    "$hidden$": {
+      "__photos": [
+        {
+          "buffer": {
+            "$bin$": "b0001.bin"
+          },
+          "name": "setup.png",
+          "mimetype": "image/png"
+        }
+      ]
+    }
+  }
+}

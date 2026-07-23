@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Quilo를 더 깊이 쓰는 방법과 개발 과정의 기록을 확인하세요.">
+  <title>개발 노트 — Quilo</title>
+  <link rel="icon" href="/favicon.png">
+  <script>
+    (function () {
+      try {
+        var theme = localStorage.getItem("theme");
+        if (!theme) theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", theme);
+      } catch (_) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="/ui/foundation.css">
+  <link rel="stylesheet" href="/ui/shell.css">
+  <link rel="stylesheet" href="/ui/editorial.css">
+</head>
+<body class="q-shell-page editorial-page" data-editorial-page="notes">
+  <a class="ui-skip-link" href="#mainContent">본문으로 건너뛰기</a>
+  <header class="ui-site-header" data-ui-shell></header>
+
+  <nav class="ed-section-nav" aria-label="에디토리얼 메뉴">
+    <div class="ed-section-nav__inner">
+      <div class="ed-section-nav__links">
+        <a class="is-current" aria-current="page" href="/developer-notes.html">개발 노트</a>
+        <a href="/resources.html">자료실</a>
+        <a href="/changelog.html">업데이트</a>
+      </div>
+      <div class="ed-section-nav__actions">
+        <button class="ed-taxonomy-manage-trigger" type="button" data-manage-taxonomies data-taxonomy-kind="developer" hidden>분류 관리</button>
+        <a class="ed-primary-action" href="/editorial-write.html" data-write-action hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z"></path><path d="m13.5 6.5 4 4"></path></svg>글쓰기
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <main id="mainContent" class="ed-main">
+    <section class="ed-hero ed-container" aria-labelledby="pageTitle">
+      <div>
+        <h1 id="pageTitle">개발 노트</h1>
+        <p>기능을 왜 만들었고 어디서 문제가 생겼는지, 실제 코드와 검증 결과를 바탕으로 적습니다. 짧은 소개보다 구현 과정과 판단 근거를 충분히 남기는 공간입니다.</p>
+      </div>
+      <label class="ed-search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg>
+        <input id="postSearch" type="search" placeholder="제목, 내용, 태그 검색" autocomplete="off">
+        <kbd>/</kbd>
+      </label>
+    </section>
+
+    <section class="ed-container" aria-label="개발 노트 탐색">
+      <div class="ed-category-tabs" role="group" aria-label="카테고리" data-category-tabs>
+        <button type="button" class="is-active" data-category="">전체</button>
+        <button type="button" data-category="Quilo 활용">Quilo 활용</button>
+        <button type="button" data-category="개발">개발</button>
+        <button type="button" data-category="보고서 작성">보고서 작성</button>
+        <button type="button" data-category="새 소식">새 소식</button>
+      </div>
+
+      <div id="notesStatus" class="ed-inline-status" role="status" aria-live="polite">개발 노트를 불러오는 중입니다.</div>
+      <section id="featuredPost" class="ed-featured" aria-label="추천 글" hidden></section>
+
+      <div class="ed-content-grid">
+        <aside class="ed-topic-rail" aria-label="주제별 글">
+          <h2>주제</h2>
+          <div data-topic-list></div>
+          <button class="ed-topic-bookmark" type="button" data-bookmark-filter>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4V3Z"></path></svg>북마크
+          </button>
+        </aside>
+        <section class="ed-post-stream" aria-labelledby="latestTitle">
+          <div class="ed-stream-heading">
+            <h2 id="latestTitle">최신 글</h2>
+            <label>정렬
+              <select id="postSort"><option value="latest">최신순</option><option value="oldest">오래된순</option><option value="title">제목순</option></select>
+            </label>
+          </div>
+          <div id="postList" class="ed-post-list" aria-live="polite"></div>
+          <button id="loadMore" class="ed-load-more" type="button" hidden>더 보기<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"></path></svg></button>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <footer class="ui-site-footer"></footer>
+  <div id="editorialToast" class="ed-toast" role="status" aria-live="polite" hidden></div>
+  <script src="/ui/shell.js"></script>
+  <script src="/ui/editorial.js" defer></script>
+</body>
+</html>

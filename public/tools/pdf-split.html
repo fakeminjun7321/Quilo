@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="canonical" href="https://quilolab.com/tools/pdf-split.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PDF 분할 — 보고서 도구</title>
+    <meta name="description" content="PDF를 N쪽 단위 또는 원하는 페이지 범위로 여러 파일로 나누는 브라우저 도구. 업로드 없이 기기 안에서 처리." />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("theme");
+          if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          document.documentElement.setAttribute("data-theme", t);
+          if (new URLSearchParams(location.search).has("embed"))
+            document.documentElement.classList.add("embed");
+        } catch (e) {}
+      })();
+    </script>
+
+    <link rel="stylesheet" href="/ui/foundation.css" />
+    <link rel="stylesheet" href="/ui/shell.css" />
+    <link rel="stylesheet" href="/ui/pages.css" />
+    <link rel="stylesheet" href="/ui/tool-shell.css" />
+  </head>
+  <body class="landing q-shell-page ui-page">
+    <div class="landing-bg" aria-hidden="true"></div>
+    <a class="ui-skip-link" href="#main-content">본문으로 건너뛰기</a>
+    <header class="ui-site-header" data-ui-shell></header>
+
+    <main class="landing-shell" id="main-content">
+      <section class="section ui-inline-tools-pdf-split-1">
+        <div class="tool-page-head">
+          <h1>PDF 분할</h1>
+          <p>PDF를 여러 파일로 나눕니다. 모든 처리는 브라우저 안에서만 이뤄지고 파일은 서버로 전송되지 않습니다.</p>
+        </div>
+
+        <div class="tool-card">
+          <div id="psDrop" role="button" tabindex="0" class="ui-inline-tools-pdf-split-2" >
+            <div class="ui-inline-tools-pdf-split-3" >PDF 파일을 끌어다 놓기</div>
+            <div class="ui-inline-tools-pdf-split-4" >또는 클릭해서 선택 · 한 개</div>
+          </div>
+          <input type="file" id="psFile" accept="application/pdf,.pdf" class="ui-inline-tools-pdf-split-5" />
+
+          <div id="psInfo" class="ui-inline-tools-pdf-split-6" hidden>
+            <span id="psName" class="ui-inline-tools-pdf-split-7" ></span>
+            <span id="psMeta" class="ui-inline-tools-pdf-split-8" ></span>
+            <button type="button" class="btn-ghost ui-inline-tools-pdf-split-9" id="psClear" title="삭제">✕</button>
+          </div>
+
+          <div class="ui-inline-tools-pdf-split-10" >
+            <fieldset class="ui-inline-tools-pdf-split-11" >
+              <label class="ui-inline-tools-pdf-split-12" >
+                <input type="radio" name="psMode" value="every" id="psModeEvery" checked class="ui-inline-tools-pdf-split-13" />
+                <span>
+                  N쪽마다 자르기
+                  <span class="ui-inline-tools-pdf-split-14" >예: 2 → 2쪽씩 묶어서 여러 파일로 나눕니다.</span>
+                </span>
+              </label>
+              <div class="ui-inline-tools-pdf-split-15" >
+                <label class="tool-label" for="psEvery">쪽 수 <span class="req">*</span></label>
+                <input type="number" id="psEvery" class="tool-input ui-inline-tools-pdf-split-16" min="1" step="1" value="1" />
+              </div>
+            </fieldset>
+
+            <fieldset class="ui-inline-tools-pdf-split-17" >
+              <label class="ui-inline-tools-pdf-split-18" >
+                <input type="radio" name="psMode" value="ranges" id="psModeRanges" class="ui-inline-tools-pdf-split-19" />
+                <span>
+                  페이지 범위로 자르기
+                  <span class="ui-inline-tools-pdf-split-20" >예: 1-3,4-8,9 → 범위마다 파일 하나씩 만듭니다.</span>
+                </span>
+              </label>
+              <div class="ui-inline-tools-pdf-split-21" >
+                <label class="tool-label" for="psRanges">범위 <span class="req">*</span></label>
+                <input type="text" id="psRanges" class="tool-input" placeholder="예: 1-3, 4-8, 9" disabled />
+              </div>
+            </fieldset>
+          </div>
+
+          <div class="actions">
+            <button class="btn-primary" id="psRun" disabled>PDF 나누기</button>
+            <button class="btn-ghost" id="psReset">비우기</button>
+          </div>
+          <div id="psOut" class="tool-result ui-inline-tools-pdf-split-22" hidden>
+            <div class="badge ok ui-inline-tools-pdf-split-23" id="psStat" role="status" aria-live="polite" aria-atomic="true"></div>
+            <a id="psDl" class="btn-lg btn-primary ui-inline-tools-pdf-split-24" download>↓ 결과 내려받기</a>
+          </div>
+          <p class="hint ui-inline-tools-pdf-split-25" id="psMsg" role="status" aria-live="polite" aria-atomic="true"></p>
+        </div>
+      </section>
+    </main>
+    <footer class="ui-site-footer">
+      <div class="ui-site-footer__inner">
+        <nav class="ui-site-footer__links" aria-label="푸터 메뉴"><a href="/terms.html">이용약관</a><a href="/privacy.html">개인정보처리방침</a><a href="/refund.html">환불정책</a><a href="/guide.html">이용 가이드</a><a href="/community.html">커뮤니티</a><a href="https://github.com/fakeminjun7321/Quilo" target="_blank" rel="noopener">GitHub</a></nav>
+        <div class="ui-site-footer__copy">© 2026 Quilo · <span data-site-version>버전 확인 중...</span></div>
+      </div>
+    </footer>
+
+    <script src="/ui/shell.js"></script>
+    <script src="/ui/tool-shell.js"></script>
+    <script>
+      (function () {
+        var drop = document.getElementById("psDrop"), input = document.getElementById("psFile");
+        var info = document.getElementById("psInfo"), nameEl = document.getElementById("psName"), metaEl = document.getElementById("psMeta");
+        var clearBtn = document.getElementById("psClear"), resetBtn = document.getElementById("psReset");
+        var runBtn = document.getElementById("psRun"), out = document.getElementById("psOut"), msg = document.getElementById("psMsg");
+        var modeEvery = document.getElementById("psModeEvery"), modeRanges = document.getElementById("psModeRanges");
+        var everyIn = document.getElementById("psEvery"), rangesIn = document.getElementById("psRanges");
+        var file = null, pageCount = 0, lastUrl = null;
+
+        function fmt(b) { return b < 1024 ? b + " B" : b < 1048576 ? (b / 1024).toFixed(0) + " KB" : (b / 1048576).toFixed(1) + " MB"; }
+        function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+        function baseName(n) { return n.replace(/\.pdf$/i, ""); }
+        function setMsg(html) { msg.innerHTML = html || ""; }
+
+        function syncMode() {
+          var ranges = modeRanges.checked;
+          rangesIn.disabled = !ranges;
+          everyIn.disabled = ranges;
+          out.hidden = true; setMsg("");
+        }
+        modeEvery.addEventListener("change", syncMode);
+        modeRanges.addEventListener("change", syncMode);
+        [everyIn, rangesIn].forEach(function (el) { el.addEventListener("input", function () { out.hidden = true; setMsg(""); }); });
+
+        function reset() {
+          file = null; pageCount = 0; info.hidden = true; out.hidden = true;
+          setMsg(""); runBtn.disabled = true;
+          if (lastUrl) { URL.revokeObjectURL(lastUrl); lastUrl = null; }
+        }
+
+        function setFile(f) {
+          if (!f) return;
+          if (!/\.pdf$/i.test(f.name) && f.type !== "application/pdf") {
+            reset(); setMsg('<span class="error">PDF 파일만 올릴 수 있습니다.</span>'); return;
+          }
+          if (!window.PDFLib) {
+            setMsg("PDF 작업 엔진을 불러오는 중…");
+            window.QuiloToolAssets.load("pdfLib").then(function () { setFile(f); }).catch(function (e) {
+              setMsg('<span class="error">' + esc(e.message || "PDF 작업 엔진을 불러오지 못했습니다.") + "</span>");
+            });
+            return;
+          }
+          file = f; pageCount = 0; out.hidden = true; setMsg("");
+          nameEl.textContent = f.name; metaEl.textContent = fmt(f.size);
+          info.hidden = false; runBtn.disabled = true;
+          (async function () {
+            try {
+              var bytes = await f.arrayBuffer();
+              var doc = await PDFLib.PDFDocument.load(bytes, { ignoreEncryption: true });
+              pageCount = doc.getPageCount();
+              metaEl.textContent = fmt(f.size) + " · " + pageCount + "쪽";
+              runBtn.disabled = false;
+            } catch (e) {
+              reset();
+              setMsg('<span class="error">PDF를 읽지 못했습니다: ' + esc(e.message || "알 수 없는 오류") + " (암호가 걸린 PDF는 처리할 수 없습니다)</span>");
+            }
+          })();
+        }
+
+        drop.addEventListener("click", function () { input.click(); });
+        drop.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); input.click(); } });
+        input.addEventListener("change", function () { if (input.files && input.files[0]) setFile(input.files[0]); input.value = ""; });
+        ["dragover", "dragenter"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add("is-dragging"); }); });
+        ["dragleave", "drop"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove("is-dragging"); }); });
+        drop.addEventListener("drop", function (e) { if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); });
+        clearBtn.addEventListener("click", reset);
+        resetBtn.addEventListener("click", reset);
+
+        // Parse "1-3,4-8,9" into [{from,to,label}] using 1-based inclusive pages, validated against pageCount.
+        function parseRanges(text, total) {
+          var parts = String(text).split(",");
+          var result = [];
+          for (var i = 0; i < parts.length; i++) {
+            var raw = parts[i].trim();
+            if (!raw) continue;
+            var m = raw.match(/^(\d+)\s*-\s*(\d+)$/);
+            var from, to;
+            if (m) { from = parseInt(m[1], 10); to = parseInt(m[2], 10); }
+            else if (/^\d+$/.test(raw)) { from = to = parseInt(raw, 10); }
+            else { throw new Error('범위 형식이 올바르지 않습니다: "' + raw + '"'); }
+            if (from < 1 || to < 1) throw new Error("페이지는 1쪽부터 시작합니다.");
+            if (from > to) throw new Error('범위의 시작이 끝보다 큽니다: "' + raw + '"');
+            if (to > total) throw new Error("문서는 " + total + "쪽까지 있습니다: \"" + raw + "\"");
+            result.push({ from: from, to: to, label: from === to ? String(from) : from + "-" + to });
+          }
+          if (!result.length) throw new Error("자를 범위를 한 개 이상 입력하세요.");
+          return result;
+        }
+
+        // Build chunks of 1-based [from,to] for "every N pages".
+        function everyChunks(n, total) {
+          if (!(n >= 1)) throw new Error("쪽 수는 1 이상의 정수여야 합니다.");
+          var chunks = [];
+          for (var start = 1; start <= total; start += n) {
+            var end = Math.min(start + n - 1, total);
+            chunks.push({ from: start, to: end, label: start === end ? String(start) : start + "-" + end });
+          }
+          return chunks;
+        }
+
+        async function makePart(srcDoc, from, to) {
+          var part = await PDFLib.PDFDocument.create();
+          var idx = [];
+          for (var p = from; p <= to; p++) idx.push(p - 1); // 0-based for pdf-lib
+          var copied = await part.copyPages(srcDoc, idx);
+          copied.forEach(function (pg) { part.addPage(pg); });
+          return await part.save();
+        }
+
+        function triggerDownload(blob, filename, label) {
+          if (lastUrl) URL.revokeObjectURL(lastUrl);
+          lastUrl = URL.createObjectURL(blob);
+          var dl = document.getElementById("psDl");
+          dl.href = lastUrl; dl.download = filename; dl.textContent = label;
+          out.hidden = false;
+        }
+
+        runBtn.addEventListener("click", function () {
+          if (!file || !window.PDFLib) { setMsg(!window.PDFLib ? '<span class="error">PDF 라이브러리를 불러오지 못했습니다.</span>' : ""); return; }
+          setMsg(""); out.hidden = true;
+          runBtn.disabled = true; var label = runBtn.textContent; runBtn.textContent = "나누는 중…";
+          (async function () {
+            try {
+              var bytes = await file.arrayBuffer();
+              var srcDoc = await PDFLib.PDFDocument.load(bytes, { ignoreEncryption: true });
+              var total = srcDoc.getPageCount();
+              if (!total) throw new Error("페이지가 없는 PDF입니다.");
+
+              var chunks;
+              if (modeRanges.checked) chunks = parseRanges(rangesIn.value, total);
+              else chunks = everyChunks(parseInt(everyIn.value, 10), total);
+
+              var base = baseName(file.name) || "분할";
+
+              if (chunks.length === 1) {
+                var single = await makePart(srcDoc, chunks[0].from, chunks[0].to);
+                var fname = base + "_" + chunks[0].label + ".pdf";
+                triggerDownload(new Blob([single], { type: "application/pdf" }), fname, "↓ " + esc(fname) + " 내려받기");
+                document.getElementById("psStat").textContent = "✓ 1개 파일 생성 (" + chunks[0].label + "쪽)";
+              } else {
+                if (!window.JSZip) throw new Error("ZIP 라이브러리를 불러오지 못했습니다.");
+                var zip = new JSZip();
+                var pad = String(chunks.length).length;
+                for (var i = 0; i < chunks.length; i++) {
+                  var part = await makePart(srcDoc, chunks[i].from, chunks[i].to);
+                  var seq = String(i + 1); while (seq.length < pad) seq = "0" + seq;
+                  zip.file(base + "_" + seq + "_(" + chunks[i].label + ").pdf", part);
+                }
+                var zipBlob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } });
+                var zname = base + "_분할.zip";
+                triggerDownload(zipBlob, zname, "↓ ZIP 내려받기 (" + chunks.length + "개 파일)");
+                document.getElementById("psStat").textContent = "✓ " + chunks.length + "개 파일로 분할 완료 · ZIP 묶음";
+              }
+            } catch (e) {
+              setMsg('<span class="error">분할 실패: ' + esc(e.message || "알 수 없는 오류") + "</span>");
+            } finally {
+              runBtn.disabled = false; runBtn.textContent = label;
+            }
+          })();
+        });
+
+        syncMode();
+      })();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="canonical" href="https://quilolab.com/status.html" />
+    <meta
+      name="description"
+      content="Quilo 웹사이트, 보고서 생성, 파일 저장, 이메일 인증, 데이터베이스의 현재 연결 상태를 확인합니다."
+    />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#ffffff" />
+    <title>서비스 상태 — Quilo</title>
+    <script>
+      (function () {
+        try {
+          var theme = localStorage.getItem("theme");
+          if (!theme) theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          document.documentElement.setAttribute("data-theme", theme);
+        } catch (_) {}
+      })();
+    </script>
+    <link rel="stylesheet" href="/ui/foundation.css" />
+    <link rel="stylesheet" href="/ui/shell.css" />
+    <link rel="stylesheet" href="/ui/pages.css" />
+    <link rel="stylesheet" href="/ui/status.css" />
+  </head>
+  <body class="q-shell-page status-page">
+    <a class="ui-skip-link" href="#main-content">본문으로 건너뛰기</a>
+    <header class="ui-site-header" data-ui-shell></header>
+
+    <main id="main-content" class="status-main">
+      <header class="status-heading">
+        <div>
+          <h1>서비스 상태</h1>
+          <p>Quilo의 주요 기능과 연결 상태를 실시간으로 확인하세요.</p>
+        </div>
+        <section class="status-overview is-loading" id="statusOverview" aria-live="polite" aria-busy="true">
+          <span class="status-overview__icon" id="overviewIcon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" role="img">
+              <path d="M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18Z" />
+              <path class="status-overview__mark" d="m8 12 2.5 2.5L16.5 8.5" />
+            </svg>
+          </span>
+          <div class="status-overview__copy">
+            <strong id="overviewTitle">상태 확인 중</strong>
+            <span id="overviewChecked">서버에 최신 상태를 요청하고 있습니다.</span>
+          </div>
+        </section>
+        <button class="status-refresh" type="button" id="refreshStatus">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7" />
+          </svg>
+          <span>새로고침</span>
+        </button>
+      </header>
+
+      <section class="status-services" aria-labelledby="servicesTitle">
+        <h2 class="ui-sr-only" id="servicesTitle">주요 서비스 상태</h2>
+        <div class="status-table-head" aria-hidden="true">
+          <span>서비스</span>
+          <span>상태</span>
+          <span>응답 시간</span>
+          <span>마지막 확인</span>
+          <span></span>
+        </div>
+        <div id="statusChecks" class="status-checks" aria-live="polite">
+          <div class="status-skeleton" aria-label="서비스 상태를 불러오는 중입니다">
+            <span></span><span></span><span></span><span></span>
+          </div>
+          <div class="status-skeleton" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+          <div class="status-skeleton" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+        </div>
+      </section>
+
+      <section class="status-history" aria-labelledby="historyTitle">
+        <div class="status-history__head">
+          <div>
+            <h2 id="historyTitle">최근 30일 서비스 상태</h2>
+            <p>가동률을 추정하지 않고, 실제로 확인된 점검 이벤트만 표시합니다.</p>
+          </div>
+          <div class="status-legend" aria-label="상태 범례">
+            <span><i class="is-current" aria-hidden="true"></i>현재 확인</span>
+            <span><i class="is-empty" aria-hidden="true"></i>기록 없음</span>
+          </div>
+        </div>
+        <div class="status-history__bars" id="historyBars" aria-label="30일 점검 이벤트">
+          <span class="is-empty"></span><span class="is-empty"></span><span class="is-empty"></span>
+          <span class="is-empty"></span><span class="is-empty"></span><span class="is-empty"></span>
+          <span class="is-empty"></span><span class="is-empty"></span><span class="is-empty"></span>
+          <span class="is-empty"></span><span class="is-empty"></span><span class="is-empty"></span>
+          <span class="is-empty"></span><span class="is-empty"></span><span class="is-empty"></span>
+          <span class="is-empty"></span><span class="is-empty"></span><span class="is-empty"></span>
+          <span class="is-empty"></span><span class="is-empty"></span><span class="is-empty"></span>
+          <span class="is-empty"></span><span class="is-empty"></span><span class="is-empty"></span>
+          <span class="is-empty"></span><span class="is-empty"></span><span class="is-empty"></span>
+          <span class="is-empty"></span><span class="is-empty"></span><span class="is-current" id="currentHistoryBar"></span>
+        </div>
+        <div class="status-history__scale" aria-hidden="true">
+          <span>30일 전</span><span>20일 전</span><span>10일 전</span><span>오늘</span>
+        </div>
+        <p class="status-history__note" id="historyNote">
+          아직 공개된 일별 운영 이력이 없습니다. 현재 확인 결과는 가장 오른쪽에 표시됩니다.
+        </p>
+      </section>
+    </main>
+
+    <footer class="ui-site-footer"></footer>
+    <script src="/ui/shell.js"></script>
+    <script src="/ui/status.js"></script>
+  </body>
+</html>

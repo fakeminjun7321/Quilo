@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="canonical" href="https://quilolab.com/tools/pdf-analysis.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PDF 분석 — Quilo</title>
+    <meta name="description" content="PDF의 페이지 수, 텍스트층, 스캔 여부, 숨은 OCR층, 수식 밀도와 2단 레이아웃을 분석합니다." />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("theme");
+          if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          document.documentElement.setAttribute("data-theme", t);
+        } catch (e) {}
+      })();
+    </script>
+    <link rel="stylesheet" href="/ui/foundation.css" />
+    <link rel="stylesheet" href="/ui/shell.css" />
+    <link rel="stylesheet" href="/ui/pages.css" />
+    <link rel="stylesheet" href="/ui/tool-shell.css" />
+    <link rel="stylesheet" href="/ui/pdf-analysis.css" />
+  </head>
+  <body class="landing q-shell-page ui-page">
+    <a class="ui-skip-link" href="#main-content">본문으로 건너뛰기</a>
+    <header class="ui-site-header" data-ui-shell></header>
+
+    <main class="landing-shell" id="main-content">
+      <section class="section">
+        <div class="tool-page-head">
+          <h1>PDF 분석</h1>
+          <p>번역이나 문서 변경 없이 PDF의 구조만 검사합니다. 텍스트 추출 가능 여부와 OCR 필요성, 수식·레이아웃 특성을 빠르게 확인할 수 있습니다.</p>
+        </div>
+
+        <div class="pdf-analysis-auth" id="pdfAnalysisAuth" role="status" hidden>
+          <div>
+            <strong>로그인이 필요합니다.</strong>
+            <p>PDF 분석은 로그인한 Quilo 사용자가 무료로 이용할 수 있습니다.</p>
+          </div>
+          <a href="/login.html?next=%2Ftools%2Fpdf-analysis.html">로그인</a>
+        </div>
+
+        <section class="tool-card pdf-analysis-input-card" aria-labelledby="pdfAnalysisUploadTitle">
+          <div class="pdf-analysis-card-head">
+            <div>
+              <h2 id="pdfAnalysisUploadTitle">PDF 선택</h2>
+              <p>PDF 1개 · 최대 25MB</p>
+            </div>
+            <span class="pdf-analysis-badge">Free</span>
+          </div>
+
+          <div class="pdf-analysis-drop" id="pdfAnalysisDrop" role="button" tabindex="0" aria-label="분석할 PDF 선택">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>
+            <div>
+              <strong>PDF를 끌어놓거나 눌러서 선택</strong>
+              <span>원본 파일은 수정되지 않습니다.</span>
+            </div>
+          </div>
+          <input id="pdfAnalysisFile" type="file" accept="application/pdf,.pdf" hidden />
+
+          <div class="pdf-analysis-file" id="pdfAnalysisFileMeta" hidden>
+            <span id="pdfAnalysisFileName"></span>
+            <button id="pdfAnalysisFileClear" type="button">다시 선택</button>
+          </div>
+
+          <div class="pdf-analysis-points" aria-label="분석 항목">
+            <span>텍스트층</span><span>스캔·OCR</span><span>수식 밀도</span><span>2단 레이아웃</span>
+          </div>
+          <p class="pdf-analysis-privacy">파일은 Quilo 서버에서 구조 분석에만 사용되며 외부 AI로 전송되지 않습니다. 분석용 임시 파일은 요청이 끝나면 바로 삭제됩니다.</p>
+          <button class="pdf-analysis-submit" id="pdfAnalysisRun" type="button" disabled>PDF 분석하기</button>
+          <p class="pdf-analysis-status" id="pdfAnalysisStatus" aria-live="polite"></p>
+        </section>
+
+        <section class="tool-result pdf-analysis-result" id="pdfAnalysisResult" hidden aria-labelledby="pdfAnalysisResultTitle">
+          <div class="pdf-analysis-result-head">
+            <div>
+              <h2 id="pdfAnalysisResultTitle">분석 결과</h2>
+              <p id="pdfAnalysisResultMeta"></p>
+            </div>
+            <span class="pdf-analysis-result-badge" id="pdfAnalysisResultBadge"></span>
+          </div>
+
+          <div class="pdf-analysis-verdict" id="pdfAnalysisVerdict" role="status"></div>
+
+          <div class="pdf-analysis-metrics" aria-label="PDF 핵심 지표">
+            <div><span>페이지</span><strong id="pdfMetricPages">-</strong></div>
+            <div><span>텍스트 글자</span><strong id="pdfMetricText">-</strong></div>
+            <div><span>스캔 페이지</span><strong id="pdfMetricScan">-</strong></div>
+            <div><span>수식 밀도</span><strong id="pdfMetricMath">-</strong></div>
+          </div>
+
+          <div class="pdf-analysis-checks">
+            <article id="pdfCheckText"><span>텍스트층</span><strong></strong><p></p></article>
+            <article id="pdfCheckScan"><span>스캔·OCR</span><strong></strong><p></p></article>
+            <article id="pdfCheckMath"><span>수식</span><strong></strong><p></p></article>
+            <article id="pdfCheckLayout"><span>레이아웃</span><strong></strong><p></p></article>
+          </div>
+
+          <section class="pdf-analysis-recommendation" aria-labelledby="pdfAnalysisRecommendationTitle">
+            <h3 id="pdfAnalysisRecommendationTitle">권장 처리</h3>
+            <ul id="pdfAnalysisRecommendations"></ul>
+          </section>
+
+          <div class="pdf-analysis-actions">
+            <button id="pdfAnalysisCopy" type="button">결과 복사</button>
+            <button id="pdfAnalysisDownload" type="button">JSON 저장</button>
+          </div>
+          <p class="pdf-analysis-action-status" id="pdfAnalysisActionStatus" aria-live="polite"></p>
+
+          <details class="pdf-analysis-raw">
+            <summary>원본 분석값 보기</summary>
+            <pre id="pdfAnalysisRaw"></pre>
+          </details>
+        </section>
+      </section>
+    </main>
+
+    <footer class="ui-site-footer">
+      <div class="ui-site-footer__inner">
+        <nav class="ui-site-footer__links" aria-label="푸터 메뉴"><a href="/terms.html">이용약관</a><a href="/privacy.html">개인정보처리방침</a><a href="/guide.html">이용 가이드</a><a href="/support.html">고객센터</a></nav>
+        <div class="ui-site-footer__copy">© 2026 Quilo · <span data-site-version>버전 확인 중...</span></div>
+      </div>
+    </footer>
+    <script src="/ui/shell.js"></script>
+    <script src="/ui/tool-shell.js"></script>
+    <script src="/ui/pdf-analysis.js"></script>
+  </body>
+</html>

@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="canonical" href="https://quilolab.com/pricing.html" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#2563eb" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>요금 및 플랜 — Quilo</title>
+    <meta name="description" content="Quilo Free, Pro, Max 플랜의 기능 차이와 현재 플랜 확인 방법을 안내합니다." />
+    <script>
+      (function () {
+        try {
+          var theme = localStorage.getItem("theme");
+          if (!theme) theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          document.documentElement.setAttribute("data-theme", theme);
+        } catch (_) {}
+      })();
+    </script>
+    <link rel="stylesheet" href="/ui/foundation.css" />
+    <link rel="stylesheet" href="/ui/shell.css" />
+    <link rel="stylesheet" href="/ui/pages.css" />
+  </head>
+  <body class="q-shell-page ui-page">
+    <a class="ui-skip-link" href="#main-content">본문으로 건너뛰기</a>
+    <header class="ui-site-header" data-ui-shell></header>
+
+    <main class="legal-page" id="main-content">
+      <h1>요금 및 플랜</h1>
+      <p>Quilo는 Free, Pro, Max 등급으로 운영됩니다. 현재 등급과 실제 사용 가능한 기능은 로그인 후 Account Center에서 확인할 수 있습니다.</p>
+
+      <div class="table-wrapper">
+        <table>
+          <caption class="visually-hidden">Quilo 플랜별 기능 차이</caption>
+          <thead>
+            <tr><th scope="col">플랜</th><th scope="col">사용 방식</th><th scope="col">주요 기능</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">Free</th>
+              <td>보유 크레딧과 기능별 무료 사용 정책을 기준으로 이용합니다.</td>
+              <td>기본 보고서 생성과 공개 도구를 사용할 수 있습니다. 생성 전 화면에 표시되는 모델별 예상 차감을 확인하세요.</td>
+            </tr>
+            <tr>
+              <th scope="row">Pro</th>
+              <td>계정에 활성화된 Pro 기능을 이용합니다.</td>
+              <td>화면에 Pro로 표시된 학습·창작 기능을 사용할 수 있습니다. 실제 사용 가능 범위는 계정에 부여된 기능을 기준으로 합니다.</td>
+            </tr>
+            <tr>
+              <th scope="row">Max</th>
+              <td>활성 기간과 운영 설정을 기준으로 이용합니다.</td>
+              <td>Pro 권한에 더해 백그라운드 실행과 PDF 통번역을 사용할 수 있습니다.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <section>
+        <h2>현재 플랜과 가격 확인</h2>
+        <p>로그인 후 Account Center에서 현재 등급, 크레딧, 활성 기간과 사용 가능한 기능을 확인할 수 있습니다. Max 가격·기간·입금 안내는 그 화면에 표시되는 현재 운영 설정을 기준으로 합니다.</p>
+        <div class="actions">
+          <a class="btn-primary" href="/login.html?next=%2Fpricing.html">로그인하고 현재 플랜 확인</a>
+          <a class="btn" data-ui-start-action href="/signup.html">무료로 시작하기</a>
+        </div>
+      </section>
+
+      <section>
+        <h2>크레딧 안내</h2>
+        <ul>
+          <li>보고서 종류와 선택 모델에 따라 크레딧이 차감될 수 있습니다.</li>
+          <li>생성 전에 표시되는 예상 비용은 추정치이며, 실제 적용 기준은 해당 작업 화면의 안내를 따릅니다.</li>
+          <li>일시 공개 기능이나 관리자 부여 기능은 계정 상태와 운영 기간에 따라 달라질 수 있습니다.</li>
+        </ul>
+      </section>
+    </main>
+
+    <footer class="ui-site-footer">
+      <div class="ui-site-footer__inner">
+        <nav class="ui-site-footer__links" aria-label="푸터 메뉴"><a href="/terms.html">이용약관</a><a href="/privacy.html">개인정보처리방침</a><a href="/refund.html">환불정책</a><a href="/guide.html">이용 가이드</a><a href="/community.html">커뮤니티</a><a href="https://github.com/fakeminjun7321/Quilo" target="_blank" rel="noopener">GitHub</a></nav>
+        <div class="ui-site-footer__copy">© 2026 Quilo · <span data-site-version>버전 확인 중...</span></div>
+      </div>
+    </footer>
+    <script src="/ui/shell.js"></script>
+  </body>
+</html>

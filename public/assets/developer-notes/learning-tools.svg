@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-labelledby="title desc">
+  <title id="title">학습 도구 제작</title>
+  <desc id="desc">교재와 문제 자료가 문제지, 해설지, 학습 자료로 나뉘는 모습</desc>
+  <defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#fff7ec"/><stop offset="1" stop-color="#e8f1ff"/></linearGradient><filter id="s"><feDropShadow dy="15" stdDeviation="20" flood-color="#766249" flood-opacity=".14"/></filter></defs>
+  <rect width="1200" height="675" rx="34" fill="url(#bg)"/>
+  <g filter="url(#s)"><path d="M129 124h366c57 0 105 46 105 103v350H234c-58 0-105-47-105-105z" fill="#fff"/><path d="M1071 124H705c-57 0-105 46-105 103v350h366c58 0 105-47 105-105z" fill="#fff"/></g>
+  <path d="M600 227v350" stroke="#c8d4e5" stroke-width="5"/>
+  <g fill="none" stroke="#0759ed" stroke-width="8" stroke-linecap="round"><path d="M204 210h226M204 253h174M204 331h220M204 374h147M204 452h196"/><circle cx="938" cy="237" r="46"/><path d="m916 237 15 15 30-34"/><path d="M760 337h232M760 382h184M760 460h214"/></g>
+  <g fill="#e8f0fc"><rect x="199" y="285" width="240" height="18" rx="9"/><rect x="755" y="414" width="242" height="18" rx="9"/></g>
+</svg>

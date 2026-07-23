@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="canonical" href="https://quilolab.com/tools/pdf-rotate.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PDF 회전 — 보고서 도구</title>
+    <meta name="description" content="PDF 페이지를 90/180/270도 회전하는 브라우저 도구. 업로드 없이 기기 안에서 처리." />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("theme");
+          if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          document.documentElement.setAttribute("data-theme", t);
+          if (new URLSearchParams(location.search).has("embed"))
+            document.documentElement.classList.add("embed");
+        } catch (e) {}
+      })();
+    </script>
+
+    <link rel="stylesheet" href="/ui/foundation.css" />
+    <link rel="stylesheet" href="/ui/shell.css" />
+    <link rel="stylesheet" href="/ui/pages.css" />
+    <link rel="stylesheet" href="/ui/tool-shell.css" />
+  </head>
+  <body class="landing q-shell-page ui-page">
+    <div class="landing-bg" aria-hidden="true"></div>
+    <a class="ui-skip-link" href="#main-content">본문으로 건너뛰기</a>
+    <header class="ui-site-header" data-ui-shell></header>
+
+    <main class="landing-shell" id="main-content">
+      <section class="section ui-inline-tools-pdf-rotate-1">
+        <div class="tool-page-head">
+          <h1>PDF 회전</h1>
+          <p>페이지를 90/180/270도 회전. 모든 처리는 브라우저 안에서만 이뤄지고 파일은 서버로 전송되지 않습니다.</p>
+        </div>
+
+        <div class="tool-card">
+          <div id="prDrop" role="button" tabindex="0" class="ui-inline-tools-pdf-rotate-2" >
+            <div class="ui-inline-tools-pdf-rotate-3" >PDF 파일을 끌어다 놓기</div>
+            <div class="ui-inline-tools-pdf-rotate-4" >또는 클릭해서 선택 · 한 개</div>
+          </div>
+          <input type="file" id="prFile" accept="application/pdf,.pdf" class="ui-inline-tools-pdf-rotate-5" />
+
+          <div id="prInfo" class="ui-inline-tools-pdf-rotate-6" >
+            <span id="prName" class="ui-inline-tools-pdf-rotate-7" ></span>
+            <span id="prMeta" class="ui-inline-tools-pdf-rotate-8" ></span>
+          </div>
+
+          <div class="ui-inline-tools-pdf-rotate-9" >
+            <label class="tool-label">회전 각도</label>
+            <div class="actions ui-inline-tools-pdf-rotate-10" id="prAngles" role="radiogroup" aria-label="회전 각도">
+              <button type="button" class="btn-ghost pr-angle" data-deg="90">↻ 90°</button>
+              <button type="button" class="btn-ghost pr-angle" data-deg="180">↻ 180°</button>
+              <button type="button" class="btn-ghost pr-angle" data-deg="270">↻ 270°</button>
+            </div>
+          </div>
+
+          <div class="ui-inline-tools-pdf-rotate-11" >
+            <label class="tool-label">대상 페이지</label>
+            <div class="ui-inline-tools-pdf-rotate-12" >
+              <label class="ui-inline-tools-pdf-rotate-13" >
+                <input type="radio" name="prScope" value="all" checked /> 모든 페이지
+              </label>
+              <label class="ui-inline-tools-pdf-rotate-14" >
+                <input type="radio" name="prScope" value="list" /> 특정 페이지만
+              </label>
+              <input type="text" id="prPages" class="tool-input" placeholder="예: 1, 3-5, 8 (쉼표·범위 가능)" disabled />
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="btn-primary" id="prRun" disabled>회전 적용</button>
+            <button class="btn-ghost" id="prClear">비우기</button>
+          </div>
+          <div id="prOut" class="tool-result ui-inline-tools-pdf-rotate-15">
+            <div class="badge ok ui-inline-tools-pdf-rotate-16" id="prStat" role="status" aria-live="polite" aria-atomic="true"></div>
+            <a id="prDl" class="btn-lg btn-primary ui-inline-tools-pdf-rotate-17" download>↓ 회전한 PDF 내려받기</a>
+          </div>
+          <p class="hint ui-inline-tools-pdf-rotate-18" id="prMsg" role="status" aria-live="polite" aria-atomic="true"></p>
+        </div>
+      </section>
+    </main>
+    <footer class="ui-site-footer">
+      <div class="ui-site-footer__inner">
+        <nav class="ui-site-footer__links" aria-label="푸터 메뉴"><a href="/terms.html">이용약관</a><a href="/privacy.html">개인정보처리방침</a><a href="/refund.html">환불정책</a><a href="/guide.html">이용 가이드</a><a href="/community.html">커뮤니티</a><a href="https://github.com/fakeminjun7321/Quilo" target="_blank" rel="noopener">GitHub</a></nav>
+        <div class="ui-site-footer__copy">© 2026 Quilo · <span data-site-version>버전 확인 중...</span></div>
+      </div>
+    </footer>
+
+    <script src="/ui/shell.js"></script>
+    <script src="/ui/tool-shell.js"></script>
+    <script>
+      (function () {
+        var drop = document.getElementById("prDrop"), input = document.getElementById("prFile");
+        var info = document.getElementById("prInfo"), nameEl = document.getElementById("prName"), metaEl = document.getElementById("prMeta");
+        var runBtn = document.getElementById("prRun"), clearBtn = document.getElementById("prClear"), out = document.getElementById("prOut"), msg = document.getElementById("prMsg");
+        var pagesInput = document.getElementById("prPages"), angleBtns = Array.prototype.slice.call(document.querySelectorAll(".pr-angle"));
+        var file = null, pageCount = 0, angle = 90, lastUrl = null;
+
+        function fmt(b) { return b < 1024 ? b + " B" : b < 1048576 ? (b / 1024).toFixed(0) + " KB" : (b / 1048576).toFixed(1) + " MB"; }
+        function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+
+        function setAngle(d) {
+          angle = d;
+          angleBtns.forEach(function (b) {
+            var on = +b.getAttribute("data-deg") === d;
+            b.classList.toggle("btn-primary", on);
+            b.classList.toggle("btn-ghost", !on);
+            b.setAttribute("aria-pressed", on ? "true" : "false");
+          });
+        }
+        angleBtns.forEach(function (b) { b.addEventListener("click", function () { setAngle(+b.getAttribute("data-deg")); }); });
+        setAngle(90);
+
+        Array.prototype.slice.call(document.getElementsByName("prScope")).forEach(function (r) {
+          r.addEventListener("change", function () {
+            var listMode = document.querySelector('input[name="prScope"]:checked').value === "list";
+            pagesInput.disabled = !listMode;
+            if (listMode) pagesInput.focus();
+          });
+        });
+
+        // Parse a page-range string like "1, 3-5, 8" into a 0-based Set, validated against pageCount.
+        function parsePages(str, total) {
+          var set = {}, parts = String(str).split(","), bad = false;
+          for (var i = 0; i < parts.length; i++) {
+            var p = parts[i].trim();
+            if (!p) continue;
+            var m = p.match(/^(\d+)\s*-\s*(\d+)$/);
+            if (m) {
+              var a = parseInt(m[1], 10), b = parseInt(m[2], 10);
+              if (a > b) { var t = a; a = b; b = t; }
+              if (a < 1 || b > total) { bad = true; continue; }
+              for (var n = a; n <= b; n++) set[n - 1] = true;
+            } else if (/^\d+$/.test(p)) {
+              var v = parseInt(p, 10);
+              if (v < 1 || v > total) { bad = true; continue; }
+              set[v - 1] = true;
+            } else {
+              bad = true;
+            }
+          }
+          var idx = Object.keys(set).map(Number).sort(function (x, y) { return x - y; });
+          return { idx: idx, bad: bad };
+        }
+
+        function clearFile() {
+          file = null; pageCount = 0;
+          info.style.display = "none"; out.style.display = "none"; msg.textContent = "";
+          runBtn.disabled = true;
+        }
+
+        function setFile(f) {
+          if (!f) return;
+          if (!/\.pdf$/i.test(f.name) && f.type !== "application/pdf") {
+            msg.innerHTML = '<span class="error">PDF 파일만 올릴 수 있습니다.</span>';
+            return;
+          }
+          file = f; out.style.display = "none"; msg.textContent = "";
+          nameEl.textContent = f.name;
+          metaEl.textContent = " · " + fmt(f.size);
+          info.style.display = "block";
+          runBtn.disabled = false;
+          // Read page count for nicer status / validation (best effort).
+          if (window.PDFLib) {
+            f.arrayBuffer().then(function (bytes) {
+              return PDFLib.PDFDocument.load(bytes, { ignoreEncryption: true });
+            }).then(function (doc) {
+              pageCount = doc.getPageCount();
+              metaEl.textContent = " · " + fmt(f.size) + " · " + pageCount + "쪽";
+            }).catch(function () {});
+          }
+        }
+
+        drop.addEventListener("click", function () { input.click(); });
+        drop.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); input.click(); } });
+        input.addEventListener("change", function () { if (input.files[0]) setFile(input.files[0]); input.value = ""; });
+        ["dragover", "dragenter"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.style.borderColor = "var(--accent)"; }); });
+        ["dragleave", "drop"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.style.borderColor = "var(--border-strong)"; }); });
+        drop.addEventListener("drop", function (e) { if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); });
+        clearBtn.addEventListener("click", clearFile);
+
+        runBtn.addEventListener("click", function () {
+          if (!file) return;
+          if (!window.PDFLib) { msg.innerHTML = '<span class="error">PDF 라이브러리를 불러오지 못했습니다.</span>'; return; }
+          var scope = document.querySelector('input[name="prScope"]:checked').value;
+          runBtn.disabled = true; runBtn.textContent = "회전 중…"; msg.textContent = ""; out.style.display = "none";
+          (async function () {
+            try {
+              var PDFDocument = PDFLib.PDFDocument, degrees = PDFLib.degrees;
+              var bytes = await file.arrayBuffer();
+              var doc = await PDFDocument.load(bytes, { ignoreEncryption: true });
+              var pages = doc.getPages();
+              var total = pages.length;
+
+              var targets;
+              if (scope === "list") {
+                var parsed = parsePages(pagesInput.value, total);
+                if (parsed.idx.length === 0) {
+                  throw new Error(parsed.bad ? "페이지 번호가 1~" + total + " 범위를 벗어났습니다." : "회전할 페이지를 입력하세요. 예: 1, 3-5");
+                }
+                targets = parsed.idx;
+              } else {
+                targets = [];
+                for (var i = 0; i < total; i++) targets.push(i);
+              }
+
+              targets.forEach(function (i) {
+                var page = pages[i];
+                // Account for existing rotation; PDF rotation must be a multiple of 90.
+                var cur = 0;
+                try { cur = page.getRotation().angle || 0; } catch (e) { cur = 0; }
+                var next = (((cur + angle) % 360) + 360) % 360;
+                page.setRotation(degrees(next));
+              });
+
+              var outBytes = await doc.save();
+              if (lastUrl) URL.revokeObjectURL(lastUrl);
+              lastUrl = URL.createObjectURL(new Blob([outBytes], { type: "application/pdf" }));
+              document.getElementById("prStat").textContent = "✓ " + targets.length + "쪽 " + angle + "° 회전 완료";
+              var base = file.name.replace(/\.pdf$/i, "");
+              var dl = document.getElementById("prDl"); dl.href = lastUrl; dl.download = base + "_회전" + angle + ".pdf";
+              out.style.display = "grid";
+            } catch (e) {
+              msg.innerHTML = '<span class="error">회전 실패: ' + esc(e.message || "알 수 없는 오류") + " (암호가 걸린 PDF는 처리할 수 없습니다)</span>";
+            } finally {
+              runBtn.disabled = false; runBtn.textContent = "회전 적용";
+            }
+          })();
+        });
+      })();
+    </script>
+  </body>
+</html>

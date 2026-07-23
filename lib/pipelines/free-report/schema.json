@@ -1,0 +1,15 @@
+{
+  "$doc": "자유 보고서(type=free) 콘텐츠 스키마 — 미니 형식은 lib/content-schema.js 상단 주석 참고. generate.js 가 title/sections 를 기본값으로 채우지만, sections 가 비면 실질적으로 빈 문서라 required. 블록은 문자열/subheading/equation/table/chart/image/list 자유 조합이라 내부 구조는 warn 만.",
+  "required": [
+    { "path": "title", "type": "string", "minLen": 1 },
+    { "path": "sections", "type": "array", "minItems": 1 }
+  ],
+  "warn": [
+    { "path": "sections[].heading", "type": "string", "minLen": 1 },
+    { "path": "sections[].blocks", "type": "array", "minItems": 1 },
+    { "path": "references", "type": "array", "optional": true },
+    { "path": "subtitle", "type": "string", "minLen": 1, "optional": true }
+  ],
+  "forbidMarkers": true,
+  "metrics": ["sections", "references"]
+}

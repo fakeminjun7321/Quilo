@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="canonical" href="https://quilolab.com/tools/pdf-merge.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PDF 병합 — 보고서 도구</title>
+    <meta name="description" content="여러 PDF를 순서대로 하나로 합치는 브라우저 도구. 업로드 없이 기기 안에서 처리." />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("theme");
+          if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          document.documentElement.setAttribute("data-theme", t);
+          if (new URLSearchParams(location.search).has("embed"))
+            document.documentElement.classList.add("embed");
+        } catch (e) {}
+      })();
+    </script>
+
+    <link rel="stylesheet" href="/ui/foundation.css" />
+    <link rel="stylesheet" href="/ui/shell.css" />
+    <link rel="stylesheet" href="/ui/pages.css" />
+    <link rel="stylesheet" href="/ui/tool-shell.css" />
+  </head>
+  <body class="landing q-shell-page ui-page">
+    <div class="landing-bg" aria-hidden="true"></div>
+    <a class="ui-skip-link" href="#main-content">본문으로 건너뛰기</a>
+    <header class="ui-site-header" data-ui-shell></header>
+
+    <main class="landing-shell" id="main-content">
+      <section class="section ui-inline-tools-pdf-merge-1">
+        <div class="tool-page-head">
+          <h1>PDF 병합</h1>
+          <p>여러 PDF를 원하는 순서로 하나로 합칩니다. 모든 처리는 브라우저 안에서만 이뤄지고 파일은 서버로 전송되지 않습니다.</p>
+        </div>
+
+        <div class="tool-card">
+          <div id="pmDrop" role="button" tabindex="0" class="ui-inline-tools-pdf-merge-2" >
+            <div class="ui-inline-tools-pdf-merge-3" >PDF 파일들을 끌어다 놓기</div>
+            <div class="ui-inline-tools-pdf-merge-4" >또는 클릭해서 선택 · 여러 개 가능</div>
+          </div>
+          <input type="file" id="pmFile" accept="application/pdf,.pdf" multiple class="ui-inline-tools-pdf-merge-5" />
+
+          <ul id="pmList" class="ui-inline-tools-pdf-merge-6" ></ul>
+
+          <div class="actions">
+            <button class="btn-primary" id="pmMerge" disabled>PDF 합치기</button>
+            <button class="btn-ghost" id="pmClear">비우기</button>
+          </div>
+          <div id="pmOut" class="tool-result ui-inline-tools-pdf-merge-7">
+            <div class="badge ok ui-inline-tools-pdf-merge-8" id="pmStat" role="status" aria-live="polite" aria-atomic="true"></div>
+            <a id="pmDl" class="btn-lg btn-primary ui-inline-tools-pdf-merge-9" download>↓ 합친 PDF 내려받기</a>
+          </div>
+          <p class="hint ui-inline-tools-pdf-merge-10" id="pmMsg" role="status" aria-live="polite" aria-atomic="true"></p>
+        </div>
+      </section>
+    </main>
+    <footer class="ui-site-footer">
+      <div class="ui-site-footer__inner">
+        <nav class="ui-site-footer__links" aria-label="푸터 메뉴"><a href="/terms.html">이용약관</a><a href="/privacy.html">개인정보처리방침</a><a href="/refund.html">환불정책</a><a href="/guide.html">이용 가이드</a><a href="/community.html">커뮤니티</a><a href="https://github.com/fakeminjun7321/Quilo" target="_blank" rel="noopener">GitHub</a></nav>
+        <div class="ui-site-footer__copy">© 2026 Quilo · <span data-site-version>버전 확인 중...</span></div>
+      </div>
+    </footer>
+
+    <script src="/ui/shell.js"></script>
+    <script src="/ui/tool-shell.js"></script>
+    <script>
+      (function () {
+        var drop = document.getElementById("pmDrop"), input = document.getElementById("pmFile"), list = document.getElementById("pmList");
+        var mergeBtn = document.getElementById("pmMerge"), clearBtn = document.getElementById("pmClear"), out = document.getElementById("pmOut"), msg = document.getElementById("pmMsg");
+        var files = [], lastUrl = null;
+
+        function fmt(b) { return b < 1024 ? b + " B" : b < 1048576 ? (b / 1024).toFixed(0) + " KB" : (b / 1048576).toFixed(1) + " MB"; }
+        function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+        function render() {
+          list.innerHTML = files.map(function (f, i) {
+            return '<li class="runtime-file-item">' +
+              '<span class="runtime-file-order">' + (i + 1) + '</span>' +
+              '<span class="runtime-file-name">' + esc(f.name) + '</span>' +
+              '<span class="runtime-file-size">' + fmt(f.size) + '</span>' +
+              '<button data-up="' + i + '" class="btn-ghost runtime-file-control" title="위로"' + (i === 0 ? " disabled" : "") + '>↑</button>' +
+              '<button data-down="' + i + '" class="btn-ghost runtime-file-control" title="아래로"' + (i === files.length - 1 ? " disabled" : "") + '>↓</button>' +
+              '<button data-rm="' + i + '" class="btn-ghost runtime-file-control" title="삭제">✕</button></li>';
+          }).join("");
+          mergeBtn.disabled = files.length < 2;
+          list.querySelectorAll("button[data-up]").forEach(function (b) { b.onclick = function () { var i = +b.getAttribute("data-up"); var t = files[i - 1]; files[i - 1] = files[i]; files[i] = t; render(); }; });
+          list.querySelectorAll("button[data-down]").forEach(function (b) { b.onclick = function () { var i = +b.getAttribute("data-down"); var t = files[i + 1]; files[i + 1] = files[i]; files[i] = t; render(); }; });
+          list.querySelectorAll("button[data-rm]").forEach(function (b) { b.onclick = function () { files.splice(+b.getAttribute("data-rm"), 1); render(); }; });
+        }
+        function add(fl) {
+          for (var i = 0; i < fl.length; i++) { if (/\.pdf$/i.test(fl[i].name) || fl[i].type === "application/pdf") files.push(fl[i]); }
+          out.style.display = "none"; msg.textContent = ""; render();
+        }
+
+        drop.addEventListener("click", function () { input.click(); });
+        drop.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); input.click(); } });
+        input.addEventListener("change", function () { add(input.files); input.value = ""; });
+        ["dragover", "dragenter"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.style.borderColor = "var(--accent)"; }); });
+        ["dragleave", "drop"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.style.borderColor = "var(--border-strong)"; }); });
+        drop.addEventListener("drop", function (e) { if (e.dataTransfer && e.dataTransfer.files) add(e.dataTransfer.files); });
+        clearBtn.addEventListener("click", function () { files = []; out.style.display = "none"; msg.textContent = ""; render(); });
+
+        mergeBtn.addEventListener("click", function () {
+          if (files.length < 2 || !window.PDFLib) { msg.textContent = !window.PDFLib ? "PDF 라이브러리를 불러오지 못했습니다." : ""; return; }
+          mergeBtn.disabled = true; mergeBtn.textContent = "합치는 중…"; msg.textContent = "";
+          (async function () {
+            try {
+              var PDFDocument = PDFLib.PDFDocument;
+              var merged = await PDFDocument.create();
+              var totalPages = 0;
+              for (var i = 0; i < files.length; i++) {
+                var bytes = await files[i].arrayBuffer();
+                var src = await PDFDocument.load(bytes, { ignoreEncryption: true });
+                var pages = await merged.copyPages(src, src.getPageIndices());
+                pages.forEach(function (p) { merged.addPage(p); });
+                totalPages += pages.length;
+              }
+              var outBytes = await merged.save();
+              if (lastUrl) URL.revokeObjectURL(lastUrl);
+              lastUrl = URL.createObjectURL(new Blob([outBytes], { type: "application/pdf" }));
+              document.getElementById("pmStat").textContent = "✓ " + files.length + "개 파일 · " + totalPages + "쪽 병합 완료";
+              var dl = document.getElementById("pmDl"); dl.href = lastUrl; dl.download = "병합.pdf";
+              out.style.display = "grid";
+            } catch (e) {
+              msg.innerHTML = '<span class="error">병합 실패: ' + esc(e.message || "알 수 없는 오류") + " (암호가 걸린 PDF는 합칠 수 없습니다)</span>";
+            } finally {
+              mergeBtn.disabled = false; mergeBtn.textContent = "PDF 합치기";
+            }
+          })();
+        });
+        render();
+      })();
+    </script>
+  </body>
+</html>

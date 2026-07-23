@@ -1,0 +1,7 @@
+Pillow>=10.0
+PyMuPDF>=1.26
+fonttools>=4.55,<5
+lxml>=4.9,<7
+pdfplumber>=0.11
+pypdf>=6.0
+reportlab>=4.0

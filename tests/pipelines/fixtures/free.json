@@ -1,0 +1,130 @@
+{
+  "__meta": {
+    "id": "fixture-free",
+    "type": "free",
+    "synthetic": true,
+    "render": {
+      "studentId": "0000",
+      "studentName": "",
+      "temperature": "",
+      "pressure": "",
+      "date": "2026-01-15"
+    },
+    "expect": {
+      "docxIncludes": [
+        "진자 주기 탐구 보고서",
+        "Period vs Length",
+        "길이 (m)"
+      ],
+      "docxMinMedia": 2
+    },
+    "sidecar": "free.bin"
+  },
+  "content": {
+    "title": "진자 주기 탐구 보고서",
+    "subtitle": "길이에 따른 단진자 주기 변화",
+    "sections": [
+      {
+        "heading": "서론",
+        "blocks": [
+          "단진자의 주기는 진폭이 작을 때 길이의 제곱근에 비례한다.",
+          {
+            "equation": "T = 2\\pi\\sqrt{L/g}"
+          }
+        ]
+      },
+      {
+        "heading": "결과 및 분석",
+        "blocks": [
+          {
+            "table": {
+              "headers": [
+                "길이 (m)",
+                "평균 주기 (s)"
+              ],
+              "rows": [
+                [
+                  "0.4",
+                  "1.27"
+                ],
+                [
+                  "0.6",
+                  "1.55"
+                ],
+                [
+                  "0.8",
+                  "1.79"
+                ]
+              ],
+              "caption": "[표 1] 길이별 평균 주기"
+            }
+          },
+          {
+            "chart": {
+              "title": "Period vs Length",
+              "type": "line",
+              "x_label": "Length (m)",
+              "y_label": "Period (s)",
+              "x_values": [
+                0.4,
+                0.6,
+                0.8
+              ],
+              "series": [
+                {
+                  "label": "Measured",
+                  "values": [
+                    1.27,
+                    1.55,
+                    1.79
+                  ]
+                }
+              ],
+              "caption": "길이와 주기의 관계",
+              "$hidden$": {
+                "pngBuffer": {
+                  "$bin$": "b0002.bin"
+                }
+              }
+            }
+          },
+          {
+            "image": {
+              "photo_indices": [
+                0
+              ],
+              "caption": "실험 장치",
+              "photo_captions": [
+                "진자 설치 모습"
+              ]
+            }
+          },
+          "측정 결과는 {{EQ:T^2 = 4 pi^2 L / g}} 관계식을 잘 따랐다.",
+          {
+            "list": [
+              "길이가 길수록 주기가 길어졌다.",
+              "추의 질량은 주기에 영향을 주지 않았다."
+            ]
+          }
+        ]
+      }
+    ],
+    "references": [
+      {
+        "label": "일반물리학 표준 교재"
+      }
+    ],
+    "date": "2026-01-15",
+    "$hidden$": {
+      "__photos": [
+        {
+          "buffer": {
+            "$bin$": "b0001.bin"
+          },
+          "name": "setup.png",
+          "mimetype": "image/png"
+        }
+      ]
+    }
+  }
+}

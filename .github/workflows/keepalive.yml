@@ -1,0 +1,20 @@
+name: Keepalive
+# ⚠️ 약한 백업일 뿐이다. GitHub Actions는 고빈도 scheduled cron을 심하게 throttle해서
+# */5로 적어도 실제론 2~4시간에 한 번꼴로만 돈다. 사이트를 실제로 깨우는 주력은
+# (1) server.js self-ping 과 (2) cron-job.org 외부 모니터다. 이건 그 둘이 모두 죽었을 때를
+# 대비한 보조망이라, 어쩌다 한 번 돌더라도 콜드스타트(30~60초)를 견디게 재시도를 건다.
+on:
+  # [2026-06-19 비활성화 / 보관] Render Free → Standard 업그레이드로 spin-down이
+  # 없어져 keepalive가 불필요해졌다. 자동 실행(schedule)을 중단한다.
+  # ▶ Render를 Free로 되돌리면 아래 schedule 두 줄 주석을 풀면 다시 5분마다 돈다.
+  # schedule:
+  #   - cron: "*/5 * * * *"
+  workflow_dispatch: # 필요할 때 수동 실행만 가능(자동 실행 안 함)
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      # --max-time 90: 콜드스타트 허용. --retry: 첫 요청이 깨우는 동안 타임아웃돼도 재시도.
+      - run: >-
+          curl -fsS --max-time 90 --retry 3 --retry-delay 20 --retry-all-errors
+          https://chem-pre-lab-web.onrender.com/api/keepalive

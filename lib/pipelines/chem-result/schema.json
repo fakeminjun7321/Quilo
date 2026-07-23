@@ -1,0 +1,31 @@
+{
+  "$doc": "화학 결과보고서(type=chem-result) 콘텐츠 스키마. 미니 형식은 lib/content-schema.js 상단 주석 참고. generate.js 의 빈 껍데기 가드와 같은 기준을 required anyOf 로 미러링한다. purpose, theory, apparatus, procedure는 결과보고서에서 의도적으로 빈 배열이므로 검사하지 않는다. pcei는 default 모드에서 generate.js가 별도로 검사하며 minimal 모드에서는 빈 객체가 정상이다.",
+  "required": [
+    { "path": "title_kr", "type": "string", "minLen": 1 },
+    { "path": "data", "type": "object" },
+    {
+      "path": "",
+      "anyOf": ["data.experiments", "data.summary_table.rows", "data.charts", "discussion.analysis"],
+      "detail": "결과 표·요약표·차트·논의가 모두 비어 있음 (빈 결과보고서)"
+    }
+  ],
+  "warn": [
+    { "path": "title_en", "type": "string", "minLen": 1, "optional": true },
+    { "path": "data.summary", "type": "string", "minLen": 1, "optional": true },
+    { "path": "data.experiments", "type": "array", "minItems": 1 },
+    {
+      "path": "data.experiments[]",
+      "anyOf": ["table.rows", "rows", "stats"],
+      "detail": "측정 실험에 표(table.rows)·통계(stats)가 없음"
+    },
+    { "path": "data.experiments[].name", "type": "string", "minLen": 1 },
+    { "path": "data.charts", "type": "array", "optional": true },
+    { "path": "data.charts[].series", "type": "array", "minItems": 1 },
+    { "path": "discussion.analysis", "type": "array", "minItems": 1 },
+    { "path": "discussion.errors", "type": "array", "minItems": 1 },
+    { "path": "discussion.improvements", "type": "array", "minItems": 1 },
+    { "path": "references", "type": "array", "minItems": 1 }
+  ],
+  "forbidMarkers": true,
+  "metrics": ["data.experiments", "data.charts", "discussion.analysis", "discussion.errors", "references"]
+}

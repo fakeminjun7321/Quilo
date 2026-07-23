@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="canonical" href="https://quilolab.com/guide.html" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#2563eb" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>이용 가이드 — Quilo</title>
+    <meta name="description" content="화학·물리 보고서, 자유 보고서, 독서활동 기록지, 창작 스튜디오, PDF 통번역, 부가 도구까지 Quilo 기능별 사용법을 단계별로 안내합니다." />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("theme");
+          if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          document.documentElement.setAttribute("data-theme", t);
+        } catch (e) {}
+      })();
+    </script>
+
+    <link rel="stylesheet" href="/ui/foundation.css" />
+    <link rel="stylesheet" href="/ui/shell.css" />
+    <link rel="stylesheet" href="/ui/pages.css" />
+  </head>
+  <body class="landing q-shell-page ui-page">
+    <div class="landing-bg" aria-hidden="true"></div>
+    <a class="ui-skip-link" href="#main-content">본문으로 건너뛰기</a>
+    <header class="ui-site-header" data-ui-shell></header>
+
+    <main class="landing-shell" id="main-content">
+      <section class="section ui-inline-guide-1">
+        <div class="tool-page-head">
+          <h1>이용 가이드</h1>
+          <p>업로드부터 다운로드까지, 보고서 종류별로 어떤 자료를 넣고 어떻게 쓰는지 단계별로 정리했습니다. 생성물은 <b>초안</b>이니 반드시 직접 검토·수정해서 사용하세요.</p>
+        </div>
+
+        <nav class="quick-jump" aria-label="가이드 바로가기">
+          <a href="#overview">전체 기능</a>
+          <a href="#start">시작하기</a>
+          <a href="#chem-pre">화학 사전</a>
+          <a href="#chem-result">화학 결과</a>
+          <a href="#phys-result">물리 결과</a>
+          <a href="#free">자유 보고서</a>
+          <a href="#beta-makers">문제집·양식</a>
+          <a href="#exam-prep">독서활동 기록지</a>
+          <a href="#create-studio">창작 스튜디오</a>
+          <a href="#translate">PDF 통번역</a>
+          <a href="#format">출력 형식</a>
+          <a href="#tools">도구</a>
+          <a href="#faq">FAQ</a>
+        </nav>
+
+        <div class="blog-cta ui-inline-guide-2">
+          <span class="blog-ico" aria-hidden="true">B</span>
+          <div class="blog-txt">
+            <strong>사용 후기 · 업데이트 소식</strong>
+            <p>네이버 블로그에서 사용 팁과 새 기능 소식을 확인하세요.</p>
+          </div>
+          <a class="btn" href="https://blog.naver.com/physicjun1905" target="_blank" rel="noopener">블로그 보기</a>
+        </div>
+
+        <div class="legal-page ui-inline-guide-3">
+          <section id="overview">
+            <h2>전체 기능 · 진입 경로</h2>
+            <p>Quilo의 주요 기능과 어디서 시작하는지 한눈에 정리했습니다. Pro/Max 표시는 해당 등급 회원에게 열려 있습니다.</p>
+            <div class="table-wrapper">
+            <table>
+              <caption class="ui-inline-guide-4" >기능별 진입 경로와 하는 일</caption>
+              <thead>
+                <tr>
+                  <th scope="col">기능</th>
+                  <th scope="col">어디서</th>
+                  <th scope="col">무엇을</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">화학 사전·결과보고서</th>
+                  <td>메인 · 보고서 만들기</td>
+                  <td>매뉴얼·데이터로 학교 양식 사전/결과보고서 생성</td>
+                </tr>
+                <tr>
+                  <th scope="row">물리 결과보고서</th>
+                  <td>메인 · 보고서 만들기</td>
+                  <td><code>.cap</code>·데이터로 실험 파트별 표·그래프·분석 작성</td>
+                </tr>
+                <tr>
+                  <th scope="row">자유 보고서</th>
+                  <td>메인 · 보고서 만들기</td>
+                  <td>주제·지시·자료를 넣어 임의 주제 보고서 자유 형식으로 생성</td>
+                </tr>
+                <tr>
+                  <th scope="row">독서록</th>
+                  <td>메인 · 보고서 만들기</td>
+                  <td>도서 정보로 학교 「독서활동 기록지」(.hwpx) 채우기 · 엑셀로 여러 권 대량 생성(실제 사용 토큰만큼 크레딧 차감)</td>
+                </tr>
+                <tr>
+                  <th scope="row">문제집 · 양식 메이커 <span class="beta-pill">Pro</span></th>
+                  <td>메인 · 보고서 만들기</td>
+                  <td>문제 PDF로 문제지·해설지 제작 / 말·사진으로 한글 양식 생성</td>
+                </tr>
+                <tr>
+                  <th scope="row">독서활동 기록지</th>
+                  <td>메인 · 보고서 만들기</td>
+                  <td>도서 정보를 학교 독서록 양식(.hwpx)으로 정리</td>
+                </tr>
+                <tr>
+                  <th scope="row">공부 도구 <span class="beta-pill">Pro</span></th>
+                  <td>공부 · <a href="/physics-studio.html">고급 물리 문제</a> / <a href="/study.html">공부</a></td>
+                  <td>고급 물리 문제 풀이, 학습 도식 등 학습 보조</td>
+                </tr>
+                <tr>
+                  <th scope="row">창작 스튜디오 <span class="beta-pill">Pro</span></th>
+                  <td>창작·코딩 · <a href="/create.html">창작 스튜디오</a></td>
+                  <td>대화형으로 웹 결과물·아티팩트 제작</td>
+                </tr>
+                <tr>
+                  <th scope="row">바이브 코딩 생성기 <span class="beta-pill">Pro</span></th>
+                  <td>창작·코딩 · <a href="/vibe-coding.html">바이브 코딩</a></td>
+                  <td>설문형 설계로 만들 것을 정리해 창작 스튜디오로 연결</td>
+                </tr>
+                <tr>
+                  <th scope="row">PDF 통번역 <span class="beta-pill">Max</span></th>
+                  <td>도구 · <a href="/translate.html">PDF 통번역</a></td>
+                  <td>그림은 그대로 두고 PDF 텍스트만 한국어로 번역</td>
+                </tr>
+                <tr>
+                  <th scope="row">부가 도구</th>
+                  <td>도구 · <a href="/tools/index.html">도구 모음</a></td>
+                  <td>파일 변환, 이미지·PDF 도구, 수식 변환</td>
+                </tr>
+              </tbody>
+            </table>
+            </div>
+            <p class="hint">아래에서 보고서 종류별·기능별 사용법을 더 자세히 안내합니다.</p>
+          </section>
+
+          <section id="start">
+            <h2>0. 시작하기</h2>
+            <ul>
+              <li><b>로그인</b>: 발급받은 이름·비밀번호로 로그인합니다. 만 14세 이상, 약관 동의가 필요합니다.</li>
+              <li><b>크레딧</b>: 보고서 종류별(사전/결과)로 크레딧이 차감됩니다. 화면의 예상 비용은 추정치이며, 실패한 생성은 원칙적으로 차감하지 않습니다. 크레딧은 현재 운영자가 수동 발급합니다.</li>
+              <li><b>보관</b>: 생성 파일은 <b>내 파일</b>에 최대 3개·24시간 임시 보관 후 삭제됩니다. 업로드 원본은 따로 저장하지 않습니다.</li>
+            </ul>
+          </section>
+
+          <section id="chem-pre">
+            <h2>1. 화학 사전보고서</h2>
+            <p><b>넣는 자료:</b> 실험 매뉴얼 PDF.</p>
+            <ol>
+              <li>보고서 종류에서 <b>화학 사전보고서</b>를 고릅니다.</li>
+              <li>매뉴얼 PDF를 업로드하고, 날짜·학번 등 폼 값을 채웁니다.</li>
+              <li>출력 형식(.docx 또는 .hwpx)과 글꼴을 고릅니다.</li>
+              <li><b>생성</b>을 누르면 이론적 배경·원리, 시약 물성, 실험 기구·과정이 학교 양식으로 작성됩니다.</li>
+            </ol>
+            <p class="hint">팁: 매뉴얼에 Theory &amp; Principle, 시약 정보가 또렷할수록 결과가 좋습니다. 그림이 필요한 부분은 placeholder와 설명으로 표시됩니다.</p>
+          </section>
+
+          <section id="chem-result">
+            <h2>2. 화학 결과보고서</h2>
+            <p><b>넣는 자료:</b> 사전보고서(PDF 또는 DOCX)는 필수이며, 실험 데이터(엑셀/CSV/텍스트)와 실험 사진·매뉴얼을 함께 넣을 수 있습니다.</p>
+            <ol>
+              <li>보고서 종류에서 <b>화학 결과보고서</b>를 고릅니다.</li>
+              <li>측정 데이터와 사진을 업로드합니다. 데이터 표·그래프 스크린샷도 인식합니다.</li>
+              <li>생성하면 평균·표준편차·백분율 오차 등을 계산하고 표·차트를 그려 사전보고서 뒤 결과 분량을 채웁니다.</li>
+            </ol>
+            <p class="hint">팁: 직접 정리한 엑셀/CSV가 있으면 우선 반영됩니다. 데이터에 없는 값은 만들지 않습니다.</p>
+          </section>
+
+          <section id="phys-result">
+            <h2>3. 물리 결과보고서</h2>
+            <p><b>넣는 자료:</b> PASCO Capstone <code>.cap</code>, 엑셀/CSV/텍스트, 데이터표·그래프 스크린샷 중 하나 이상. 매뉴얼 PDF는 선택이며, 학번은 필수입니다.</p>
+            <ol>
+              <li>보고서 종류에서 <b>물리 결과보고서</b>를 고릅니다.</li>
+              <li><code>.cap</code> 또는 정리한 데이터, 사진을 업로드합니다. 캡스톤의 사용자 입력 표가 있으면 최우선으로 씁니다.</li>
+              <li>생성하면 실험 파트별 표·그래프·분석·결론과 오차 분석이 구성됩니다.</li>
+            </ol>
+            <p class="hint">팁: <code>.cap</code> 원자료와 직접 정리한 엑셀이 충돌하면 정리 파일을 우선합니다. AI 참고 메모에 실험자 의견을 적어두면 보조로 반영됩니다.</p>
+          </section>
+
+          <section id="free">
+            <h2>4. 자유 보고서</h2>
+            <p><b>넣는 자료:</b> 작성 지시(주제·요구사항), 평가 기준, 참고 자료(파일·사진 등). 보고서 만들기 메뉴에서 고릅니다.</p>
+            <ol>
+              <li>보고서 종류에서 <b>자유 보고서</b>를 고릅니다.</li>
+              <li>어떤 보고서를 원하는지 작성 지시와 평가 기준을 적고, 참고 자료를 올립니다.</li>
+              <li>생성하면 정해진 학교 양식 대신 주제에 맞는 자유 형식으로 보고서가 작성됩니다. 표·수식·그래프·사진도 쓸 수 있습니다.</li>
+            </ol>
+            <p class="hint">팁: 평가 기준을 구체적으로 적을수록 원하는 방향에 맞게 나옵니다. 화학·물리 외 임의 주제에 쓰기 좋습니다.</p>
+          </section>
+
+          <section id="beta-makers">
+            <h2>5. 문제집 메이커 · 양식 메이커 <span class="beta-pill">Pro</span></h2>
+            <p>보고서 만들기 메뉴에서 권한이 있는 경우 보입니다.</p>
+            <ul>
+              <li><b>문제집 메이커</b> — 교재 문제 PDF를 올리면 문제지와 해설지를 만들어 묶음으로 내려받습니다. 영어/한글 문제지에 활용할 수 있습니다.</li>
+              <li><b>양식 메이커</b> — 원하는 양식을 말로 설명하면 한글 양식을 만들고, 종이 양식을 사진으로 올리면 같은 구조의 문서로 복원합니다.</li>
+            </ul>
+            <p class="hint">Pro 기능은 일부 사용자에게만 열려 있을 수 있습니다.</p>
+          </section>
+
+          <section id="exam-prep">
+            <h2>6. 독서활동 기록지</h2>
+            <p>보고서 만들기에서 <b>독서록</b>을 선택해 시작합니다.</p>
+            <ul>
+              <li><b>독서록</b> — 읽은 책 정보를 입력하면 학교 「독서활동 기록지」 양식(.hwpx)에 선택 계기·내용·느낀 점을 채워 줍니다.</li>
+            </ul>
+            <p class="hint">관련: 상단 <b>공부</b> 메뉴의 <a href="/physics-studio.html">고급 물리 문제</a>, <a href="/study.html">공부</a> 도구도 함께 참고하세요.</p>
+          </section>
+
+          <section id="create-studio">
+            <h2>7. 창작 스튜디오 · 바이브 코딩 <span class="beta-pill">Pro</span></h2>
+            <p>상단 <b>창작·코딩</b> 메뉴에서 시작합니다.</p>
+            <ul>
+              <li><b><a href="/create.html">창작 스튜디오</a></b> — 대화하듯 요청하면 웹 결과물·아티팩트를 만들고, 미리보기와 코드로 다듬어 갑니다.</li>
+              <li><b><a href="/vibe-coding.html">바이브 코딩 생성기</a></b> — 설문형으로 만들고 싶은 것을 정리하면 설계안을 만들어 줍니다. 결과를 그대로 <b>창작 스튜디오</b>로 넘겨 이어서 제작할 수 있습니다.</li>
+            </ul>
+            <p class="hint">팁: 무엇을 만들지 막연하면 바이브 코딩으로 먼저 정리한 뒤 창작 스튜디오로 이어가세요.</p>
+          </section>
+
+          <section id="translate">
+            <h2>8. PDF 통번역 <span class="beta-pill">Max</span></h2>
+            <p><a href="/translate.html">PDF 통번역</a> 페이지(상단 <b>도구</b> 메뉴)에서 시작합니다.</p>
+            <ol>
+              <li>번역할 PDF를 올립니다.</li>
+              <li>그림·레이아웃은 그대로 두고 본문 텍스트만 한국어로 번역해 새 PDF로 내려받습니다.</li>
+            </ol>
+            <p class="hint">팁: 스캔본보다 텍스트가 살아 있는 PDF에서 결과가 좋습니다.</p>
+          </section>
+
+          <section id="format">
+            <h2>9. 출력 형식과 글꼴</h2>
+            <ul>
+              <li><b>.docx</b>: 워드/한글에서 열어 편집. <b>.hwpx</b>: 한글 전용, 표·차트·사진·수식 개체가 직접 들어갑니다.</li>
+              <li>글꼴은 폼에서 선택합니다. 생성 후 학교 양식·여백을 한 번 더 확인하세요.</li>
+            </ul>
+          </section>
+
+          <section id="equation">
+            <h2>10. LaTeX → 한글 수식 변환기</h2>
+            <ul>
+              <li><b>텍스트 변환</b>: <a href="/equation/index.html">수식 변환기</a>에 LaTeX를 붙여넣으면 한글 수식 스크립트가 나옵니다. 복사해 한글의 <b>입력 → 개체 → 수식</b>(Ctrl+N, M)에 붙여넣으세요.</li>
+              <li><b>파일 변환</b>: HWP·HWPX 파일을 올리면 문서 안의 <code>$…$</code> 형태 LaTeX만 한글 수식 개체로 바꿔 새 <code>.hwpx</code>로 내려받습니다. 모든 처리는 브라우저에서 이뤄집니다.</li>
+            </ul>
+          </section>
+
+          <section id="tools">
+            <h2>11. 도구 모음</h2>
+            <p><a href="/tools/index.html">도구 모음</a>에서 보고서에 자주 필요한 작업을 빠르게 할 수 있습니다(모두 브라우저 전용):</p>
+            <ul>
+              <li><b>LaTeX → 한글 수식 변환기</b> — 수식을 HWP(HWPX) 수식으로.</li>
+            </ul>
+          </section>
+
+          <section id="faq">
+            <h2>자주 묻는 질문</h2>
+            <p><b>Q. 생성물을 그대로 제출해도 되나요?</b><br />아니요. 학습 보조용 초안입니다. 사실·계산·출처를 직접 검토·수정하고, 학교·교사의 AI 사용 기준을 따르세요.</p>
+            <p><b>Q. 업로드한 파일은 어떻게 되나요?</b><br />보고서 생성에만 쓰이고, 원본은 따로 저장하지 않습니다. 생성 파일만 최대 24시간 임시 보관됩니다. 자세한 내용은 <a href="/privacy.html">개인정보처리방침</a>을 확인하세요.</p>
+            <p><b>Q. 결과에 오류가 있으면요?</b><br />내용상 오류가 확인되면 <a href="/refund.html">환불정책</a>에 따라 환불 또는 크레딧 복구를 요청할 수 있습니다.</p>
+            <p><b>Q. 권한 없는 학교 자료를 올려도 되나요?</b><br />안 됩니다. 본인이 이용 권한을 가진 자료만 올리세요. 저작권 책임은 사용자에게 있습니다.</p>
+          </section>
+        </div>
+      </section>
+    </main>
+    <footer class="ui-site-footer">
+      <div class="ui-site-footer__inner">
+        <nav class="ui-site-footer__links" aria-label="푸터 메뉴"><a href="/terms.html">이용약관</a><a href="/privacy.html">개인정보처리방침</a><a href="/refund.html">환불정책</a><a href="/guide.html">이용 가이드</a><a href="/community.html">커뮤니티</a><a href="https://github.com/fakeminjun7321/Quilo" target="_blank" rel="noopener">GitHub</a></nav>
+        <div class="ui-site-footer__copy">© 2026 Quilo · <span data-site-version>버전 확인 중...</span></div>
+      </div>
+    </footer>
+    <script src="/ui/shell.js"></script>
+</body>
+</html>

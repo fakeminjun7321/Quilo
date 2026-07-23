@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="canonical" href="https://quilolab.com/examples.html" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#2563eb" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>예시 모음 — Quilo</title>
+    <meta name="description" content="AI 참고 메모 작성법과 실제 보고서 생성 예시를 모았습니다. 메모 양식을 내려받아 채우고, 보고서 종류별 출력 예시를 확인하세요." />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("theme");
+          if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          document.documentElement.setAttribute("data-theme", t);
+        } catch (e) {}
+      })();
+    </script>
+
+    <link rel="stylesheet" href="/ui/foundation.css" />
+    <link rel="stylesheet" href="/ui/shell.css" />
+    <link rel="stylesheet" href="/ui/pages.css" />
+  </head>
+  <body class="landing q-shell-page ui-page">
+    <div class="landing-bg" aria-hidden="true"></div>
+    <a class="ui-skip-link" href="#main-content">본문으로 건너뛰기</a>
+    <header class="ui-site-header" data-ui-shell></header>
+
+    <main class="landing-shell" id="main-content">
+      <section class="section ui-inline-examples-1">
+        <div class="tool-page-head">
+          <h1>예시 모음</h1>
+          <p>AI 참고 메모를 어떻게 쓰면 좋은지, 그리고 실제로 어떤 보고서가 나오는지 모았습니다. 생성물은 <b>초안</b>이니 반드시 직접 검토·수정해서 사용하세요.</p>
+        </div>
+
+        <nav class="quick-jump" aria-label="예시 바로가기">
+          <a href="#notes">AI 참고 메모</a>
+          <a href="#samples">보고서 예시</a>
+          <a href="#vocabulary-example">단어장 예시</a>
+          <a href="/examples/ai-notes-example.md" download>메모 예시 받기</a>
+          <a href="/">보고서 만들기</a>
+        </nav>
+
+        <div class="legal-page ui-inline-examples-2">
+          <section id="notes">
+            <h2>1. AI 참고 메모 작성 가이드</h2>
+            <p>
+              보고서 폼의 <b>AI 참고 메모 / 내 의견</b> 칸(또는 <code>.md</code>/<code>.txt</code> 첨부)은
+              생성 AI가 내 데이터와 의도를 정확히 반영하도록 돕는 <b>작업 지시서</b>입니다.
+              보고서 본문이 아니므로 짧게 한두 줄만 써도 되고, 길게 쓸 거면 아래 양식대로 <code>.md</code> 파일로 만들어 함께 올리면 됩니다.
+            </p>
+            <ul>
+              <li><b>메모는 데이터를 대체하지 않습니다.</b> 원본 데이터와 충돌하면 데이터가 우선입니다.</li>
+              <li><b>제외한 데이터는 이유를 꼭 적으세요.</b> 이유가 없으면 보고서가 임의로 빼거나 지어내지 않습니다.</li>
+              <li>같은 사실은 한 번만 명확히 — 보고서에는 최대 2회 정도만 반영됩니다.</li>
+              <li>장식 문법(<b>굵게</b>, 인라인 코드, HTML 태그)은 본문에 새어 나갈 수 있으니 피하세요. 제목·목록은 OK.</li>
+              <li>메모는 학교 양식·작성 기준을 덮어쓰지 못합니다. “양식 무시하고~”는 적용되지 않습니다.</li>
+            </ul>
+
+            <div class="ex-actions">
+              <a class="btn" href="/examples/ai-notes-guide.md" download>📘 작성 가이드 .md 내려받기</a>
+              <a class="btn btn-primary" href="/examples/ai-notes-example.md" download>📝 예시 메모 .md 내려받기</a>
+            </div>
+
+            <p class="hint ui-inline-examples-3">아래는 예시 메모(<code>ai-notes-example.md</code>) 전문입니다. 그대로 복사해 내 실험에 맞게 고쳐 쓰세요.</p>
+            <pre class="ex-pre" tabindex="0" role="region" aria-label="예시 메모 ai-notes-example.md 전문"># 실험 참고 메모
+
+## 실험 기본 정보
+- 보고서 종류: 물리 결과보고서
+- 실험 주제: 역학적 에너지 보존 — 경사면 위 카트의 운동
+- 첨부한 주요 파일:
+  - run_data.cap (PASCO Capstone 원자료, 포토게이트 2개 + 모션 센서)
+  - clean.xlsx (내가 직접 정리한 측정값, 시행별 속도와 높이)
+  - photo_track.jpg (실험 장치 사진)
+  - graph_v2_vs_h.png (속도 제곱 - 높이 그래프 스크린샷)
+
+## 데이터 사용 우선순위
+1. clean.xlsx — 내가 정리하면서 단위와 이상치를 한 번 걸러낸 값이라 이걸 우선으로 써 줘.
+2. run_data.cap — clean.xlsx에 없는 시계열·센서 세부값이 필요할 때만 참고.
+3. graph_v2_vs_h.png — 추세선 형태와 기울기 확인용. 픽셀로 값을 추정하지는 말 것.
+
+## 사용할 데이터 / 계산 기준
+- 사용할 시트: clean.xlsx 의 "summary" 시트.
+- 사용할 열: 높이 h (m), 속도 v (m/s), 시행 번호.
+- 단위: 길이 m, 속도 m/s, 에너지 J. 질량 m = 0.512 kg (메모 기준값으로 사용).
+- 계산: 각 시행에서 mgh 와 (1/2)mv^2 를 구해 비교하고, 보존율(%) = (운동E / 위치E) x 100 으로 정리.
+- 평균은 시행 2~5만 사용 (아래 제외 항목 참고). 표준편차도 같은 범위로.
+- v^2 = 2 g h 가 이론식이므로, v^2 - h 그래프의 기울기를 2g 와 비교해 줘.
+
+## 제외하거나 조심할 데이터
+- 제외한 것: 1차 시행 (시행 1).
+- 이유: 출발 직후 포토게이트가 살짝 흔들려 첫 속도값이 비정상적으로 작게 찍혔음.
+  평균·표준편차 계산에서 빼 줘. 단, 실험 전체가 실패한 것은 아니니 오차 요인에서만 짧게 언급.
+- 트랙 이음새 구간(높이 0.35 m 부근)에서 카트가 미세하게 튀는 느낌이 있었음 — 마찰·충격 손실의 근거로만 활용.
+
+## 사진·그래프
+- photo_track.jpg: 경사면 + 카트 + 포토게이트 2개가 보이는 장치 전경. 캡션 "실험 장치 구성".
+- graph_v2_vs_h.png: v^2 (세로) - h (가로) 그래프. 거의 직선이며 기울기가 2g 근처. 원점 부근은 약간 아래로 처짐.
+
+## 매뉴얼 질문 / 토의 항목
+- 측정한 보존율이 100%보다 작게 나온 주된 원인은 무엇인가?
+- 마찰을 줄이면 v^2 - h 그래프의 기울기는 어떻게 변하는가?
+- 공기 저항과 트랙 마찰 중 어느 쪽 영향이 더 컸다고 볼 수 있는가?
+
+## 내 의견 / 강조하고 싶은 점
+- 위치에너지가 운동에너지로 바뀌는 경향은 잘 나타났고, 보존율이 대체로 90% 이상이라는 점을 강조하고 싶음.
+- 손실분은 트랙 마찰과 포토게이트 정렬 오차로 설명하는 흐름으로 결론을 써 줘.
+
+## 하지 말아야 할 것
+- clean.xlsx 에 없는 측정값을 새로 만들지 말 것.
+- 제외한 1차 시행을 평균에 다시 넣지 말 것.
+- 그래프 스크린샷에서 보이지 않는 수치를 단정하지 말 것.
+- 내 메모를 과장해서 "에너지가 완벽히 보존됐다" 또는 "실험이 실패했다"는 식으로 몰지 말 것.</pre>
+          </section>
+
+          <section id="samples">
+            <h2>2. 보고서 생성 예시</h2>
+            <p class="ex-note">
+              어떤 자료를 넣으면 어떤 결과가 나오는지 미리 확인하세요.
+              공개되는 예시는 모두 개인정보가 없는 테스트 자료로 생성합니다.
+            </p>
+            <div class="ex-empty" role="note">
+              <p>
+                <b>개인정보 없는 합성 자료로 만든 공개 샘플입니다.</b>
+                실제 Quilo 보고서와 같은 DOCX 렌더러로 생성했으며, 아래 완성본을
+                내려받아 문서 구성과 출력 품질을 직접 확인할 수 있습니다.
+              </p>
+            </div>
+            <h3 class="ex-subhead">이런 걸 만들 수 있어요</h3>
+            <p class="hint ui-inline-examples-4">자료를 넣으면 보고서가 이렇게 나옵니다. 아래 실제 DOCX 예시에서 문서 구조와 출력 품질을 확인할 수 있습니다.</p>
+            <div class="ex-grid">
+              <div class="ex-card ex-flow">
+                <h3>화학 사전보고서</h3>
+                <div class="ex-flow-row">
+                  <span class="ex-chip ex-chip-in">실험 매뉴얼 PDF</span>
+                  <span class="ex-arrow" aria-hidden="true">→</span>
+                  <span class="ex-chip ex-chip-out">사전보고서 (DOCX·HWPX)</span>
+                </div>
+                <ul class="ex-bullets">
+                  <li>매뉴얼의 이론·원리 키워드를 펼쳐 쓴 이론적 배경</li>
+                  <li>시약 물성·실험 기구·실험 과정을 학교 양식으로 정리</li>
+                  <li>그림이 필요한 자리에 placeholder + 사진 설명</li>
+                </ul>
+              </div>
+              <div class="ex-card ex-flow">
+                <h3>화학 결과보고서</h3>
+                <div class="ex-flow-row">
+                  <span class="ex-chip ex-chip-in">데이터(엑셀·CSV) · 사진</span>
+                  <span class="ex-arrow" aria-hidden="true">→</span>
+                  <span class="ex-chip ex-chip-out">결과 분량 (DOCX·HWPX)</span>
+                </div>
+                <ul class="ex-bullets">
+                  <li>평균·표준편차·백분율 오차 자동 계산</li>
+                  <li>표·차트(그래프)와 실험 사진 삽입</li>
+                  <li>사전보고서 뒤에 이어지는 결과·분석·결론</li>
+                </ul>
+              </div>
+              <div class="ex-card ex-flow">
+                <h3>물리 결과보고서</h3>
+                <div class="ex-flow-row">
+                  <span class="ex-chip ex-chip-in"><code>.cap</code> · 엑셀·CSV · 사진</span>
+                  <span class="ex-arrow" aria-hidden="true">→</span>
+                  <span class="ex-chip ex-chip-out">결과보고서 (DOCX·HWPX)</span>
+                </div>
+                <ul class="ex-bullets">
+                  <li>실험 파트별 표·그래프·정량 분석</li>
+                  <li>이론값 비교와 경향성 해석</li>
+                  <li>결과 요약·오차 분석이 담긴 결론</li>
+                </ul>
+              </div>
+            </div>
+
+            <h3 class="ex-subhead ui-inline-examples-5">완성본 다운로드 예시</h3>
+            <div class="ex-grid">
+              <div class="ex-card">
+                <h3>화학 사전보고서</h3>
+                <div class="ex-in">입력: 실험 매뉴얼 PDF</div>
+                <p>매뉴얼의 이론·원리 키워드를 펼쳐 쓰고, 시약 물성·실험 기구·과정을 학교 양식으로 정리합니다.</p>
+                <div class="ex-foot"><span class="ex-badge" data-sample="chem-pre">DOCX 예시 제공</span></div>
+              </div>
+              <div class="ex-card">
+                <h3>화학 결과보고서</h3>
+                <div class="ex-in">입력: 데이터(엑셀/CSV)·사진 (+ 사전보고서)</div>
+                <p>평균·표준편차·백분율 오차를 계산하고 표·차트를 그려 사전보고서 뒤 결과 분량을 채웁니다.</p>
+                <div class="ex-foot"><span class="ex-badge" data-sample="chem-result">DOCX 예시 제공</span></div>
+              </div>
+              <div class="ex-card">
+                <h3>물리 결과보고서</h3>
+                <div class="ex-in">입력: <code>.cap</code>·엑셀/CSV·사진 중 하나 이상</div>
+                <p>실험 파트별 표·그래프·분석과 결론·오차 분석을 양식 기반으로 구성합니다.</p>
+                <div class="ex-foot"><span class="ex-badge" data-sample="phys-result">DOCX 예시 제공</span></div>
+              </div>
+            </div>
+            <p class="hint ui-inline-examples-6">
+              공개 예시는 합성 데이터로 생성되어 실명·학번을 포함하지 않습니다. 직접 만들어 보려면 <a href="/">메인</a>에서 자료를 올리고 생성하세요.
+              메모를 함께 넣으면 결과가 더 정확해집니다. (<a href="#notes">위 작성 가이드 참고</a>)
+            </p>
+
+            <section id="vocabulary-example" class="ex-card">
+              <h3>Serway Physics Vocabulary · 읽기 전용 예시</h3>
+              <div class="ex-in">영어 물리 교재 Chapter 22-44 · 290쪽 단어장</div>
+              <p>단어장 메이커로 구성한 실제 PDF 예시입니다. 로그인 후 페이지별 이미지로만 열리며, 원본 PDF·텍스트 레이어·다운로드 버튼은 제공하지 않습니다.</p>
+              <ul class="ex-bullets">
+                <li>15분 읽기 세션과 사용자별 비식별 워터마크</li>
+                <li>인쇄·복사·문맥 메뉴 차단과 비공개 원본 저장</li>
+                <li>운영체제 캡처와 외부 카메라 촬영은 웹에서 완전 차단할 수 없음</li>
+              </ul>
+              <div class="ex-foot"><a class="btn btn-primary" href="/examples/vocabulary/serway-physics">보안 뷰어로 읽기</a></div>
+            </section>
+          </section>
+        </div>
+      </section>
+    </main>
+    <footer class="ui-site-footer">
+      <div class="ui-site-footer__inner">
+        <nav class="ui-site-footer__links" aria-label="푸터 메뉴"><a href="/terms.html">이용약관</a><a href="/privacy.html">개인정보처리방침</a><a href="/refund.html">환불정책</a><a href="/guide.html">이용 가이드</a><a href="/community.html">커뮤니티</a><a href="https://github.com/fakeminjun7321/Quilo" target="_blank" rel="noopener">GitHub</a></nav>
+        <div class="ui-site-footer__copy">© 2026 Quilo · <span data-site-version>버전 확인 중...</span></div>
+      </div>
+    </footer>
+
+    <script>
+      // 공개 샘플 manifest. scripts/build-public-samples.js가 같은 파일명을 생성한다.
+      (function () {
+        var NAMES = {
+          "chem-pre": "화학사전보고서_예시",
+          "chem-result": "화학결과보고서_예시",
+          "phys-result": "물리결과보고서_예시",
+        };
+        var AVAILABLE = {
+          "chem-pre": ["docx"],
+          "chem-result": ["docx"],
+          "phys-result": ["docx"],
+        };
+        var FORMATS = [
+          { ext: "docx", label: "DOCX" },
+          { ext: "hwpx", label: "HWPX (한글)" },
+        ];
+        document.querySelectorAll("[data-sample]").forEach(function (badge) {
+          var key = badge.getAttribute("data-sample");
+          var foot = badge.parentNode;
+          var available = AVAILABLE[key] || [];
+          var found = FORMATS
+            .filter(function (f) { return available.indexOf(f.ext) >= 0; })
+            .map(function (f) {
+              return { url: "/examples/samples/" + key + "." + f.ext, label: f.label, ext: f.ext };
+            });
+          if (!found.length) return;
+          var dlName = NAMES[key] || key;
+          foot.innerHTML = found
+            .map(function (f) {
+              return (
+                '<a class="btn' + (f.ext === "docx" ? " btn-primary" : "") +
+                '" href="' + f.url + '" download="' + dlName + "." + f.ext +
+                '">⬇ ' + f.label + "</a>"
+              );
+            })
+            .join("");
+        });
+      })();
+    </script>
+    <script src="/ui/shell.js"></script>
+</body>
+</html>

@@ -1,0 +1,2421 @@
+#!/usr/bin/env python3
+"""hwpx-gen.py — chem-pre report HWPX generator (v5).
+
+reads JSON content from stdin (or first arg as path) and writes HWPX bytes
+to stdout (or second arg as path).
+
+usage:
+    python3 hwpx-gen.py < content.json > output.hwpx
+    python3 hwpx-gen.py content.json output.hwpx
+
+v5 brings the hwpx output to feature-parity with docx-gen.js:
+- explicit Malgun Gothic font + per-heading point sizes (20/16/13/11/10/9 pt)
+- 1.3 line spacing across the document
+- 5 mm / 10 mm left indent on (1)..(N) items and notes
+- right-aligned date / temperature / pressure on the title page
+- dashed gray border on figure placeholder boxes; caption centered & italic
+- Google image-search hyperlink rendered as blue underlined link
+- light-blue shaded + bold + centered header row in the chemicals summary
+- real OWPML sub/super script runs for _{x} / ^{x} markers (Unicode fallback
+  removed — Hangul renders true subscripts/superscripts)
+- inline **highlight** / *italic* mixed at run level
+"""
+import sys
+import json
+import re
+import base64
+import struct
+from copy import deepcopy
+from pathlib import Path
+from lxml import etree
+
+from hwpx import HwpxDocument
+
+# ── 수식 공통 로직 단일 소스 선로딩 (DEF-012 이중 미러 단일화) ──────────────
+# EQ_SCRIPT_KEYWORD / compact_chemical_spacing / 마커 오타 교정 / 단독 LaTeX
+# 기호 강등 로직은 과거 이 파일과 lib/equation/hwpx_equation_tool.py 에 같은
+# 구현이 2벌(이중 미러)로 있었고, 한쪽만 고치는 회귀가 반복됐다. equation
+# tool 을 단일 소스로 정하고 이 파일은 아래(수식 유틸 구획)의 위임 스텁만
+# 유지한다. 경로 주입은 _postprocess_equations 의 기존 로딩 메커니즘과 동일.
+# 로드 실패는 fatal 이 맞다: 어차피 모든 HWPX 출력이 같은 모듈로
+# _postprocess_equations 를 거쳐야 하고, 그 실패는 기존 관례상 fatal 이다
+# (CLAUDE.md '수식 postprocess 실패는 fatal').
+_EQUATION_TOOL_DIR = str(Path(__file__).resolve().parents[2] / "equation")
+if _EQUATION_TOOL_DIR not in sys.path:
+    sys.path.insert(0, _EQUATION_TOOL_DIR)
+import hwpx_equation_tool  # noqa: E402  (경로 주입 후 import, 실패=fatal)
+
+# ── XML 비허용 제어문자 방어 (코드 리뷰 ⑧) ────────────────────────────────
+# Claude 출력이나 사용자 업로드(엑셀/CSV/텍스트)에 섞인 XML 1.0 비허용 제어문자
+# (NULL·\x01~\x08·\x0b·\x0c·\x0e~\x1f)가 lxml element text로 들어가면
+# "ValueError: All strings must be XML compatible"로 HWPX 생성 전체가 죽는다.
+# python-hwpx의 텍스트 입력 choke point인 add_run을 감싸 제거한다.
+# (\t \n \r 은 유효하므로 보존. 의도된 sentinel 제어문자는 코드에 없음.)
+# 이 모듈은 chem-result/phys-result 생성기도 import 하므로 한 번 패치로 모두 커버된다.
+from hwpx.oxml.document import HwpxOxmlParagraph as _HwpxParagraph
+
+_XML_ILLEGAL_RE = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f]")
+
+
+def _strip_illegal_xml(text):
+    if isinstance(text, str) and _XML_ILLEGAL_RE.search(text):
+        return _XML_ILLEGAL_RE.sub("", text)
+    return text
+
+
+def _deep_clean_xml(obj):
+    """JSON 컨텐츠의 모든 문자열에서 XML 비허용 제어문자를 재귀 제거한다.
+    각 생성기 main()에서 json 파싱 직후 호출하면, add_run 외의 직접 .text=
+    경로(제목 치환 등)까지 전부 보호된다."""
+    if isinstance(obj, str):
+        return _strip_illegal_xml(obj)
+    if isinstance(obj, list):
+        return [_deep_clean_xml(x) for x in obj]
+    if isinstance(obj, dict):
+        return {k: _deep_clean_xml(v) for k, v in obj.items()}
+    return obj
+
+
+if not getattr(_HwpxParagraph.add_run, "_xmlclean_wrapped", False):
+    _orig_add_run = _HwpxParagraph.add_run
+
+    def _safe_add_run(self, text="", **kwargs):
+        return _orig_add_run(self, _strip_illegal_xml(text), **kwargs)
+
+    _safe_add_run._xmlclean_wrapped = True
+    _HwpxParagraph.add_run = _safe_add_run
+
+
+KR_NUM = ["가", "나", "다", "라", "마", "바", "사", "아",
+          "자", "차", "카", "타", "파", "하"]
+
+# 사용자 양식과 일치하는 검은 동그라미 안 흰색 숫자 (Unicode dingbat).
+# (1)~(20) 형태의 일반 괄호 숫자 대신 본문 항목 카운터로 사용한다.
+CIRCLED_NUM = [
+    "❶", "❷", "❸", "❹", "❺", "❻", "❼", "❽", "❾", "❿",
+    "⓫", "⓬", "⓭", "⓮", "⓯", "⓰", "⓱", "⓲", "⓳", "⓴",
+]
+
+
+def numbered_marker(idx):
+    """1-based index → ❶❷❸... (사용자 보고서 양식). 20 초과는 (N) 폴백."""
+    if 1 <= idx <= len(CIRCLED_NUM):
+        return CIRCLED_NUM[idx - 1]
+    return f"({idx})"
+
+
+# A4 page is 59528 HWPUNIT wide. The skeleton template used 30 mm left/right
+# margins, which made generated reports feel cramped. Use 20 mm margins and
+# size tables to the wider usable line length.
+PAGE_WIDTH = 59528
+PAGE_MARGIN_LR = 5668       # 20 mm
+PAGE_MARGIN_TOP = 5668      # 20 mm
+PAGE_MARGIN_BOTTOM = 5668   # 20 mm
+PAGE_HEADER_FOOTER = 4252   # 15 mm
+TABLE_WIDTH = 47600
+
+NS_HH = "{http://www.hancom.co.kr/hwpml/2011/head}"
+NS_HP = "{http://www.hancom.co.kr/hwpml/2011/paragraph}"
+# `hc` is the HWPML "core" namespace at .../2011/core (NOT the .../2010/charDefault
+# guess we used earlier; that mismatch caused lxml to emit ns2:fillBrush, which
+# Hangul ignored). Verified against the user's Energy Conservation.hwpx.
+NS_HC = "{http://www.hancom.co.kr/hwpml/2011/core}"
+
+# OWPML char height is in 1/100 pt (so 1100 == 11 pt).
+SIZE_TITLE_BIG = 1800     # 실험 보고서 (18 pt) — 사용자 양식과 일치
+SIZE_TITLE = 1500         # 영문 (한글) 제목 (15 pt) — 한 줄에 들어가게
+                          # 1./2./3./4. 헤딩에도 같은 크기 사용
+SIZE_HEADING = 1300       # 가./나. 한글 단계 헤딩 (13 pt)
+SIZE_BODY = 1100          # 본문 (11 pt)
+SIZE_TABLE_HEADER = 1000  # 표 머리글 (10 pt)
+SIZE_TABLE_BODY = 950     # 표 본문 (9.5 pt) — 11 pt는 좁은 셀에서 답답함
+SIZE_CAPTION = 1000       # 그림 캡션 (10 pt)
+SIZE_LINK = 900           # Google 검색 링크 (9 pt)
+
+# margin units: 1 mm ≈ 283.46 HWPUNIT
+INDENT_5MM = 1417
+INDENT_10MM = 2835
+
+# 1.6 line spacing — Hangul default. 130 (docx 1.3) was too tight and made
+# adjacent lines look cramped (user reported "자간이 이상함").
+LINE_SPACING_PERCENT = 160
+TABLE_LINE_SPACING_PERCENT = 130
+TABLE_CELL_MARGIN_X = 180
+TABLE_CELL_MARGIN_Y = 100
+
+# Figure box border color (gray, matches docx generator)
+FIGURE_BORDER_COLOR = "#888888"
+TABLE_HEADER_FILL = "#D9E2F3"
+HIGHLIGHT_FILL = "#CDF2E4"
+LINK_COLOR = "#0563C1"
+
+# Match docx-gen.js FONT constant. Hangul auto-substitutes if Malgun Gothic
+# isn't installed (the user's actual font might be 함초롬바탕 etc.).
+DEFAULT_FONT_FACE = "Malgun Gothic"
+# face values must match the family name of the actually-installed font.
+# Korean fonts register under their Korean family name (나눔명조 / 나눔고딕 /
+# 함초롬바탕) — the English-spaced forms ("Nanum Myeongjo") match nothing in
+# Hancom/Korean Word, so the renderer falls back to the default (맑은 고딕).
+ALLOWED_FONT_FACES = {
+    "함초롬바탕",
+    "Malgun Gothic",
+    "나눔고딕",
+    "나눔명조",
+}
+
+
+def normalize_font_face(face):
+    face = str(face or "").strip()
+    aliases = {
+        "함초롱바탕": "함초롬바탕",
+        "함초롬바탕": "함초롬바탕",
+        "hamchorom-batang": "함초롬바탕",
+        "맑은 고딕": "Malgun Gothic",
+        "malgun-gothic": "Malgun Gothic",
+        "나눔고딕": "나눔고딕",
+        "나눔 고딕": "나눔고딕",
+        "Nanum Gothic": "나눔고딕",
+        "NanumGothic": "나눔고딕",
+        "nanum-gothic": "나눔고딕",
+        "나눔명조": "나눔명조",
+        "나눔 명조": "나눔명조",
+        "Nanum Myeongjo": "나눔명조",
+        "NanumMyeongjo": "나눔명조",
+        "nanum-myeongjo": "나눔명조",
+    }
+    if face in aliases:
+        return aliases[face]
+    if face in ALLOWED_FONT_FACES:
+        return face
+    return DEFAULT_FONT_FACE
+
+
+def resolve_font_face(content):
+    """업로드한 .hwpx 에서 감지한 글꼴(detected_font_face)이 있으면 그대로 사용
+    (그 사람 글꼴 — 설치돼 있어야 표시). 없으면 드롭다운 값을 4종 프리셋으로 정규화."""
+    detected = (content or {}).get("detected_font_face")
+    if detected and str(detected).strip():
+        return str(detected).strip()
+    return normalize_font_face((content or {}).get("font_face") or (content or {}).get("__fontFace"))
+
+
+# ── Unicode super/subscript ────────────────────────────────────────────────
+# Digits/signs render cleanly as Unicode glyphs. Alphabetic subscripts such as
+# m_{exp} use real charPr offset+relSz runs instead; Unicode letter subscripts
+# have uneven metrics in Hangul/PDF exports.
+SUPERSCRIPT_MAP = {
+    "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴",
+    "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹",
+    "+": "⁺", "-": "⁻", "−": "⁻", "=": "⁼",
+    "(": "⁽", ")": "⁾",
+    "a": "ᵃ", "b": "ᵇ", "c": "ᶜ", "d": "ᵈ", "e": "ᵉ", "f": "ᶠ",
+    "g": "ᵍ", "h": "ʰ", "i": "ⁱ", "j": "ʲ", "k": "ᵏ", "l": "ˡ",
+    "m": "ᵐ", "n": "ⁿ", "o": "ᵒ", "p": "ᵖ", "r": "ʳ", "s": "ˢ",
+    "t": "ᵗ", "u": "ᵘ", "v": "ᵛ", "w": "ʷ", "x": "ˣ", "y": "ʸ", "z": "ᶻ",
+}
+SUBSCRIPT_MAP = {
+    "0": "₀", "1": "₁", "2": "₂", "3": "₃", "4": "₄",
+    "5": "₅", "6": "₆", "7": "₇", "8": "₈", "9": "₉",
+    "+": "₊", "-": "₋", "−": "₋", "=": "₌",
+    "(": "₍", ")": "₎",
+    "a": "ₐ", "e": "ₑ", "h": "ₕ", "i": "ᵢ", "j": "ⱼ", "k": "ₖ",
+    "l": "ₗ", "m": "ₘ", "n": "ₙ", "o": "ₒ", "p": "ₚ", "r": "ᵣ",
+    "s": "ₛ", "t": "ₜ", "u": "ᵤ", "v": "ᵥ", "x": "ₓ",
+}
+
+
+def _try_unicode_map(s, table):
+    if re.search(r"[A-Za-z]", s):
+        return None
+    out = []
+    for ch in s:
+        if ch in table:
+            out.append(table[ch])
+        else:
+            return None
+    return "".join(out)
+
+
+# ── Element helpers ─────────────────────────────────────────────────────────
+
+
+def _para_props(doc):
+    hdr = doc.oxml.headers[0]
+    for ch in hdr.element.iter(f"{NS_HH}paraProperties"):
+        return hdr, ch
+    return hdr, None
+
+
+def _border_fills(doc):
+    hdr = doc.oxml.headers[0]
+    for ch in hdr.element.iter(f"{NS_HH}borderFills"):
+        return hdr, ch
+    return hdr, None
+
+
+def _char_props(doc):
+    hdr = doc.oxml.headers[0]
+    for ch in hdr.element.iter(f"{NS_HH}charProperties"):
+        return hdr, ch
+    return hdr, None
+
+
+def apply_default_font(doc, face=DEFAULT_FONT_FACE):
+    """rewrite the face attribute of every <hh:font> in every <hh:fontface>
+    so the document's primary text font matches docx output (Malgun Gothic
+    in our case). Hangul falls back gracefully if the face is missing on
+    the user's machine.
+    """
+    hdr = doc.oxml.headers[0]
+    changed = False
+    for font in hdr.element.iter(f"{NS_HH}font"):
+        if font.get("face") != face:
+            font.set("face", face)
+            changed = True
+    if changed:
+        hdr.mark_dirty()
+
+
+def apply_body_font(doc, face=DEFAULT_FONT_FACE):
+    """Rewrite ONLY the primary font (id="0") in every <hh:fontface> group.
+
+    All generated body content goes through ``_get_or_create_charpr``, which
+    points every fontRef language to font id "0". So rewriting just id "0"
+    makes all generated text (headings, paragraphs, tables, captions) use the
+    user's chosen ``face`` while leaving template-defined fonts (the school
+    form's title box, labels, footer — which reference other font ids) on
+    their original faces.
+
+    This is the template-path counterpart to ``apply_default_font`` (which
+    rewrites every font and is fine for blank/new documents). The physics
+    result-report template ships with 굴림 as font id 0, which is why the
+    body always rendered in 굴림 before this was applied.
+    """
+    hdr = doc.oxml.headers[0]
+    changed = False
+    for font in hdr.element.iter(f"{NS_HH}font"):
+        if font.get("id") == "0" and font.get("face") != face:
+            font.set("face", face)
+            changed = True
+    if changed:
+        hdr.mark_dirty()
+
+
+def apply_page_layout(doc):
+    """Widen the writing area and normalize page margins.
+
+    The blank HWPX template ships with 30 mm side margins. That leaves only
+    ~15 cm of text width on A4 and makes Korean report paragraphs feel boxed in.
+    """
+    changed = False
+    for sec in getattr(doc.oxml, "sections", []):
+        for page_pr in sec.element.iter(f"{NS_HP}pagePr"):
+            page_pr.set("width", str(PAGE_WIDTH))
+            page_pr.set("height", "84186")
+            margin = page_pr.find(f"{NS_HP}margin")
+            if margin is not None:
+                margin.set("left", str(PAGE_MARGIN_LR))
+                margin.set("right", str(PAGE_MARGIN_LR))
+                margin.set("top", str(PAGE_MARGIN_TOP))
+                margin.set("bottom", str(PAGE_MARGIN_BOTTOM))
+                margin.set("header", str(PAGE_HEADER_FOOTER))
+                margin.set("footer", str(PAGE_HEADER_FOOTER))
+                margin.set("gutter", "0")
+                changed = True
+    if changed:
+        for sec in getattr(doc.oxml, "sections", []):
+            if hasattr(sec, "mark_dirty"):
+                sec.mark_dirty()
+
+
+def _next_id(container):
+    used = [
+        int(c.get("id"))
+        for c in container
+        if c.get("id") is not None and c.get("id").lstrip("-").isdigit()
+    ]
+    return str(max(used) + 1) if used else "1"
+
+
+# ── char property factory ──────────────────────────────────────────────────
+
+_CHAR_CACHE_KEY = "_v5_char_cache"
+
+
+def make_char_pr(doc, *, size=SIZE_BODY, bold=False, italic=False,
+                 sub=False, sup=False, color=None, highlight=False):
+    """create (or reuse) a charPr with the given style and return its id.
+    cached via doc._v5_char_cache so repeated style requests don't bloat
+    header.xml.
+    """
+    cache = getattr(doc, _CHAR_CACHE_KEY, None)
+    if cache is None:
+        cache = {}
+        setattr(doc, _CHAR_CACHE_KEY, cache)
+    key = (size, bold, italic, sub, sup, color, highlight)
+    if key in cache:
+        return cache[key]
+
+    hdr, char_props = _char_props(doc)
+    if char_props is None:
+        return None
+
+    template = list(char_props)[0]
+    new_cp = deepcopy(template)
+    new_id = _next_id(char_props)
+    new_cp.set("id", new_id)
+    new_cp.set("height", str(size))
+    if color:
+        new_cp.set("textColor", color)
+    if highlight:
+        new_cp.set("borderFillIDRef", str(make_highlight_border_fill(doc)))
+
+    # set every fontRef language to "0" so the document's first font face
+    # (Malgun Gothic if we registered it; otherwise Hangul default) is used
+    fr = new_cp.find(f"{NS_HH}fontRef")
+    if fr is not None:
+        for lang in ("hangul", "latin", "hanja", "japanese",
+                     "other", "symbol", "user"):
+            fr.set(lang, "0")
+
+    # remove any existing emphasis tags from the deep-copied template, then
+    # add only the ones we want
+    for tag in ("bold", "italic", "subscript", "superscript", "subScript",
+                "supScript", "superScript"):
+        for el in new_cp.findall(f"{NS_HH}{tag}"):
+            new_cp.remove(el)
+    if bold:
+        etree.SubElement(new_cp, f"{NS_HH}bold")
+    if italic:
+        etree.SubElement(new_cp, f"{NS_HH}italic")
+
+    # OWPML renders sub/superscript by adjusting the run's relative size
+    # (relSz) + vertical offset, NOT a dedicated element. Hangul ignores
+    # <hh:subScript/>; it honors relSz=60 + offset instead.
+    #
+    # Hancom Office HWP for macOS renders negative offsets above the baseline
+    # and positive offsets below it. Keep signs explicit so plain-text markers
+    # such as I_{cm} and T^{2} land on the expected side of the baseline.
+    if sub or sup:
+        rel_sz = new_cp.find(f"{NS_HH}relSz")
+        offset = new_cp.find(f"{NS_HH}offset")
+        if rel_sz is not None:
+            for lang in ("hangul", "latin", "hanja", "japanese",
+                         "other", "symbol", "user"):
+                rel_sz.set(lang, "70")
+        if offset is not None:
+            value = "-35" if sup else "35"
+            for lang in ("hangul", "latin", "hanja", "japanese",
+                         "other", "symbol", "user"):
+                offset.set(lang, value)
+
+    char_props.append(new_cp)
+    char_props.set("itemCnt", str(int(char_props.get("itemCnt") or 0) + 1))
+    hdr.mark_dirty()
+
+    cache[key] = new_id
+    return new_id
+
+
+# ── paragraph property factory ─────────────────────────────────────────────
+
+_PARA_CACHE_KEY = "_v5_para_cache"
+
+
+def make_para_pr(doc, *, align="LEFT", indent_left=0, line_spacing=None,
+                 keep_with_next=False, space_after=0, space_before=0):
+    cache = getattr(doc, _PARA_CACHE_KEY, None)
+    if cache is None:
+        cache = {}
+        setattr(doc, _PARA_CACHE_KEY, cache)
+    key = (align, indent_left, line_spacing, keep_with_next,
+           space_after, space_before)
+    if key in cache:
+        return cache[key]
+
+    hdr, para_props = _para_props(doc)
+    if para_props is None:
+        return None
+
+    template = list(para_props)[0]
+    new_pp = deepcopy(template)
+    new_id = _next_id(para_props)
+    new_pp.set("id", new_id)
+
+    al = new_pp.find(f"{NS_HH}align")
+    if al is not None:
+        al.set("horizontal", align)
+
+    if keep_with_next:
+        bs = new_pp.find(f"{NS_HH}breakSetting")
+        if bs is not None:
+            bs.set("keepWithNext", "1")
+
+    # margin and lineSpacing live inside hp:switch > (hp:case | hp:default)
+    sw = new_pp.find(f"{NS_HP}switch")
+    if sw is not None:
+        for branch in sw:  # hp:case and hp:default both
+            margin = branch.find(f"{NS_HH}margin")
+            if margin is not None:
+                if indent_left:
+                    left = margin.find(f"{NS_HC}left")
+                    if left is not None:
+                        left.set("value", str(indent_left))
+                if space_before:
+                    prev = margin.find(f"{NS_HC}prev")
+                    if prev is not None:
+                        prev.set("value", str(space_before))
+                if space_after:
+                    nxt = margin.find(f"{NS_HC}next")
+                    if nxt is not None:
+                        nxt.set("value", str(space_after))
+            ls = branch.find(f"{NS_HH}lineSpacing")
+            if ls is not None and line_spacing is not None:
+                ls.set("value", str(line_spacing))
+
+    para_props.append(new_pp)
+    para_props.set("itemCnt", str(int(para_props.get("itemCnt") or 0) + 1))
+    hdr.mark_dirty()
+    cache[key] = new_id
+    return new_id
+
+
+# ── borderFill factories ───────────────────────────────────────────────────
+
+
+def _new_border_fill(doc, mutator):
+    hdr, border_fills = _border_fills(doc)
+    if border_fills is None:
+        return None
+    template = list(border_fills)[0]
+    new_bf = deepcopy(template)
+    new_id = _next_id(border_fills)
+    new_bf.set("id", new_id)
+    mutator(new_bf)
+    border_fills.append(new_bf)
+    border_fills.set("itemCnt", str(int(border_fills.get("itemCnt") or 0) + 1))
+    hdr.mark_dirty()
+    return new_id
+
+
+def make_solid_border_fill(doc):
+    """plain 4-side SOLID border without fill — for table data cells."""
+    cache = getattr(doc, "_v5_solid_bf", None)
+    if cache:
+        return cache
+
+    def mutate(bf):
+        for side in ("leftBorder", "rightBorder", "topBorder", "bottomBorder"):
+            el = bf.find(f"{NS_HH}{side}")
+            if el is not None:
+                el.set("type", "SOLID")
+        for old in bf.findall(f"{NS_HH}fillBrush"):
+            bf.remove(old)
+
+    new_id = _new_border_fill(doc, mutate)
+    doc._v5_solid_bf = new_id
+    return new_id
+
+
+def make_shaded_border_fill(doc, fill_color=TABLE_HEADER_FILL):
+    """4-side SOLID border + light fill for table header cells."""
+    cache_key = f"_v5_shaded_{fill_color}"
+    cache = getattr(doc, cache_key, None)
+    if cache:
+        return cache
+
+    def mutate(bf):
+        for side in ("leftBorder", "rightBorder", "topBorder", "bottomBorder"):
+            el = bf.find(f"{NS_HH}{side}")
+            if el is not None:
+                el.set("type", "SOLID")
+        # remove inherited brushes from BOTH possible namespaces
+        for ns in (NS_HH, NS_HC):
+            for old in bf.findall(f"{ns}fillBrush"):
+                bf.remove(old)
+        # Hangul writes fillBrush/winBrush in the `hc` (charDefault)
+        # namespace, NOT `hh` (head). Using the wrong namespace meant
+        # earlier attempts were silently ignored.
+        brush = etree.SubElement(bf, f"{NS_HC}fillBrush")
+        # Verbatim form taken from a Hangul-shaded cell in the user's
+        # 2402홍길동_Energy Conservation.hwpx — Hangul ignored every other
+        # variant we tried.
+        etree.SubElement(
+            brush,
+            f"{NS_HC}winBrush",
+            attrib={
+                "faceColor": fill_color,
+                "hatchColor": "#000000",
+                "alpha": "0",
+            },
+        )
+
+    new_id = _new_border_fill(doc, mutate)
+    setattr(doc, cache_key, new_id)
+    return new_id
+
+
+def make_highlight_border_fill(doc, fill_color=HIGHLIGHT_FILL):
+    """No border + mint fill for inline highlighted text runs."""
+    cache_key = f"_v5_highlight_{fill_color}"
+    cache = getattr(doc, cache_key, None)
+    if cache:
+        return cache
+
+    def mutate(bf):
+        for side in ("leftBorder", "rightBorder", "topBorder", "bottomBorder"):
+            el = bf.find(f"{NS_HH}{side}")
+            if el is not None:
+                el.set("type", "NONE")
+        for ns in (NS_HH, NS_HC):
+            for old in bf.findall(f"{ns}fillBrush"):
+                bf.remove(old)
+        brush = etree.SubElement(bf, f"{NS_HC}fillBrush")
+        etree.SubElement(
+            brush,
+            f"{NS_HC}winBrush",
+            attrib={
+                "faceColor": fill_color,
+                "hatchColor": "#FF000000",
+                "alpha": "0",
+            },
+        )
+
+    new_id = _new_border_fill(doc, mutate)
+    setattr(doc, cache_key, new_id)
+    return new_id
+
+
+def make_dashed_border_fill(doc, color=FIGURE_BORDER_COLOR):
+    """gray dashed 4-side border for figure placeholder boxes."""
+    cache = getattr(doc, "_v5_dashed_bf", None)
+    if cache:
+        return cache
+
+    def mutate(bf):
+        for side in ("leftBorder", "rightBorder", "topBorder", "bottomBorder"):
+            el = bf.find(f"{NS_HH}{side}")
+            if el is not None:
+                el.set("type", "DASH")
+                el.set("color", color)
+        for old in bf.findall(f"{NS_HH}fillBrush"):
+            bf.remove(old)
+
+    new_id = _new_border_fill(doc, mutate)
+    doc._v5_dashed_bf = new_id
+    return new_id
+
+
+# ── Marker tokenizer ───────────────────────────────────────────────────────
+
+
+_MARKER_RE = re.compile(
+    r"(\*\*[^*]+\*\*|"          # **bold**
+    r"(?<!\*)\*[^*]+\*(?!\*)|"   # *italic*
+    r"_\{[^}]+\}|"               # _{sub}
+    r"\^\{[^}]+\})"              # ^{sup}
+)
+
+EQ_PREFIXES = ("{{EQN-LATEX:", "{{EQ-LATEX:", "{{EQN:", "{{EQ:")
+MANUAL_NUMBER_RE = re.compile(
+    r"^\s*(?:(?:\(\s*\d{1,2}\s*\)|[①-⑳❶-❿]|\d{1,2}[.)])[\s:：-]+)+"
+)
+
+# ── 수식 공통 로직 위임 스텁 (DEF-012 이중 미러 단일화) ─────────────────────
+# 단일 소스는 lib/equation/hwpx_equation_tool.py 다. 아래 8개 심볼
+# (EQ_SCRIPT_KEYWORD, _EQ_PREFIX_RESCUE_RE, _BARE_LATEX_SYMBOL_MAP,
+# _BARE_LATEX_SYMBOL_CMD_RE, _canonical_eq_prefix,
+# canonicalize_equation_marker_prefixes, compact_chemical_spacing,
+# replace_bare_latex_symbol_commands)은 과거 두 파일에 동일 구현이 2벌로
+# 존재하던 것을 위임 스텁으로 바꾼 것이다. 구현 수정은 equation tool 쪽에서만
+# 한다(잡는 변형·화이트리스트 의미 등 상세 주석도 tool 참조).
+#
+# 스텁이 모듈 별칭 대신 __import__("hwpx_equation_tool") 인라인 참조를 쓰는
+# 이유: scripts/eq_engine_diff.py 의 check_mirror_sync 가 이 이름들의 최상위
+# FunctionDef/Assign 노드만 AST 로 떼어 {"re": re} 네임스페이스에서 exec 해
+# tool 과의 동일성(동작 프로브 포함)을 회귀 검사한다. 모듈 별칭 참조는 그
+# 네임스페이스에서 NameError 가 나고, __import__ 는 sys.modules/sys.path 로
+# 어디서든 해석된다(이 모듈 최상단에서 tool 경로 주입+선로딩을 마쳤으므로
+# 실행 시엔 캐시 조회일 뿐이다).
+#
+# 아래 4개 할당 스텁은 이제 이 파일 안에서 직접 참조되진 않지만, 위 미러
+# 검사와 이 모듈을 import 해 쓰는 하위 파이프라인(pre.*) 호환을 위해 이름을
+# 유지한다.
+EQ_SCRIPT_KEYWORD = __import__("hwpx_equation_tool").EQ_SCRIPT_KEYWORD
+_EQ_PREFIX_RESCUE_RE = __import__("hwpx_equation_tool")._EQ_PREFIX_RESCUE_RE
+_BARE_LATEX_SYMBOL_MAP = __import__("hwpx_equation_tool")._BARE_LATEX_SYMBOL_MAP
+_BARE_LATEX_SYMBOL_CMD_RE = __import__("hwpx_equation_tool")._BARE_LATEX_SYMBOL_CMD_RE
+
+
+def _canonical_eq_prefix(m):
+    """마커 프리픽스 교정 콜백. 단일 소스(hwpx_equation_tool) 위임."""
+    return __import__("hwpx_equation_tool")._canonical_eq_prefix(m)
+
+
+def canonicalize_equation_marker_prefixes(text):
+    """마커 프리픽스 오타를 정규형('{{EQ[-LATEX]:')으로 교정. 단일 소스 위임."""
+    return __import__("hwpx_equation_tool").canonicalize_equation_marker_prefixes(text)
+
+
+def compact_chemical_spacing(script):
+    """화학식 원소 토큰 압축(한컴 키워드 보호 포함). 단일 소스 위임."""
+    return __import__("hwpx_equation_tool").compact_chemical_spacing(script)
+
+
+def replace_bare_latex_symbol_commands(text):
+    r"""평문 속 단독 LaTeX 기호 명령(\times, \nu 등) 유니코드 강등. 단일 소스 위임."""
+    return __import__("hwpx_equation_tool").replace_bare_latex_symbol_commands(text)
+
+
+def find_equation_spans(text):
+    """Return (start, end, kind, body) spans for approved equation markers.
+
+    This mirrors lib/equation/hwpx_equation_tool.py enough for generation-time
+    tokenization. It is intentionally local so HWPX text styling does not parse
+    `_{} / ^{}` markers inside equation scripts before the post-processor runs.
+    """
+    spans = []
+    pos = 0
+    while True:
+        starts = [
+            (text.find(prefix, pos), prefix)
+            for prefix in EQ_PREFIXES
+            if text.find(prefix, pos) >= 0
+        ]
+        if not starts:
+            return spans
+
+        start, prefix = min(starts, key=lambda item: item[0])
+        body_start = start + len(prefix)
+        kind = prefix[2:-1]
+        depth = 0
+        i = body_start
+        while i < len(text):
+            char = text[i]
+            if char == "\\":
+                i += 2
+                continue
+            if char == "{":
+                depth += 1
+                i += 1
+                continue
+            if char == "}":
+                if depth == 0 and i + 1 < len(text) and text[i + 1] == "}":
+                    spans.append((start, i + 2, kind, text[body_start:i]))
+                    pos = i + 2
+                    break
+                if depth > 0:
+                    depth -= 1
+                i += 1
+                continue
+            i += 1
+        else:
+            return spans
+
+
+def has_equation_placeholder(text):
+    return bool(find_equation_spans(text or ""))
+
+
+def is_equation_placeholder_only(text):
+    s = (text or "").strip()
+    spans = find_equation_spans(s)
+    return len(spans) == 1 and spans[0][0] == 0 and spans[0][1] == len(s)
+
+
+def strip_manual_numbering(text):
+    return MANUAL_NUMBER_RE.sub("", str(text or "")).strip()
+
+
+def strip_manual_bullet(text):
+    return re.sub(r"^\s*[-•]\s+", "", str(text or "")).strip()
+
+
+def brace_unbraced_scripts(script):
+    s = str(script or "")
+    s = re.sub(r"([_^])(?!\{)([+\-])", r"\1{\2}", s)
+    s = re.sub(r"([_^])(?!\{)(\d+(?:\.\d+)?)", r"\1{\2}", s)
+    s = re.sub(r"([_^])(?!\{)([A-Za-z]+)", r"\1{\2}", s)
+    return s
+
+
+# EQ_SCRIPT_KEYWORD / compact_chemical_spacing 은 위 위임 스텁 구획 참조
+# (단일 소스: lib/equation/hwpx_equation_tool.py, DEF-012).
+
+
+def lift_functional_group_subscripts(script):
+    """Correct common LLM chemistry-script mistakes around substituent groups."""
+    s = str(script or "")
+    group = (
+        r"(?:OH|COOH|CHO|NH(?:_\{?2\}?)|NO(?:_\{?2\}?)|"
+        r"SO(?:_\{?3\}?H)|OCOCH(?:_\{?3\}?))"
+    )
+    s = re.sub(rf"_\s*\{{?\s*\(\s*({group})\s*\)\s*\}}?", r"(\1)", s)
+    s = re.sub(rf"_\s*\{{\s*({group})\s*\}}", r"(\1)", s)
+    return s
+
+
+def normalize_equation_script(script):
+    s = str(script or "").strip()
+    s = (
+        s.replace("→", "->")
+        .replace("⟶", "->")
+        .replace("⇒", "=>")
+        .replace("←", "<-")
+        .replace("⇌", "<->")
+        .replace("↔", "<->")
+        .replace("⇄", "<->")
+    )
+    # 비례 기호: 모델이 약어 'prop' 을 쓰면 한컴이 ∝ 로 못 읽고 'prop' 글자로 렌더된다.
+    # 정식 키워드 'propto'(=∝) 로 교정. (\bprop\b 라 'propto' 자체·'property' 등은 안 건드림)
+    s = re.sub(r"\bprop\b", "propto", s)
+    s = re.sub(
+        r"--\s*\[\s*([^\]]+?)\s*\]\s*(<->|<=>|->|<-|=>)",
+        r"BUILDREL \2 {\1}",
+        s,
+    )
+    s = re.sub(
+        r"(<->|<=>|->|<-|=>)\s*\[\s*([^\]]+?)\s*\]",
+        r"BUILDREL \1 {\2}",
+        s,
+    )
+    s = s.replace("<=>", "<->")
+    s = s.replace("×", " times ").replace("·", " cdot ")
+    s = re.sub(r"\s+([_^])\s*", r"\1", s)
+    s = brace_unbraced_scripts(s)
+    s = lift_functional_group_subscripts(s)
+    s = compact_chemical_spacing(s)
+    s = re.sub(r"\s{2,}", " ", s)
+    return s.strip()
+
+
+# 영어 산문 기능어 — 'where R = 8.314 ... is the gas constant' 같은 영문 법칙
+# 인용 문장이 '='·'+' 연산자와 숫자를 포함한다는 이유로 통째로 수식 객체로
+# 승격되는 것을 막는다. 단어 경계(\b) 일치라 1글자 변수(a, T, R)·화학식
+# (NaOH, THF)은 세지 않고, 한컴 수식 키워드(over, int, times, rm, in 등)와
+# 원소기호 충돌어(be→Be, as→As)는 목록에서 제외했다. '서로 다른' 기능어가
+# 2개 이상이어야 산문으로 본다 — 'x = 5 at T'(1개)나 물리 공식의 가속도 항
+# 'v = v_{0} + at'(at 반복도 1종)는 계속 승격된다.
+# phys-result/hwpx-gen.py 의 is_probable_physics_formula 도 이 정의를 공유한다.
+_EQ_ENGLISH_STOPWORD_RE = re.compile(
+    r"\b(?:where|is|are|was|were|the|that|this|these|those|note|at|of|and|"
+    r"or|for|with|from|which|when|then|we|can|has|have|by|if|since|because|"
+    r"hence|thus|therefore)\b",
+    re.IGNORECASE,
+)
+
+
+def count_english_prose_stopwords(text):
+    """텍스트 속 '서로 다른' 영문 산문 기능어 개수(대소문자 무시)."""
+    return len({w.lower() for w in _EQ_ENGLISH_STOPWORD_RE.findall(str(text or ""))})
+
+
+def looks_like_standalone_equation(text):
+    s = normalize_equation_script(strip_manual_numbering(text))
+    if not s or has_equation_placeholder(s):
+        return False
+    outside_braces = re.sub(r"\{[^{}]*\}", "", s)
+    # If Korean prose exists outside numerator/denominator labels, keep it as a
+    # normal paragraph. Formula-only lines may still contain Korean inside {...}.
+    if re.search(r"[가-힣]", outside_braces):
+        return False
+    # 영어 산문 가드 — 키워드 우회(formula|equation|yield)로
+    # should_skip_auto_equation 을 건너뛴 경로와 라벨 분기 둘 다 여기를
+    # 거치므로, 서로 다른 영문 기능어가 2개 이상이면 산문으로 남긴다.
+    if count_english_prose_stopwords(outside_braces) >= 2:
+        return False
+    has_operator = bool(
+        re.search(
+            r"\s(over|sqrt|sum|int|times)\s|->|<->|=|≈|~|\+",
+            s,
+            re.I,
+        )
+    )
+    has_formula_bits = bool(
+        re.search(r"[A-Za-z][A-Za-z0-9]*[_^]\{?[-+A-Za-z0-9]+", s)
+        or re.search(r"\{[^{}]+\}\s+over\s+\{[^{}]+\}", s, re.I)
+        or re.search(r"[A-Za-z%][A-Za-z0-9_{}% ]*\s*=\s*[-+A-Za-z0-9{(%]", s)
+        or re.search(r"\d", s)
+    )
+    return has_operator and has_formula_bits
+
+
+def should_skip_auto_equation(text):
+    s = str(text or "").strip()
+    if not s:
+        return True
+
+    if re.search(r"https?://|www\.|doi\s*:|@", s, re.I):
+        return True
+    if re.match(r"^\s*\[\d+\]", s):
+        return True
+    if re.match(
+        r"^\s*(?:참고문헌|references?|출처|source|pubchem|nist|chemspider|doi|url)\b",
+        s,
+        re.I,
+    ):
+        return True
+
+    # Keep label/value prose and references as plain text. Labelled equations
+    # with known math keywords are handled before this guard.
+    if re.match(r"^.{1,80}[:：]\s*\S+", s):
+        return True
+
+    # Long Korean prose can contain numbers and '=' signs, but should not be
+    # promoted wholesale into a centered equation object.
+    if len(s) > 80 and re.search(r"[가-힣]", s):
+        return True
+
+    return False
+
+
+# 평문에 흘러나온 한컴 수식 스크립트 조각 구조(rescue)용 매핑/패턴.
+# 모델이 문장 안에 `{1} over {2n n!}` 같은 스크립트를 마커 없이 쓰면 변환기가
+# 손댈 수 없어 원문 그대로 노출된다(수학·물리 수행평가, 화학 산문 실생성물에서
+# 확인). `over` 양변 중 한쪽 이상이 중괄호 그룹이거나, 중괄호 그룹 안에 over
+# 가 있거나, sqrt 가 중괄호 인자를 가진 패턴만 신호로 봐 산문 오탐을 막는다.
+# phys-result/math-inquiry/phys-inquiry 도 이 공통 구현을 그대로 쓴다.
+_UNI_SUP_MAP = {"⁰": "0", "¹": "1", "²": "2", "³": "3", "⁴": "4", "⁵": "5",
+                "⁶": "6", "⁷": "7", "⁸": "8", "⁹": "9", "ⁿ": "n"}
+_UNI_SUB_MAP = {"₀": "0", "₁": "1", "₂": "2", "₃": "3", "₄": "4", "₅": "5",
+                "₆": "6", "₇": "7", "₈": "8", "₉": "9", "ₙ": "n"}
+_RESCUE_BRACED = r"\{(?:[^{}]|\{[^{}]*\})*\}"
+# over 의 비중괄호 피연산자에는 한글도 허용한다 — '{실제} over 이론질량',
+# '분자 over {2}' 처럼 피연산자가 한글인 조각은 validate 의 잔재 검사
+# (_HWP_SCRIPT_RESIDUE_RE)가 fatal 로 보므로, 코어 매칭이 못 잡으면 변환
+# 가능한 입력이 구제 시도 없이 보고서 전체를 죽인다. (좌우 확장 루프는
+# 한글에서 멈추므로 피연산자는 확장이 아니라 코어가 직접 잡아야 한다.)
+_RESCUE_WORD = r"[A-Za-z0-9.()!^_+\-가-힣]+"
+_HWP_SCRIPT_CORE_RE = re.compile(
+    rf"(?:{_RESCUE_BRACED}\s*over\s*(?:{_RESCUE_BRACED}|{_RESCUE_WORD}))"
+    rf"|(?:{_RESCUE_WORD}\s*over\s*{_RESCUE_BRACED})"
+    # 중괄호 그룹 '안'의 over(`sqrt {Ka over C}` 류)와 중괄호 인자를 가진
+    # sqrt 도 스크립트 조각 신호다 — 화학 산문 실생성물에서 확인.
+    rf"|(?:\{{[^{{}}]*\bover\b[^{{}}]*\}})"
+    rf"|(?:\bsqrt\s*{_RESCUE_BRACED})"
+)
+
+# 마커 없이 산문에 흘러나온 LaTeX 조각(\frac{1}{2} 등) — AI 빈출 유형. 등호가
+# 없으면 표준 승격(looks_like_standalone_equation)도 phys 인라인 승격('=' 필수)
+# 도 못 잡고, validate 의 _LATEX_RESIDUE_RE 는 fatal 로 본다. 변환 가능한
+# 조각만 보수적으로(주변 산문 흡수 없이) {{EQ-LATEX:...}} 마커로 감싼다.
+_BARE_LATEX_BRACED = r"\{(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*\}"
+_BARE_LATEX_FRAGMENT_RE = re.compile(
+    rf"\\[dt]?frac\s*{_BARE_LATEX_BRACED}\s*{_BARE_LATEX_BRACED}"
+    rf"|\\sqrt\s*(?:\[[^\[\]]*\]\s*)?{_BARE_LATEX_BRACED}"
+)
+
+# rescue 확장이 가로지를 수 있는 다중 글자 영문 토큰(한컴 수식/함수 키워드).
+# 그 밖의 2글자 이상 영어 단어(The, percent, is …)는 산문 경계로 보아 영어
+# 문장이 통째로 수식에 흡수되는 사고를 막는다(1글자 변수 a, T 는 항상 통과,
+# `_{eq}` 처럼 중괄호·첨자에 붙은 토큰은 수식 일부로 보고 통과).
+_RESCUE_CROSS_WORDS = frozenset(
+    "over sqrt root times cdot div pm mp leq geq neq approx prod sum int lim "
+    "log ln exp sin cos tan sec csc cot sinh cosh tanh rm deg inf "
+    "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu nu "
+    "xi pi rho sigma tau upsilon phi chi psi omega".split()
+)
+
+
+def _rescue_bare_latex_fragments(text):
+    s = str(text or "")
+    if "\\" not in s:
+        return s
+    return _BARE_LATEX_FRAGMENT_RE.sub(
+        lambda m: "{{EQ-LATEX:" + m.group(0) + "}}", s
+    )
+
+
+# _BARE_LATEX_SYMBOL_MAP / _BARE_LATEX_SYMBOL_CMD_RE /
+# replace_bare_latex_symbol_commands 는 위 위임 스텁 구획 참조
+# (단일 소스: lib/equation/hwpx_equation_tool.py, DEF-012. 화이트리스트
+# 의미·확장 금지 규칙 주석도 tool 쪽에 있다).
+
+
+def _demote_bare_latex_symbols_outside_markers(text):
+    """마커({{EQ*:...}}) 밖 평문 구간의 단독 LaTeX 기호 명령만 유니코드로 강등.
+
+    마커 본문(LaTeX 원문)은 변환 엔진 몫이므로 절대 건드리지 않는다.
+    주의: rescue_inline_hwp_script 안에서는 호출하지 않는다 — phys-result 의
+    _promote_plain_physics_segment 가 rescue 직후 '=' 기반 LaTeX 승격을
+    돌리므로, 그 전에 \\nu 류를 강등하면 수식 승격 품질이 떨어진다.
+    """
+    s = str(text or "")
+    if "\\" not in s:
+        return s
+    out = []
+    cursor = 0
+    for start, end, _kind, _body in find_equation_spans(s):
+        out.append(replace_bare_latex_symbol_commands(s[cursor:start]))
+        out.append(s[start:end])
+        cursor = end
+    out.append(replace_bare_latex_symbol_commands(s[cursor:]))
+    return "".join(out)
+
+
+def _first_unmatched_open_paren(text):
+    """짝이 텍스트 밖에 있는 첫 여는 괄호의 위치(-1: 없음)."""
+    opens = []
+    for i, ch in enumerate(text):
+        if ch == "(":
+            opens.append(i)
+        elif ch == ")" and opens:
+            opens.pop()
+    return opens[0] if opens else -1
+
+
+def _last_unmatched_close_paren(text):
+    """짝이 텍스트 밖에 있는 마지막 닫는 괄호의 위치(-1: 없음)."""
+    depth = 0
+    last = -1
+    for i, ch in enumerate(text):
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            if depth > 0:
+                depth -= 1
+            else:
+                last = i
+    return last
+
+
+def _convert_unicode_scripts_to_hwp(text):
+    out = []
+    for ch in str(text or ""):
+        if ch in _UNI_SUP_MAP:
+            out.append("^{" + _UNI_SUP_MAP[ch] + "}")
+        elif ch in _UNI_SUB_MAP:
+            out.append("_{" + _UNI_SUB_MAP[ch] + "}")
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+def rescue_inline_hwp_script(text):
+    """평문 문장 속 한컴 수식 스크립트 조각을 {{EQ:...}} 마커로 감싼다.
+
+    마커 없는 \\frac 류 LaTeX 조각을 먼저 {{EQ-LATEX:...}} 로 구조한 뒤,
+    over/sqrt-코어에서 시작해 한글/줄바꿈/산문 구조 문자(표 파이프 `|`,
+    볼드·기울임 마커 `*`)가 나오기 전까지 좌우로 확장해 수식 구간 전체
+    (P_{0}=1, P_{1}=x, … 나열 포함)를 하나의 수식으로 감싸고, 유니코드
+    위/아래첨자(², ₂)는 한컴 스크립트(^{2}, _{2})로 되돌린다. 2글자 이상의
+    일반 영어 단어(키워드 제외)도 산문 경계로 보아 영어 문장이 통째로
+    흡수되지 않게 하고, 끝에 걸린 목록 라벨('3.', '(1)')과 짝 잃은 괄호
+    반쪽은 수식 밖(산문)에 남긴다.
+    """
+    s = str(text or "")
+    if "{{EQ" in s:
+        return s
+    s = _rescue_bare_latex_fragments(s)
+    if not _HWP_SCRIPT_CORE_RE.search(s):
+        return s
+    # URL 과 방금 구조한 {{EQ-LATEX:...}} 마커 구간은 코어 탐지·확장 모두에서
+    # 보호한다(마커 본문 속 sqrt{...} 재탐지/재흡수 방지).
+    protected_spans = [m.span() for m in re.finditer(r"https?://\S+|www\.\S+", s)]
+    protected_spans += [(start, end) for start, end, _k, _b in find_equation_spans(s)]
+
+    def in_protected(pos):
+        return any(a <= pos < b for a, b in protected_spans)
+
+    def is_hangul(ch):
+        return "가" <= ch <= "힣"
+
+    def is_boundary(pos):
+        # 한글/줄바꿈에 더해 표 파이프·볼드 마커도 산문 구조 경계다 — 확장이
+        # 마크다운 표 행이나 **볼드** 쌍을 갈라놓지 않게 한다.
+        return is_hangul(s[pos]) or s[pos] in "\n|*" or in_protected(pos)
+
+    def crosses_word(j, k):
+        # s[j:k] 영문 단어를 확장이 가로질러도 되는가 — 키워드/1글자 변수이거나
+        # 중괄호·첨자에 바로 붙은 토큰(`_{eq}` 의 eq)만 허용.
+        if k - j < 2 or s[j:k].lower() in _RESCUE_CROSS_WORDS:
+            return True
+        left_ch = s[j - 1] if j > 0 else ""
+        right_ch = s[k] if k < len(s) else ""
+        return left_ch in "{}_^\\" or right_ch in "{}_^\\"
+
+    spans = []
+    for m in _HWP_SCRIPT_CORE_RE.finditer(s):
+        if in_protected(m.start()):
+            continue
+        a, b = m.span()
+        while a > 0 and not is_boundary(a - 1):
+            if s[a - 1].isascii() and s[a - 1].isalpha():
+                j = a - 1
+                while j > 0 and s[j - 1].isascii() and s[j - 1].isalpha():
+                    j -= 1
+                if not crosses_word(j, a):
+                    break
+                a = j
+            else:
+                a -= 1
+        while b < len(s) and not is_boundary(b):
+            if s[b].isascii() and s[b].isalpha():
+                j = b
+                while j < len(s) and s[j].isascii() and s[j].isalpha():
+                    j += 1
+                if not crosses_word(b, j):
+                    break
+                b = j
+            else:
+                b += 1
+        spans.append([a, b])
+    if not spans:
+        return s
+    merged = []
+    for a, b in sorted(spans):
+        if merged and a <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], b)
+        else:
+            merged.append([a, b])
+
+    out, cursor = [], 0
+    for a, b in merged:
+        core = s[a:b]
+        # 양끝 공백·문장부호는 수식 밖에 남긴다
+        stripped = core.lstrip(" \t")
+        a += len(core) - len(stripped)
+        stripped = stripped.rstrip(" \t")
+        b = a + len(stripped)
+        while stripped and stripped[-1] in ".,;:·/":
+            stripped = stripped[:-1].rstrip()
+            b = a + len(stripped)
+        while stripped and stripped[0] in ".,;:·/":
+            stripped = stripped[1:].lstrip()
+            a = b - len(stripped)
+        # 절차 번호·항목 라벨('3.', '(1)')은 수식 밖(산문)에 남긴다.
+        label = re.match(r"^(?:\(\s*\d{1,2}\s*\)|\d{1,2}[.)])\s+", stripped)
+        if label and _HWP_SCRIPT_CORE_RE.search(stripped[label.end():]):
+            stripped = stripped[label.end():].lstrip()
+            a = b - len(stripped)
+        # 짝이 수식 구간 밖에 있는 괄호 반쪽은 딸린 꼬리째 산문에 남긴다 —
+        # '(가) …' 의 닫는 괄호, '… (단위: g/mL)' 의 여는 괄호가 수식 안으로
+        # 흡수돼 괄호쌍이 분단되는 사고 방지. (코어가 사라지면 자르지 않는다.)
+        cut = _last_unmatched_close_paren(stripped)
+        if cut >= 0:
+            candidate = stripped[cut + 1:].lstrip(" \t.,;:·/")
+            if _HWP_SCRIPT_CORE_RE.search(candidate):
+                stripped = candidate
+                a = b - len(stripped)
+        cut = _first_unmatched_open_paren(stripped)
+        if cut >= 0:
+            candidate = stripped[:cut].rstrip(" \t.,;:·/")
+            if _HWP_SCRIPT_CORE_RE.search(candidate):
+                stripped = candidate
+                b = a + len(stripped)
+        if not stripped or ("over" not in stripped and "sqrt" not in stripped):
+            continue
+        out.append(s[cursor:a])
+        out.append("{{EQ:" + _convert_unicode_scripts_to_hwp(stripped) + "}}")
+        cursor = b
+    out.append(s[cursor:])
+    return "".join(out)
+
+
+def normalize_equation_markers(text):
+    """Promote raw equation-script lines to approved HWPX equation markers."""
+    # 근접 오타 마커({{eq:, {{EQN-LATEX :)를 먼저 정규형으로 교정해야
+    # 수식 전용 문단 가운데 정렬 등 생성 시 처리에 정상 마커로 잡힌다.
+    s = canonicalize_equation_marker_prefixes(text)
+    if has_equation_placeholder(s):
+        return s
+
+    stripped = strip_manual_numbering(s)
+    if should_skip_auto_equation(stripped) and not re.search(
+        r"(?:반응식|수득률|계산식|공식|formula|equation|yield)",
+        stripped,
+        re.I,
+    ):
+        # 산문으로 남기더라도, 모델이 평문에 흘린 한컴 스크립트 조각
+        # ({1} over {2}, sqrt {Ka over C} …)은 인라인 수식으로 구조하고,
+        # 수식화로 못 감싼 단독 LaTeX 기호 명령(\times, \nu …)은 마커 밖
+        # 평문에서 유니코드로 강등한다(rescue 먼저 → 남은 기호만 치환).
+        return _demote_bare_latex_symbols_outside_markers(
+            rescue_inline_hwp_script(s)
+        )
+
+    labeled = re.match(
+        r"^(.{0,60}?(?:반응식|수득률|계산식|공식|formula|equation|yield)[^:：=]*[:：=]\s*)(.+)$",
+        stripped,
+        re.I,
+    )
+    if labeled and looks_like_standalone_equation(labeled.group(2)):
+        return f"{labeled.group(1)}{{{{EQ:{normalize_equation_script(labeled.group(2))}}}}}"
+
+    if should_skip_auto_equation(stripped):
+        return _demote_bare_latex_symbols_outside_markers(
+            rescue_inline_hwp_script(s)
+        )
+
+    if looks_like_standalone_equation(stripped):
+        return f"{{{{EQ:{normalize_equation_script(stripped)}}}}}"
+
+    return _demote_bare_latex_symbols_outside_markers(rescue_inline_hwp_script(s))
+
+
+def is_equation_only_text(text):
+    return is_equation_placeholder_only(normalize_equation_markers(text))
+
+
+def tokenize_marker_text(text):
+    """convert text into [(plain, bold, italic, sub, sup, highlight), ...] tokens.
+
+    sub/sup precedence:
+    1. Try Unicode subscript/superscript chars — Hangul renders them
+       natively as proper subscripts (no styling needed).
+    2. If any char in the run isn't in the Unicode map, fall back to a
+       charPr offset+relSz run (sub/sup True flag).
+    """
+    if not text:
+        return []
+    out = []
+    pos = 0
+    for m in _MARKER_RE.finditer(text):
+        if m.start() > pos:
+            out.append((text[pos:m.start()], False, False, False, False, False))
+        token = m.group(0)
+        if token.startswith("**"):
+            inner = tokenize_marker_text(token[2:-2])
+            if inner:
+                for plain, b, i, sub, sup, highlight in inner:
+                    out.append((plain, True or b, i, sub, sup, True or highlight))
+            else:
+                out.append((token[2:-2], True, False, False, False, True))
+        elif token.startswith("_{"):
+            body = token[2:-1]
+            mapped = _try_unicode_map(body, SUBSCRIPT_MAP)
+            if mapped is not None:
+                out.append((mapped, False, False, False, False, False))
+            else:
+                out.append((body, False, False, True, False, False))
+        elif token.startswith("^{"):
+            body = token[2:-1]
+            mapped = _try_unicode_map(body, SUPERSCRIPT_MAP)
+            if mapped is not None:
+                out.append((mapped, False, False, False, False, False))
+            else:
+                out.append((body, False, False, False, True, False))
+        else:
+            inner = tokenize_marker_text(token[1:-1])
+            if inner:
+                for plain, b, i, sub, sup, highlight in inner:
+                    out.append((plain, b, True or i, sub, sup, highlight))
+            else:
+                out.append((token[1:-1], False, True, False, False, False))
+        pos = m.end()
+    if pos < len(text):
+        out.append((text[pos:], False, False, False, False, False))
+    return [t for t in out if t[0]]
+
+
+def tokenize(text):
+    """Tokenize rich text while preserving HWPX equation placeholders intact."""
+    if not text:
+        return []
+
+    spans = find_equation_spans(text)
+    if not spans:
+        return tokenize_marker_text(text)
+
+    out = []
+    pos = 0
+    for start, end, _kind, _body in spans:
+        if start > pos:
+            out.extend(tokenize_marker_text(text[pos:start]))
+        out.append((text[start:end], False, False, False, False, False))
+        pos = end
+    if pos < len(text):
+        out.extend(tokenize_marker_text(text[pos:]))
+    return [t for t in out if t[0]]
+
+
+def tokens_plain(text):
+    """fully strip every marker — for table cells / footers / captions that
+    can't carry inline runs.
+    """
+    return "".join(tok[0] for tok in tokenize(text))
+
+
+# ── Paragraph builder ──────────────────────────────────────────────────────
+
+
+def _is_equation_only(text):
+    """text 전체가 단일 {{EQ:...}}, {{EQN:...}}, {{EQ-LATEX:...}}, 또는
+    {{EQN-LATEX:...}} placeholder로만 구성되어 있는지 (앞뒤 공백 제외).
+    그 경우 사용자 보고서 양식(가운데 정렬된 단독 식 줄)을 따라가도록
+    automatic CENTER 정렬을 적용한다.
+    """
+    return is_equation_placeholder_only(text)
+
+
+def add_para(doc, text, *, base_size=SIZE_BODY, bold=False, align="LEFT",
+             indent_left=0, keep_with_next=False, color=None,
+             space_after=None, space_before=0):
+    """add a paragraph with mixed runs honoring **bold**, *italic*, _{sub},
+    ^{sup}. The paragraph itself takes alignment + indent + line spacing
+    + optional vertical breathing room (space_after / space_before in
+    HWPUNIT — 283 ≈ 1mm ≈ 2.83pt).
+
+    단독 수식 placeholder(`{{EQ:...}}` 등)만 담은 단락은 자동으로 가운데
+    정렬 + 들여쓰기 0으로 보정하여 사용자 보고서 양식(검은 박스 안 식)에
+    가깝게 표시한다.
+    """
+    text = normalize_equation_markers(text)
+    if _is_equation_only(text):
+        align = "CENTER"
+        indent_left = 0
+    effective_space_after = SPACE_BODY if space_after is None else space_after
+
+    para_pr = make_para_pr(
+        doc,
+        align=align,
+        indent_left=indent_left,
+        line_spacing=LINE_SPACING_PERCENT,
+        keep_with_next=keep_with_next,
+        space_after=effective_space_after,
+        space_before=space_before,
+    )
+    p = doc.add_paragraph(
+        "", para_pr_id_ref=para_pr, inherit_style=False
+    )
+
+    tokens = tokenize(text)
+    if not tokens:
+        cp = make_char_pr(doc, size=base_size, bold=bold, color=color)
+        p.add_run("", char_pr_id_ref=cp)
+        return p
+
+    for plain, b, i, sub, sup, highlight in tokens:
+        cp = make_char_pr(
+            doc,
+            size=base_size,
+            bold=bold or b,
+            italic=i,
+            sub=sub,
+            sup=sup,
+            color=color,
+            highlight=highlight and getattr(doc, "_v5_allow_highlights", True),
+        )
+        p.add_run(plain, char_pr_id_ref=cp)
+    return p
+
+
+# spacing constants (HWPUNIT, 283 ≈ 1 mm). HWPX looked too dense after
+# converting to PDF, so body paragraphs now get visible breathing room by default.
+SPACE_BODY = 700          # paragraph separation after numbered/body paragraphs
+SPACE_HEADING_LV1 = 1100  # 1./2. headings: clear gap before major sections
+SPACE_HEADING_LV2 = 650   # 가./나. headings
+
+
+def add_heading(doc, text, *, size=SIZE_TITLE, align="LEFT", indent_left=0,
+                space_before=0, space_after=0):
+    return add_para(
+        doc,
+        text,
+        base_size=size,
+        bold=True,
+        align=align,
+        indent_left=indent_left,
+        keep_with_next=True,
+        space_before=space_before,
+        space_after=space_after,
+    )
+
+
+def add_numbered_item(doc, idx, text, *, indent_left=INDENT_5MM,
+                      base_size=SIZE_BODY, space_after=None):
+    """Add a numbered prose item, but keep formula-only rows unnumbered.
+
+    Claude sometimes emits a reaction or formula as its own list item. Numbering
+    those rows creates the awkward `② C_6 ...` / `⑥ {m over n}` look. For HWPX,
+    formula-only rows are promoted to centered equation objects and do not
+    consume a paragraph number.
+    """
+    clean = normalize_equation_markers(strip_manual_numbering(text))
+    if is_equation_placeholder_only(clean):
+        add_para(
+            doc,
+            clean,
+            base_size=base_size,
+            space_after=SPACE_BODY if space_after is None else space_after,
+        )
+        return False
+
+    add_para(
+        doc,
+        f"{numbered_marker(idx)} {clean}",
+        base_size=base_size,
+        indent_left=indent_left,
+        space_after=space_after,
+    )
+    return True
+
+
+def add_blank(doc):
+    doc.add_paragraph("")
+
+
+# ── Section builders ──────────────────────────────────────────────────────
+
+
+def build_title_page(doc, content):
+    title_kr = content.get("title_kr", "")
+    title_en = content.get("title_en", "")
+    date = content.get("date", "")
+    student_id = (content.get("student_id") or "").strip()
+    student_name = (content.get("student_name") or "").strip()
+
+    add_heading(
+        doc, "실험 보고서", size=SIZE_TITLE_BIG, align="CENTER",
+        space_after=SPACE_HEADING_LV1,
+    )
+    add_heading(
+        doc, f"{title_en} ({title_kr})", size=SIZE_TITLE, align="CENTER",
+        space_after=SPACE_HEADING_LV1,
+    )
+
+    if student_id or student_name:
+        identity = " ".join(x for x in [student_id, student_name] if x)
+        add_para(doc, identity, align="RIGHT")
+
+    add_para(doc, f"날짜 : {date}", align="RIGHT", space_after=SPACE_HEADING_LV1)
+
+
+def build_purpose(doc, items):
+    add_heading(doc, "1. 실험목표", size=SIZE_TITLE,
+                space_before=SPACE_HEADING_LV1, space_after=SPACE_HEADING_LV2)
+    add_heading(doc, "가. 실험목표", size=SIZE_HEADING,
+                space_after=SPACE_BODY)
+    text_counter = 0
+    for item in items:
+        text_counter += 1
+        if not add_numbered_item(doc, text_counter, item):
+            text_counter -= 1
+
+
+def build_theory(doc, theory, figures_needed):
+    add_heading(doc, "2. 이론적 배경과 원리", size=SIZE_TITLE,
+                space_before=SPACE_HEADING_LV1, space_after=SPACE_HEADING_LV2)
+    fig_map = {f.get("number"): f for f in (figures_needed or [])}
+
+    for s_idx, section in enumerate(theory):
+        kr = KR_NUM[s_idx] if s_idx < len(KR_NUM) else str(s_idx + 1)
+        add_heading(
+            doc,
+            f"{kr}. {strip_manual_numbering(section.get('topic', ''))}",
+            size=SIZE_HEADING,
+            space_after=SPACE_BODY,
+        )
+
+        items = section.get("items") or section.get("paragraphs") or []
+        text_counter = 0
+        for item in items:
+            if isinstance(item, dict) and "figure" in item:
+                fig_num = item["figure"]
+                fig = fig_map.get(fig_num)
+                if fig:
+                    add_figure_placeholder(doc, fig)
+                else:
+                    add_para(doc, f"[그림 {fig_num}] (메타데이터 없음)")
+            elif isinstance(item, str):
+                text_counter += 1
+                if not add_numbered_item(doc, text_counter, item):
+                    text_counter -= 1
+
+        for fig_ref in section.get("figures", []):
+            full = fig_map.get(fig_ref.get("number")) or fig_ref
+            add_figure_placeholder(doc, full)
+
+
+def add_figure_placeholder(doc, fig):
+    """dashed-border 2x1 box: caption (centered, italic) + image area."""
+    caption = fig.get("caption", "")
+    description = fig.get("description", "")
+    search_query = fig.get("search_query") or caption
+    number = fig.get("number", "")
+
+    head = f"[그림 {number}] {tokens_plain(caption)}"
+    if description:
+        head += f" - {tokens_plain(description)}"
+
+    dashed_id = make_dashed_border_fill(doc)
+
+    # 사용자 보고서 양식: 그림이 위, 캡션이 아래.
+    table = doc.add_table(rows=2, cols=1, width=TABLE_WIDTH,
+                          border_fill_id_ref=dashed_id)
+    for r in range(2):
+        cell = table.cell(r, 0)
+        cell.element.set("borderFillIDRef", str(dashed_id))
+
+    # row 0: 이미지 자리 + Google 검색 링크 (사용자가 채워넣음)
+    img_cell = table.cell(0, 0)
+    _replace_cell_with_styled(
+        doc, img_cell,
+        "  ↓ 여기에 이미지를 붙여넣으세요",
+        size=SIZE_LINK, align="CENTER",
+    )
+    img_cell.set_size(height=18000)
+    link_para_pr = make_para_pr(
+        doc, align="CENTER", line_spacing=LINE_SPACING_PERCENT
+    )
+    link_p = img_cell.add_paragraph("", para_pr_id_ref=link_para_pr)
+    cp_prefix = make_char_pr(doc, size=SIZE_LINK)
+    link_p.add_run("🔎 Google 이미지 검색: ", char_pr_id_ref=cp_prefix)
+    cp_link = make_char_pr(doc, size=SIZE_LINK, color=LINK_COLOR)
+    link_url = (
+        "https://www.google.com/search?tbm=isch&q="
+        + _url_encode(search_query)
+    )
+    try:
+        link_p.add_hyperlink(link_url, f'"{search_query}"', char_pr_id_ref=cp_link)
+    except Exception:
+        link_p.add_run(f'"{search_query}"', char_pr_id_ref=cp_link)
+
+    # row 1: 캡션 (가운데 + 이탤릭) — 그림 아래
+    cap_cell = table.cell(1, 0)
+    _replace_cell_with_styled(
+        doc, cap_cell, head,
+        size=SIZE_CAPTION, italic=True, align="CENTER",
+    )
+
+
+def _url_encode(s):
+    from urllib.parse import quote
+    return quote(s, safe="")
+
+
+def set_cell_margins(cell, left=TABLE_CELL_MARGIN_X, right=TABLE_CELL_MARGIN_X,
+                     top=TABLE_CELL_MARGIN_Y, bottom=TABLE_CELL_MARGIN_Y):
+    cell.element.set("hasMargin", "1")
+    margin = cell.element.find(f"{NS_HP}cellMargin")
+    if margin is None:
+        margin = etree.SubElement(cell.element, f"{NS_HP}cellMargin")
+    margin.set("left", str(left))
+    margin.set("right", str(right))
+    margin.set("top", str(top))
+    margin.set("bottom", str(bottom))
+    try:
+        cell.table.mark_dirty()
+    except Exception:
+        pass
+
+
+def _replace_cell_with_styled(doc, cell, text, *, size=SIZE_BODY, bold=False,
+                              italic=False, align="LEFT", color=None,
+                              line_spacing=LINE_SPACING_PERCENT,
+                              cell_margin=True):
+    """erase any existing paragraphs in `cell` and add a single styled one."""
+    if cell_margin:
+        set_cell_margins(cell)
+    # remove pre-existing paragraphs (set_cell_text leaves an empty one)
+    parent = cell.element
+    for p in parent.findall(f"{NS_HP}subList/{NS_HP}p"):
+        p.getparent().remove(p)
+    # cells may also have raw <hp:p> children
+    for p in parent.findall(f"{NS_HP}p"):
+        p.getparent().remove(p)
+
+    para_pr = make_para_pr(
+        doc, align=align, line_spacing=line_spacing
+    )
+    p = cell.add_paragraph("", para_pr_id_ref=para_pr)
+    tokens = tokenize(text)
+    if not tokens:
+        cp = make_char_pr(doc, size=size, bold=bold, italic=italic, color=color)
+        p.add_run("", char_pr_id_ref=cp)
+        return
+    for plain, b, i, sub, sup, highlight in tokens:
+        cp = make_char_pr(
+            doc,
+            size=size,
+            bold=bold or b,
+            italic=italic or i,
+            sub=sub,
+            sup=sup,
+            color=color,
+            highlight=highlight and getattr(doc, "_v5_allow_highlights", True),
+        )
+        p.add_run(plain, char_pr_id_ref=cp)
+
+
+# ── Tables ─────────────────────────────────────────────────────────────────
+
+
+def build_chemicals_summary_table(doc, rows):
+    if not rows:
+        return
+    headers = ["시약", "화학식", "몰질량 (g/mol)", "녹는점/끓는점", "주요 특성"]
+    solid_id = make_solid_border_fill(doc)
+    shaded_id = make_shaded_border_fill(doc)
+
+    table = doc.add_table(
+        rows=len(rows) + 1,
+        cols=len(headers),
+        width=TABLE_WIDTH,
+        border_fill_id_ref=solid_id,
+    )
+
+    # 합 = TABLE_WIDTH. 표 전용 작은 글자와 함께 헤더가 어색하게 쪼개지지
+    # 않도록 몰질량/녹는점 열을 조금 넓히고, 셀 안쪽 여백을 둔다.
+    col_widths = [9400, 7900, 8200, 8600, 13500]
+    for c, w in enumerate(col_widths):
+        for r in range(len(rows) + 1):
+            try:
+                table.cell(r, c).set_size(width=w)
+            except Exception:
+                pass
+
+    # header row: shaded + bold + center
+    for c, h in enumerate(headers):
+        cell = table.cell(0, c)
+        cell.element.set("borderFillIDRef", str(shaded_id))
+        _replace_cell_with_styled(
+            doc,
+            cell,
+            h,
+            size=SIZE_TABLE_HEADER,
+            bold=True,
+            align="CENTER",
+            line_spacing=TABLE_LINE_SPACING_PERCENT,
+        )
+
+    # data rows
+    for r_idx, row in enumerate(rows, 1):
+        cells = [
+            row.get("name", ""),
+            row.get("formula", ""),
+            row.get("molar_mass", ""),
+            row.get("mp_bp", ""),
+            row.get("properties", ""),
+        ]
+        for c_idx, val in enumerate(cells):
+            cell = table.cell(r_idx, c_idx)
+            cell.element.set("borderFillIDRef", str(solid_id))
+            _replace_cell_with_styled(
+                doc,
+                cell,
+                val,
+                size=SIZE_TABLE_BODY,
+                align="CENTER",
+                line_spacing=TABLE_LINE_SPACING_PERCENT,
+            )
+
+
+# 기구 영문 병기 중복 방지 (DEF-035): name_en(공백 제거·소문자화)이 이미
+# name 안에 부분 문자열로 들어 있으면 괄호 병기를 생략한다.
+# 예: name '뷰렛(Buret)' + name_en 'Buret' 은 '(Buret)' 를 다시 붙이지 않는다.
+# docx 생성기(chem-pre/docx-gen.js 의 shouldAppendEnName)와 동일 기준이므로
+# 함께 수정할 것.
+def _should_append_en_name(name, name_en):
+    core = re.sub(r"\s+", "", str(name_en or "")).lower()
+    if not core:
+        return False
+    base = re.sub(r"\s+", "", str(name or "")).lower()
+    return core not in base
+
+
+def build_apparatus_and_chemicals(doc, content):
+    add_heading(doc, "3. 실험 기구 및 시약", size=SIZE_TITLE,
+                space_before=SPACE_HEADING_LV1, space_after=SPACE_HEADING_LV2)
+    add_heading(doc, "가. 실험 기구", size=SIZE_HEADING,
+                space_after=SPACE_BODY)
+    for idx, ap in enumerate(content.get("apparatus", []), 1):
+        name = strip_manual_numbering(ap.get("name", ""))
+        en = (
+            f" ({ap.get('name_en')})"
+            if _should_append_en_name(name, ap.get("name_en"))
+            else ""
+        )
+        line = (
+            f"{numbered_marker(idx)} **{name}**{en}: "
+            f"{ap.get('description', '')}"
+        )
+        add_para(doc, line, indent_left=INDENT_5MM)
+
+    add_heading(doc, "나. 시약", size=SIZE_HEADING, space_after=SPACE_BODY)
+    # build URL→[N] index so duplicate sources share the same number
+    ref_index = _ref_url_index(content)
+    for idx, ch in enumerate(content.get("chemicals", []), 1):
+        ref_marker = ""
+        src = (ch.get("source_url") or "").strip()
+        if src and src in ref_index:
+            ref_marker = f" [{ref_index[src]}]"
+        name = strip_manual_numbering(ch.get("name", ""))
+        head = (
+            f"{numbered_marker(idx)} **{name}** "
+            f"({ch.get('iupac', '')}, {ch.get('formula', '')}){ref_marker}"
+        )
+        add_para(doc, head, indent_left=INDENT_5MM)
+
+        details = []
+        if ch.get("molar_mass"):
+            details.append(f"· 몰질량: {ch['molar_mass']}")
+        if ch.get("mp_bp"):
+            details.append(f"· 녹는점/끓는점: {ch['mp_bp']}")
+        if ch.get("density"):
+            details.append(f"· 밀도: {ch['density']}")
+        if ch.get("properties"):
+            details.append(f"· 주요 특성: {ch['properties']}")
+        if ch.get("toxicity"):
+            details.append(f"· 독성/취급: {ch['toxicity']}")
+        for i, line in enumerate(details):
+            add_para(
+                doc,
+                line,
+                indent_left=INDENT_10MM,
+                space_after=SPACE_BODY if i == len(details) - 1 else 120,
+            )
+
+    summary = content.get("chemicals_summary_table") or []
+    if summary:
+        add_heading(doc, "[표 1] 시약 요약", size=SIZE_BODY)
+        build_chemicals_summary_table(doc, summary)
+
+
+def build_table_of_contents(doc, content):
+    """short TOC after the title page. Built from content (theory topics,
+    procedure titles), not from headings already in the doc, since hwpx
+    doesn't expose page numbers from Python.
+    """
+    has_refs = bool(_ref_url_index(content)) or bool(_url_less_references(content))
+    has_chemicals = bool(content.get("chemicals_summary_table"))
+
+    add_heading(doc, "목차", size=SIZE_TITLE,
+                space_before=SPACE_HEADING_LV1, space_after=SPACE_HEADING_LV2)
+
+    def lv1(text):
+        add_para(doc, text, base_size=SIZE_BODY, bold=True,
+                 indent_left=INDENT_5MM)
+
+    def lv2(text):
+        add_para(doc, text, base_size=SIZE_BODY, indent_left=INDENT_10MM)
+
+    lv1("1. 실험목표")
+    lv2("가. 실험목표")
+
+    lv1("2. 이론적 배경과 원리")
+    for s_idx, section in enumerate(content.get("theory", [])):
+        kr = KR_NUM[s_idx] if s_idx < len(KR_NUM) else str(s_idx + 1)
+        topic = section.get("topic", "")
+        lv2(f"{kr}. {strip_manual_numbering(topic)}")
+
+    lv1("3. 실험 기구 및 시약")
+    lv2("가. 실험 기구")
+    lv2("나. 시약")
+    if has_chemicals:
+        lv2("[표 1] 시약 요약")
+
+    lv1("4. 실험 과정")
+    for sec_idx, sec in enumerate(content.get("procedure", [])):
+        kr = KR_NUM[sec_idx] if sec_idx < len(KR_NUM) else str(sec_idx + 1)
+        lv2(f"{kr}. {strip_manual_numbering(sec.get('title', ''))}")
+
+    if has_refs:
+        lv1("참고문헌")
+
+
+def _ref_url_index(content):
+    """build a dict mapping each URL to its 1-based reference index.
+    Sources are gathered from chemicals[].source_url and references[].url
+    (deduped, in first-seen order). Returns {} when there are no sources.
+    """
+    out = {}
+    n = 0
+    for ch in content.get("chemicals", []) or []:
+        url = (ch.get("source_url") or "").strip()
+        if url and url not in out:
+            n += 1
+            out[url] = n
+    for ref in content.get("references", []) or []:
+        if not isinstance(ref, dict):
+            continue
+        url = (ref.get("url") or "").strip()
+        if url and url not in out:
+            n += 1
+            out[url] = n
+    return out
+
+
+def _url_less_references(content):
+    """references 중 URL 이 없는 항목(교과서·논문 문자열, url 없는 객체)을
+    문자열 리스트로 반환한다. DOCX 는 이런 항목도 `[N] 텍스트`로 렌더하므로
+    HWPX default 모드도 동일하게 출력해 포맷 간 출처 누락을 막는다."""
+    out = []
+    for ref in content.get("references", []) or []:
+        if isinstance(ref, dict) and (ref.get("url") or "").strip():
+            continue  # url 있는 항목은 _ref_url_index 에서 이미 처리
+        text = ref_to_string(ref).strip()
+        if text:
+            out.append(text)
+    return out
+
+
+def _ref_label_for(url, content):
+    """find a human label for a URL (from references[] or chemicals[])."""
+    for ref in content.get("references", []) or []:
+        if not isinstance(ref, dict):
+            continue
+        if (ref.get("url") or "").strip() == url:
+            return (ref.get("label") or url).strip()
+    for ch in content.get("chemicals", []) or []:
+        if (ch.get("source_url") or "").strip() == url:
+            return (ch.get("name") or url).strip()
+    return url
+
+
+def ref_to_string(ref):
+    if isinstance(ref, str):
+        return ref
+    if isinstance(ref, dict):
+        parts = [
+            ref.get("author") or ref.get("authors"),
+            ref.get("year") or ref.get("date"),
+            ref.get("title"),
+            ref.get("journal"),
+            ref.get("publisher"),
+            ref.get("url"),
+        ]
+        values = [str(p).strip() for p in parts if str(p or "").strip()]
+        if values:
+            return ", ".join(values)
+        return json.dumps(ref, ensure_ascii=False)
+    return str(ref or "")
+
+
+def build_references(doc, content):
+    """append a "참고문헌" heading + numbered list of clickable URLs at the
+    end of the document. Skips entirely if there are no sources.
+    """
+    ref_index = _ref_url_index(content)
+    extra_refs = _url_less_references(content)
+    if not ref_index and not extra_refs:
+        return
+
+    add_heading(doc, "참고문헌", size=SIZE_TITLE,
+                space_before=SPACE_HEADING_LV1, space_after=SPACE_HEADING_LV2)
+
+    # ordered by index
+    last_idx = 0
+    for url in sorted(ref_index.keys(), key=lambda u: ref_index[u]):
+        idx = ref_index[url]
+        last_idx = max(last_idx, idx)
+        label = _ref_label_for(url, content)
+
+        # Render as: "[1] PubChem — Water (CID 962): https://..."
+        para_pr = make_para_pr(
+            doc, indent_left=INDENT_5MM, line_spacing=LINE_SPACING_PERCENT
+        )
+        p = doc.add_paragraph(
+            "", para_pr_id_ref=para_pr, inherit_style=False
+        )
+        cp = make_char_pr(doc, size=SIZE_BODY)
+        p.add_run(f"[{idx}] {label}: ", char_pr_id_ref=cp)
+
+        cp_link = make_char_pr(doc, size=SIZE_BODY, color=LINK_COLOR)
+        try:
+            p.add_hyperlink(url, url, char_pr_id_ref=cp_link)
+        except Exception:
+            p.add_run(url, char_pr_id_ref=cp_link)
+
+    # URL 없는 참고문헌(교과서·논문 문자열 등)을 이어지는 번호로 평문 표시.
+    for text in extra_refs:
+        last_idx += 1
+        para_pr = make_para_pr(
+            doc, indent_left=INDENT_5MM, line_spacing=LINE_SPACING_PERCENT
+        )
+        p = doc.add_paragraph("", para_pr_id_ref=para_pr, inherit_style=False)
+        cp = make_char_pr(doc, size=SIZE_BODY)
+        p.add_run(f"[{last_idx}] {text}", char_pr_id_ref=cp)
+
+
+def is_minimal_style(content):
+    return str(content.get("__style") or content.get("style") or "").strip() == "minimal"
+
+
+def build_minimal_header(doc, content):
+    title_kr = content.get("title_kr", "")
+    title_en = content.get("title_en", "")
+    date = content.get("date", "")
+    student_id = (content.get("student_id") or "").strip()
+    student_name = (content.get("student_name") or "").strip()
+    title_line = title_en if title_en else title_kr
+    if title_en and title_kr:
+        title_line = f"{title_en} ({title_kr})"
+    if title_line:
+        add_heading(
+            doc, title_line, size=SIZE_TITLE, align="CENTER",
+            space_after=SPACE_HEADING_LV2,
+        )
+    header_bits = []
+    identity = " ".join(x for x in [student_id, student_name] if x)
+    if identity:
+        header_bits.append(identity)
+    if date:
+        header_bits.append(date)
+    if header_bits:
+        add_para(
+            doc, " | ".join(header_bits), align="RIGHT",
+            space_after=SPACE_HEADING_LV1,
+        )
+
+
+def build_minimal_purpose(doc, items):
+    add_heading(doc, "1. 실험 목표", size=SIZE_TITLE,
+                space_before=SPACE_HEADING_LV2, space_after=SPACE_HEADING_LV2)
+    values = [str(x).strip() for x in (items or []) if str(x or "").strip()]
+    if values:
+        add_para(doc, " ".join(values), indent_left=0)
+    else:
+        add_para(doc, "(데이터 부족)")
+
+
+def build_minimal_theory(doc, theory):
+    add_heading(doc, "2. 이론적 배경", size=SIZE_TITLE,
+                space_before=SPACE_HEADING_LV1, space_after=SPACE_HEADING_LV2)
+    if not theory:
+        add_para(doc, "(이론 데이터 부족)")
+        return
+    for idx, section in enumerate(theory, 1):
+        add_heading(
+            doc,
+            f"({idx}) {strip_manual_numbering(section.get('topic', ''))}",
+            size=SIZE_HEADING, space_after=SPACE_BODY,
+        )
+        items = section.get("items") or section.get("paragraphs") or []
+        for item in items:
+            if isinstance(item, str):
+                add_para(doc, item, indent_left=INDENT_5MM)
+            elif isinstance(item, dict) and item.get("text"):
+                add_para(doc, item.get("text", ""), indent_left=INDENT_5MM)
+
+
+def build_minimal_apparatus_and_chemicals(doc, content):
+    add_heading(doc, "3. 실험 기구 및 시약", size=SIZE_TITLE,
+                space_before=SPACE_HEADING_LV1, space_after=SPACE_HEADING_LV2)
+
+    add_heading(doc, "(1) 실험 기구", size=SIZE_HEADING, space_after=SPACE_BODY)
+    apps = content.get("apparatus") or []
+    if not apps:
+        add_para(doc, "(기구 데이터 부족)")
+    for ap in apps:
+        description = ap.get("description", "")
+        detail = f": {description}" if description else ""
+        name = strip_manual_numbering(ap.get("name", ""))
+        add_para(doc, f"{name}{detail}", indent_left=INDENT_5MM)
+
+    add_heading(doc, "(2) 시약", size=SIZE_HEADING,
+                space_before=SPACE_HEADING_LV2, space_after=SPACE_BODY)
+    chems = content.get("chemicals") or []
+    if not chems:
+        add_para(doc, "(시약 데이터 부족)")
+    for ch in chems:
+        head_parts = [ch.get("formula"), ch.get("molar_mass")]
+        head_parts = [str(x).strip() for x in head_parts if str(x or "").strip()]
+        name = strip_manual_numbering(ch.get("name") or ch.get("iupac") or "")
+        head = f"{name} ({', '.join(head_parts)})" if head_parts else name
+        details = []
+        if ch.get("mp_bp"):
+            details.append(f"녹는점/끓는점: {ch['mp_bp']}")
+        if ch.get("density"):
+            details.append(f"밀도: {ch['density']}")
+        if ch.get("properties"):
+            details.append(f"주요 특성: {ch['properties']}")
+        if ch.get("toxicity"):
+            details.append(f"독성/취급: {ch['toxicity']}")
+        add_para(doc, head, indent_left=INDENT_5MM, bold=True)
+        for detail in details:
+            add_para(doc, f"- {detail}", indent_left=INDENT_10MM)
+
+
+def build_minimal_procedure(doc, procedure):
+    add_heading(doc, "4. 실험 과정", size=SIZE_TITLE,
+                space_before=SPACE_HEADING_LV1, space_after=SPACE_HEADING_LV2)
+    if not procedure:
+        add_para(doc, "(실험 과정 데이터 부족)")
+        return
+    for sec_idx, sec in enumerate(procedure, 1):
+        if len(procedure) > 1:
+            add_heading(
+                doc,
+                f"({sec_idx}) {strip_manual_numbering(sec.get('title', ''))}",
+                size=SIZE_HEADING, space_after=SPACE_BODY,
+            )
+        for step_idx, step in enumerate(sec.get("steps", []) or [], 1):
+            if isinstance(step, str):
+                text = step
+                notes = []
+            else:
+                text = step.get("text", "")
+                notes = step.get("notes", []) or []
+            add_para(
+                doc,
+                f"{numbered_marker(step_idx)} {strip_manual_numbering(text)}",
+                indent_left=INDENT_5MM,
+            )
+            for note in notes:
+                add_para(
+                    doc,
+                    f"- {strip_manual_numbering(strip_manual_bullet(note))}",
+                    indent_left=INDENT_10MM,
+                )
+
+
+def build_minimal_references(doc, refs):
+    if not refs:
+        return
+    add_heading(doc, "5. 참고 문헌", size=SIZE_TITLE,
+                space_before=SPACE_HEADING_LV1, space_after=SPACE_HEADING_LV2)
+    for ref in refs:
+        text = ref_to_string(ref)
+        if text:
+            add_para(doc, text, indent_left=INDENT_5MM)
+
+
+def build_procedure(doc, procedure):
+    add_heading(doc, "4. 실험 과정", size=SIZE_TITLE,
+                space_before=SPACE_HEADING_LV1, space_after=SPACE_HEADING_LV2)
+    for sec_idx, sec in enumerate(procedure):
+        kr = KR_NUM[sec_idx] if sec_idx < len(KR_NUM) else str(sec_idx + 1)
+        add_heading(
+            doc,
+            f"{kr}. {strip_manual_numbering(sec.get('title', ''))}",
+            size=SIZE_HEADING,
+            space_after=SPACE_BODY,
+        )
+        step_counter = 0
+        for step in sec.get("steps", []):
+            if isinstance(step, str):
+                step_counter += 1
+                if not add_numbered_item(doc, step_counter, step):
+                    step_counter -= 1
+            elif isinstance(step, dict):
+                step_counter += 1
+                if not add_numbered_item(doc, step_counter, step.get("text", "")):
+                    step_counter -= 1
+                for note in step.get("notes", []):
+                    add_para(
+                        doc,
+                        f"- {strip_manual_numbering(strip_manual_bullet(note))}",
+                        indent_left=INDENT_10MM,
+                    )
+
+
+# ── Footer with auto page number ───────────────────────────────────────────
+
+
+# ── AI 생성 개념도/삽화 임베드 ─────────────────────────────────────────────
+# chem-result/phys-result 의 검증된 add_picture 패턴을 공통 모듈(chem-pre)에 이식.
+# 같은 모듈이라 helper(make_para_pr, add_para, NS_HP, NS_HC 등)를 prefix 없이 쓴다.
+MAX_FIGURE_WIDTH = 33000
+MAX_FIGURE_HEIGHT = 23000
+PX_TO_HWPUNIT = 75
+_PIC_SEQ = 0
+
+
+def _decode_base64(value):
+    if not value:
+        return b""
+    try:
+        return base64.b64decode(value)
+    except Exception:
+        return b""
+
+
+def _image_size(data):
+    try:
+        if data.startswith(b"\x89PNG\r\n\x1a\n") and len(data) >= 24:
+            return struct.unpack(">II", data[16:24])
+        if data.startswith(b"\xff\xd8"):
+            i = 2
+            while i + 9 < len(data):
+                while i < len(data) and data[i] == 0xFF:
+                    i += 1
+                marker = data[i]
+                i += 1
+                if marker in (0xD8, 0xD9):
+                    continue
+                if i + 2 > len(data):
+                    break
+                size = struct.unpack(">H", data[i:i + 2])[0]
+                if marker in range(0xC0, 0xC4) and i + 7 < len(data):
+                    h, w = struct.unpack(">HH", data[i + 3:i + 7])
+                    return w, h
+                i += size
+    except Exception:
+        pass
+    return 1024, 1024
+
+
+def _fit_size(width_px, height_px, max_width, max_height):
+    width = max(int(width_px * PX_TO_HWPUNIT), 1)
+    height = max(int(height_px * PX_TO_HWPUNIT), 1)
+    scale = min(max_width / width, max_height / height, 1)
+    return max(int(width * scale), 1), max(int(height * scale), 1), width, height
+
+
+def add_picture(doc, data, *, fmt="png", caption="",
+                max_width=MAX_FIGURE_WIDTH, max_height=MAX_FIGURE_HEIGHT):
+    if not data:
+        return False
+    global _PIC_SEQ
+    _PIC_SEQ += 1
+    _pic_id = 1900000000 + _PIC_SEQ
+    width_px, height_px = _image_size(data)
+    width, height, org_width, org_height = _fit_size(
+        width_px, height_px, max_width, max_height,
+    )
+    item_id = doc.add_image(data, fmt)
+
+    para_pr = make_para_pr(
+        doc, align="CENTER", line_spacing=LINE_SPACING_PERCENT, space_after=180,
+    )
+    para = doc.add_paragraph(
+        "", para_pr_id_ref=para_pr, inherit_style=False, include_run=False,
+    )
+    pic = para.add_shape(
+        "pic",
+        attributes={
+            "id": str(_pic_id),
+            "zOrder": "1",
+            "numberingType": "PICTURE",
+            "textWrap": "TOP_AND_BOTTOM",
+            "textFlow": "BOTH_SIDES",
+            "lock": "0",
+            "dropcapstyle": "None",
+            "href": "",
+            "groupLevel": "0",
+            "instid": str(_pic_id + 100000000),
+            "reverse": "0",
+        },
+    ).element
+
+    etree.SubElement(pic, f"{NS_HP}offset", x="0", y="0")
+    etree.SubElement(pic, f"{NS_HP}orgSz", width=str(org_width), height=str(org_height))
+    etree.SubElement(pic, f"{NS_HP}curSz", width=str(width), height=str(height))
+    etree.SubElement(pic, f"{NS_HP}flip", horizontal="0", vertical="0")
+    etree.SubElement(
+        pic, f"{NS_HP}rotationInfo",
+        angle="0", centerX=str(width // 2), centerY=str(height // 2),
+        rotateimage="1",
+    )
+    rendering = etree.SubElement(pic, f"{NS_HP}renderingInfo")
+    etree.SubElement(rendering, f"{NS_HC}transMatrix", e1="1", e2="0", e3="0", e4="0", e5="1", e6="0")
+    etree.SubElement(rendering, f"{NS_HC}scaMatrix", e1="1", e2="0", e3="0", e4="0", e5="1", e6="0")
+    etree.SubElement(rendering, f"{NS_HC}rotMatrix", e1="1", e2="0", e3="0", e4="0", e5="1", e6="0")
+    etree.SubElement(
+        pic, f"{NS_HC}img",
+        binaryItemIDRef=item_id, bright="0", contrast="0",
+        effect="REAL_PIC", alpha="0",
+    )
+    rect = etree.SubElement(pic, f"{NS_HP}imgRect")
+    for name, x, y in (
+        ("pt0", 0, 0),
+        ("pt1", org_width, 0),
+        ("pt2", org_width, org_height),
+        ("pt3", 0, org_height),
+    ):
+        etree.SubElement(rect, f"{NS_HC}{name}", x=str(x), y=str(y))
+    etree.SubElement(pic, f"{NS_HP}imgClip", left="0", right=str(org_width), top="0", bottom=str(org_height))
+    etree.SubElement(pic, f"{NS_HP}inMargin", left="0", right="0", top="0", bottom="0")
+    etree.SubElement(pic, f"{NS_HP}imgDim", dimwidth=str(org_width), dimheight=str(org_height))
+    etree.SubElement(pic, f"{NS_HP}effects")
+    etree.SubElement(
+        pic, f"{NS_HP}sz",
+        width=str(width), widthRelTo="ABSOLUTE",
+        height=str(height), heightRelTo="ABSOLUTE", protect="0",
+    )
+    etree.SubElement(
+        pic, f"{NS_HP}pos",
+        treatAsChar="1", affectLSpacing="0", flowWithText="1",
+        allowOverlap="0", holdAnchorAndSO="0", vertRelTo="PARA",
+        horzRelTo="COLUMN", vertAlign="TOP", horzAlign="CENTER",
+        vertOffset="0", horzOffset="0",
+    )
+    etree.SubElement(pic, f"{NS_HP}outMargin", left="0", right="0", top="0", bottom="0")
+    etree.SubElement(pic, f"{NS_HP}shapeComment").text = caption or "image"
+
+    if caption:
+        add_para(doc, caption, base_size=SIZE_CAPTION, align="CENTER", space_after=SPACE_BODY)
+    return True
+
+
+def render_generated_figures(doc, content):
+    """content["__figures"](Node 가 base64 로 넘긴 AI 개념도)를 본문에 삽입."""
+    figs = content.get("__figures")
+    if not isinstance(figs, list):
+        return
+    for fig in figs:
+        if not isinstance(fig, dict):
+            continue
+        data = _decode_base64(fig.get("data_base64"))
+        if not data:
+            continue
+        add_picture(doc, data, fmt="png", caption=fig.get("caption") or "")
+
+
+# ── Top-level ─────────────────────────────────────────────────────────────
+
+
+def generate_hwpx(content):
+    doc = HwpxDocument.new()
+    doc._v5_allow_highlights = bool(content.get("__allowHighlights", True))
+    apply_page_layout(doc)
+    apply_default_font(  # chem-pre
+        doc,
+        resolve_font_face(content),
+    )
+
+    if is_minimal_style(content):
+        build_minimal_header(doc, content)
+        build_minimal_purpose(doc, content.get("purpose", []))
+        build_minimal_theory(doc, content.get("theory", []))
+        render_generated_figures(doc, content)
+        build_minimal_apparatus_and_chemicals(doc, content)
+        build_minimal_procedure(doc, content.get("procedure", []))
+        build_minimal_references(doc, content.get("references", []))
+    else:
+        build_title_page(doc, content)
+        build_purpose(doc, content.get("purpose", []))
+        build_theory(doc, content.get("theory", []), content.get("figures_needed", []))
+        render_generated_figures(doc, content)
+        build_apparatus_and_chemicals(doc, content)
+        build_procedure(doc, content.get("procedure", []))
+        build_references(doc, content)
+        # 바닥글(페이지 번호 포함) 미사용 — 사용자 요청으로 footer 줄 자체를 넣지 않는다.
+
+    return doc
+
+
+def collect_preview_text_from_hwpx(hwpx_path):
+    r"""저장된 HWPX 본문에서 미리보기 평문(제목+본문 앞부분)을 뽑는다 (DEF-002).
+
+    phys-result/hwpx-gen.py 의 collect_preview_text 는 content JSON 스키마에
+    묶여 있어 스키마가 서로 다른 chem-pre/chem-result 공용 루트에서는 쓸 수
+    없다. 여기서는 최종 문서(Contents/section*.xml)에서 문단 텍스트를 문서
+    순서대로 직접 추출한다. 제목 문단이 문서 맨 앞이므로 자연히 '문서 제목 +
+    본문 앞부분'이 되고, 수식 스크립트(hp:script)는 hp:t 가 아니어서 자동
+    제외된다. 줄 구분(\r\n)·8000자 상한·후행 \r\n 은 phys 구현과 동일 형식.
+    """
+    import zipfile
+
+    lines = []
+    with zipfile.ZipFile(str(hwpx_path), "r") as zf:
+        section_names = sorted(
+            n for n in zf.namelist()
+            if re.match(r"Contents/section\d+\.xml$", n)
+        )
+        for section_name in section_names:
+            root = etree.fromstring(zf.read(section_name))
+            last_para = None
+            for t in root.iter(f"{NS_HP}t"):
+                chunk = "".join(t.itertext())
+                if not chunk.strip():
+                    continue
+                # 같은 문단(hp:p)의 텍스트 런은 한 줄로 잇는다. 표 셀처럼
+                # 중첩된 문단은 각자 제 문단으로 귀속되므로 중복 집계가 없다.
+                para = t.getparent()
+                while para is not None and para.tag != f"{NS_HP}p":
+                    para = para.getparent()
+                if para is not last_para or not lines:
+                    lines.append(chunk)
+                    last_para = para
+                else:
+                    lines[-1] += chunk
+    joined = "\r\n".join(ln.strip() for ln in lines if ln.strip())
+    return joined.strip()[:8000] + "\r\n"
+
+
+def update_preview_text(hwpx_path, text):
+    """Preview/PrvText.txt 를 교체한다.
+
+    인코딩(UTF-8)·zip 재작성 방식은 phys-result/hwpx-gen.py 의
+    update_preview_text 와 동일하다(그쪽이 참조 구현).
+    """
+    import shutil
+    import tempfile
+    import zipfile
+    from pathlib import Path
+
+    src = Path(hwpx_path)
+    with tempfile.NamedTemporaryFile(
+        suffix=".hwpx", dir=src.parent, delete=False
+    ) as tf:
+        tmp = Path(tf.name)
+    try:
+        with zipfile.ZipFile(src, "r") as zin, zipfile.ZipFile(
+            tmp, "w", zipfile.ZIP_DEFLATED
+        ) as zout:
+            replaced = False
+            for item in zin.infolist():
+                if item.filename == "Preview/PrvText.txt":
+                    zout.writestr(item, text.encode("utf-8"))
+                    replaced = True
+                else:
+                    zout.writestr(item, zin.read(item.filename))
+            if not replaced:
+                zout.writestr("Preview/PrvText.txt", text.encode("utf-8"))
+        shutil.move(str(tmp), str(src))
+    except Exception:
+        if tmp.exists():
+            tmp.unlink()
+        raise
+
+
+def _postprocess_equations(hwpx_path):
+    """Run hwpx_equation_tool.replace_equation_placeholders so every
+    {{EQ:...}} / {{EQN:...}} marker becomes a real <hp:equation> object that
+    Hangul renders with its native equation engine.
+
+    The tool can't write to the same path it reads from (its
+    write_zip_with_updates opens the output in "w" mode which truncates the
+    input on the first call). So we write to a sibling temp file, then
+    atomically replace the original.
+
+    Failures are fatal for HWPX output. Otherwise users can receive a document
+    with raw `{{EQ:...}}` placeholders or equation scripts exposed as text.
+    """
+    try:
+        from pathlib import Path
+        import shutil, tempfile
+
+        equation_dir = (
+            Path(__file__).resolve().parents[2] / "equation"
+        )
+        if str(equation_dir) not in sys.path:
+            sys.path.insert(0, str(equation_dir))
+        import hwpx_equation_tool
+
+        src = Path(hwpx_path)
+        with tempfile.NamedTemporaryFile(
+            suffix=".hwpx", dir=src.parent, delete=False
+        ) as tf:
+            tmp_out = Path(tf.name)
+        try:
+            count = hwpx_equation_tool.replace_equation_placeholders(src, tmp_out)
+            # count 는 "변환된 수식 개수"이지 "파일이 바뀌었는가"가 아니다.
+            # lenient 경로는 깨진 마커를 count==0 으로도 평문 정리할 수 있어,
+            # count 기준으로 tmp 를 버리면 정리본이 폐기되고 원본의 잔존
+            # 마커가 validate 에서 fatal 이 된다. replace_equation_placeholders
+            # 는 변경이 없어도 항상 완전한 사본을 쓰므로 무조건 채택한다.
+            shutil.move(str(tmp_out), str(src))
+
+            issues = hwpx_equation_tool.validate_hwpx_equations(src)
+            if issues:
+                joined = "; ".join(issues[:5])
+                raise RuntimeError(f"equation validation failed: {joined}")
+            if count > 0:
+                print(
+                    f"[hwpx-gen] equation conversion OK ({count} equations, no validation issues)",
+                    file=sys.stderr,
+                )
+        except Exception:
+            if tmp_out.exists():
+                tmp_out.unlink()
+            raise
+
+        # DEF-002: 수식 변환까지 끝난 최종 본문으로 Preview/PrvText.txt 를
+        # 채운다. 이 함수는 chem-pre 뿐 아니라 chem-result main 도 공용으로
+        # 호출하는 루트 경로라 두 파이프라인이 함께 커버된다. phys/free 등
+        # 하위 생성기는 이 뒤에 자기 content 기반 미리보기로 다시 덮어쓰므로
+        # 동작이 변하지 않는다. 미리보기는 본문 품질과 무관한 부가물이라
+        # 실패해도 fatal 로 올리지 않는다(수식 postprocess fatal 규칙과 별개).
+        try:
+            update_preview_text(src, collect_preview_text_from_hwpx(src))
+        except Exception as prv_exc:
+            print(
+                f"[hwpx-gen] PrvText refresh skipped: {prv_exc}",
+                file=sys.stderr,
+            )
+    except Exception as e:
+        raise RuntimeError(f"HWPX equation post-process failed: {e}") from e
+
+
+def ensure_embedded_bindata_items(hwpx_path):
+    """Mark every BinData manifest item as embedded.
+
+    python-hwpx registers newly added images in Contents/content.hpf, but it
+    omits Hancom's `isEmbeded="1"` attribute. Some Hangul viewers tolerate
+    that; Hancom Office can treat the image file as present in the zip but not
+    embedded in the document. Normalize the manifest after saving so generated
+    pictures behave like the original template assets.
+    """
+    from pathlib import Path
+    import shutil
+    import tempfile
+    import zipfile
+
+    src = Path(hwpx_path)
+    with zipfile.ZipFile(src, "r") as zin:
+        try:
+            manifest_bytes = zin.read("Contents/content.hpf")
+        except KeyError:
+            return
+
+    root = etree.fromstring(manifest_bytes)
+    changed = False
+    for item in root.iter():
+        if not item.tag.endswith("}item"):
+            continue
+        href = item.get("href") or ""
+        if not href.startswith("BinData/"):
+            continue
+        if item.get("isEmbeded") != "1":
+            item.set("isEmbeded", "1")
+            changed = True
+
+    if not changed:
+        return
+
+    updated = etree.tostring(root, encoding="utf-8", xml_declaration=True)
+    with tempfile.NamedTemporaryFile(suffix=".hwpx", dir=src.parent, delete=False) as tf:
+        tmp = Path(tf.name)
+    try:
+        with zipfile.ZipFile(src, "r") as zin, zipfile.ZipFile(tmp, "w") as zout:
+            for entry in zin.infolist():
+                if entry.filename == "Contents/content.hpf":
+                    zout.writestr(entry, updated)
+                else:
+                    zout.writestr(entry, zin.read(entry.filename))
+        shutil.move(str(tmp), str(src))
+    except Exception:
+        if tmp.exists():
+            tmp.unlink()
+        raise
+
+
+def main():
+    if len(sys.argv) >= 2 and sys.argv[1] != "-":
+        with open(sys.argv[1], "r", encoding="utf-8") as f:
+            content = json.load(f)
+    else:
+        content = json.load(sys.stdin)
+
+    content = _deep_clean_xml(content)  # XML 비허용 제어문자 제거 (코드 리뷰 ⑧)
+    doc = generate_hwpx(content)
+
+    if len(sys.argv) >= 3:
+        target = sys.argv[2]
+        doc.save_to_path(target)
+        _postprocess_equations(target)
+        ensure_embedded_bindata_items(target)
+    else:
+        # stdin/stdout mode: write to a temp file so the equation tool can
+        # operate on a real path, then stream the result back out.
+        import tempfile, os
+        with tempfile.NamedTemporaryFile(suffix=".hwpx", delete=False) as tf:
+            tmp_path = tf.name
+        try:
+            doc.save_to_path(tmp_path)
+            _postprocess_equations(tmp_path)
+            ensure_embedded_bindata_items(tmp_path)
+            with open(tmp_path, "rb") as f:
+                sys.stdout.buffer.write(f.read())
+        finally:
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+
+
+if __name__ == "__main__":
+    main()

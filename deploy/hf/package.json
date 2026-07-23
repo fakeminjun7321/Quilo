@@ -1,0 +1,21 @@
+{
+  "name": "pdf-translate",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "description": "독립 PDF 통번역 서버 (HF Spaces Docker)",
+  "scripts": {
+    "start": "node translate-server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.30.1",
+    "dotenv": "16.6.1",
+    "express": "4.22.2",
+    "image-size": "1.2.1",
+    "multer": "2.2.0",
+    "sharp": "0.33.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

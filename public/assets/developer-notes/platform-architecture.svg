@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-labelledby="title desc">
+  <title id="title">Quilo 플랫폼 구조</title>
+  <desc id="desc">여러 입력이 공통 작업 흐름을 거쳐 문서와 서비스로 나뉘는 구조도</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#07172f"/><stop offset="1" stop-color="#123f86"/></linearGradient>
+    <filter id="shadow"><feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#020917" flood-opacity=".28"/></filter>
+  </defs>
+  <rect width="1200" height="675" rx="34" fill="url(#bg)"/>
+  <g fill="none" stroke="#7fb0ff" stroke-width="3" opacity=".48">
+    <path d="M238 175H420Q458 175 458 213V297"/><path d="M238 337H458"/><path d="M238 499H420Q458 499 458 461V377"/>
+    <path d="M742 337H916"/><path d="M742 301Q785 301 785 242V188H916"/><path d="M742 373Q785 373 785 432V486H916"/>
+  </g>
+  <g filter="url(#shadow)">
+    <g fill="#fff" fill-opacity=".09" stroke="#9cc1ff" stroke-opacity=".42"><rect x="90" y="111" width="148" height="128" rx="24"/><rect x="90" y="273" width="148" height="128" rx="24"/><rect x="90" y="435" width="148" height="128" rx="24"/></g>
+    <rect x="458" y="228" width="284" height="218" rx="34" fill="#fff" stroke="#fff" stroke-opacity=".75"/>
+    <g fill="#fff" fill-opacity=".1" stroke="#9cc1ff" stroke-opacity=".42"><rect x="916" y="122" width="194" height="132" rx="26"/><rect x="916" y="271" width="194" height="132" rx="26"/><rect x="916" y="420" width="194" height="132" rx="26"/></g>
+  </g>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke="#b9d3ff" stroke-width="8"><path d="M128 155h72M128 177h54M128 199h62"/><path d="M126 315h76v44h-76zM141 374h46"/><path d="M126 478h76v44h-76zM146 494h36"/></g>
+    <g stroke="#0759ed" stroke-width="10"><path d="M523 291h154M523 325h112M523 359h154"/><circle cx="656" cy="391" r="20"/><path d="m647 391 7 7 13-16"/></g>
+    <g stroke="#c8dcff" stroke-width="8"><path d="M961 165h104M961 188h72M961 211h92"/><path d="M958 318h110v44H958zM981 378h65"/><circle cx="1013" cy="475" r="27"/><path d="m993 512 20-18 20 18"/></g>
+  </g>
+</svg>

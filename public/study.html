@@ -1,0 +1,975 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="canonical" href="https://quilolab.com/study.html" />
+    <meta name="description" content="공부 — 물리 개념을 도식으로 정리하는 학습 도구. 상대성이론 민코프스키 시공간 도표 생성 등 개념 시각화." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="/ui/foundation.css" />
+    <link rel="stylesheet" href="/ui/shell.css" />
+    <link rel="stylesheet" href="/ui/app-shell.css" />
+    <link rel="stylesheet" href="/ui/app-workbench.css" />
+    <script src="/ui/entitlement-gate.js"></script>
+    <meta name="theme-color" content="#2563eb" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <title>공부 — Quilo</title>
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("theme");
+          if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          document.documentElement.setAttribute("data-theme", t);
+        } catch (e) {}
+      })();
+    </script>
+
+</head>
+  <body id="appShell" class="app-shell app-shell--study" data-app-shell>
+    <div class="landing-bg" aria-hidden="true"></div>
+    <header class="ui-site-header" data-ui-shell data-shell-mode="fixed"></header>
+    <script src="/ui/shell.js"></script>
+<main class="landing-shell study-shell" id="main-content" aria-label="공부">
+      <section class="section app-inline-study-1">
+        <div class="study-top">
+          <div class="tool-page-head app-inline-study-2">
+            <h1>공부</h1>
+            <p>상대론 문제 사진이나 상황 설명을 AI가 해석하고, 민코프스키 평면은 브라우저가 직접 계산해 그립니다.</p>
+          </div>
+          <span class="study-status" id="studyStatus">접근 확인 중</span>
+        </div>
+      </section>
+
+      <section id="studyGate" class="study-lock" hidden></section>
+
+      <section id="studyMain" class="tool-card" hidden>
+        <div class="study-workbench">
+          <div class="study-controls">
+            <div class="study-control-group">
+              <label class="tool-label">문제 사진
+                <input id="problemImage" class="tool-input" type="file" accept=".png,.jpg,.jpeg,.webp,.gif,image/png,image/jpeg,image/webp,image/gif" />
+              </label>
+              <label class="tool-label">상황 설명
+                <textarea id="description" class="tool-input" placeholder="예: 우주선 S'가 지구계 S에 대해 v=0.6c로 움직인다. 원점에서 빛 신호를 보내고 x=3 광초 지점의 사건 A를 함께 표시해줘."></textarea>
+              </label>
+              <div class="study-chip-row" aria-label="예시로 채우기">
+                <span class="study-chip-label">예시로 채우기</span>
+                <button type="button" class="study-chip" data-example="boost">길이 수축</button>
+                <button type="button" class="study-chip" data-example="twin">쌍둥이 역설</button>
+                <button type="button" class="study-chip" data-example="signal">동시성·빛 신호</button>
+              </div>
+              <p class="study-example-hint">처음이라면 예시를 눌러 입력을 채운 뒤 바로 「AI로 분석」을 눌러 보세요.</p>
+            </div>
+
+            <div class="study-control-group">
+              <span class="tool-label">렌더링 방식</span>
+              <div class="study-mode" role="radiogroup" aria-label="렌더링 방식">
+                <label>
+                  <input type="radio" name="renderMode" value="skew" checked />
+                  <strong>기울어진 좌표계</strong>
+                  <span>정지계 위에 이동계 x', ct' 축 표시</span>
+                </label>
+                <label>
+                  <input type="radio" name="renderMode" value="boost" />
+                  <strong>쌍곡회전</strong>
+                  <span>원본 도형과 로런츠 변환 도형 비교</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="study-control-group">
+              <label class="study-range">
+                <span>β</span>
+                <input id="betaRange" type="range" min="-0.95" max="0.95" value="0.50" step="0.01" />
+                <output id="betaOut">0.50</output>
+              </label>
+              <label class="study-range">
+                <span>η</span>
+                <input id="etaRange" type="range" min="-2.50" max="2.50" value="0.55" step="0.01" />
+                <output id="etaOut">0.55</output>
+              </label>
+              <div class="study-chip-row" aria-label="β 자주 쓰는 값">
+                <span class="study-chip-label">β 프리셋</span>
+                <button type="button" class="study-chip" data-beta="0.5">0.5</button>
+                <button type="button" class="study-chip" data-beta="0.6">0.6</button>
+                <button type="button" class="study-chip" data-beta="0.8">0.8</button>
+                <button type="button" class="study-chip" data-beta="0.9">0.9</button>
+                <button type="button" class="study-chip" data-beta="-0.6">−0.6</button>
+              </div>
+            </div>
+
+            <div class="study-control-group">
+              <label class="tool-label">분석 모델
+                <select id="modelSelect" class="tool-input">
+                  <option value="auto">자동 선택</option>
+                </select>
+                <small id="modelHint" class="study-model-hint">사용 가능한 모델을 확인 중입니다.</small>
+              </label>
+            </div>
+
+            <div class="study-control-group">
+              <div class="study-actions">
+                <button id="analyzeBtn" class="primary" type="button">AI로 분석</button>
+                <button id="downloadBtn" class="secondary" type="button">PNG 다운로드</button>
+                <button id="resetBtn" class="secondary" type="button">초기화</button>
+              </div>
+              <p id="studyMsg" class="study-message"></p>
+            </div>
+          </div>
+
+          <div class="study-output">
+            <div class="study-canvas-wrap">
+              <div class="study-canvas-tools">
+                <button id="openZoomBtn" type="button">크게 보기</button>
+              </div>
+              <canvas id="minkowskiCanvas" role="img" aria-label="민코프스키 시공간 도표 — 정지계와 이동계 좌표축, 세계선, 사건을 표시한 그래프"></canvas>
+              <div class="study-caption">
+                <h2 id="diagramTitle">민코프스키 평면</h2>
+                <p id="diagramExplanation">핵심 축과 세계선만 표시한 샘플 도식입니다. AI 해석은 반드시 직접 검토하세요.</p>
+              </div>
+            </div>
+            <details class="study-details">
+              <summary>세부 해석 보기</summary>
+              <div class="study-list">
+                <section>
+                  <h3>사건</h3>
+                  <ul id="eventList"></ul>
+                </section>
+                <section>
+                  <h3>세계선</h3>
+                  <ul id="worldlineList"></ul>
+                </section>
+                <section>
+                  <h3>가정</h3>
+                  <ul id="assumptionList"></ul>
+                </section>
+                <section>
+                  <h3>주의</h3>
+                  <ul id="warningList"></ul>
+                </section>
+              </div>
+            </details>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-links">
+        <a href="/">메인</a>
+        <a href="/tools/index.html">도구 모음</a>
+        <a href="/guide.html">이용 가이드</a>
+        <a href="https://blog.naver.com/physicjun1905" target="_blank" rel="noopener">블로그</a>
+      </div>
+      <div class="footer-copy">© 2026 Quilo · MIT License</div>
+    </footer>
+
+    <div id="studyZoomModal" class="study-zoom-modal" hidden>
+      <div class="study-zoom-panel" role="dialog" aria-modal="true" aria-labelledby="studyZoomTitle">
+        <div class="study-zoom-head">
+          <strong id="studyZoomTitle">민코프스키 평면 크게 보기</strong>
+          <div class="study-zoom-actions">
+            <button id="zoomMinusBtn" type="button" aria-label="축소">−</button>
+            <output id="zoomScaleOut">100%</output>
+            <button id="zoomPlusBtn" type="button" aria-label="확대">+</button>
+            <button id="zoomFitBtn" type="button">맞춤</button>
+            <button id="closeZoomBtn" type="button">닫기</button>
+          </div>
+        </div>
+        <div id="studyZoomStage" class="study-zoom-stage">
+          <canvas id="minkowskiZoomCanvas" role="img" aria-label="민코프스키 시공간 도표 확대 보기 — 정지계와 이동계 좌표축, 세계선, 사건을 표시한 그래프"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <footer class="app-statusbar" aria-label="앱 상태">
+      <span class="app-statusbar__dot" aria-hidden="true"></span>
+      <span>준비됨</span>
+      <span class="app-statusbar__meta">공부 · Quilo</span>
+    </footer>
+
+    <script>
+      (function () {
+        "use strict";
+        var FEATURE = "relativity-study";
+        var canvas = document.getElementById("minkowskiCanvas");
+        var ctx = canvas.getContext("2d");
+        var mainCanvas = canvas;
+        var mainCtx = ctx;
+        var zoomModal = document.getElementById("studyZoomModal");
+        var zoomCanvas = document.getElementById("minkowskiZoomCanvas");
+        var zoomCtx = zoomCanvas.getContext("2d");
+        var zoomLevel = 1;
+        var betaRange = document.getElementById("betaRange");
+        var etaRange = document.getElementById("etaRange");
+        var betaOut = document.getElementById("betaOut");
+        var etaOut = document.getElementById("etaOut");
+        var msg = document.getElementById("studyMsg");
+        var modelSelect = document.getElementById("modelSelect");
+        var modelHint = document.getElementById("modelHint");
+        var analyzeBtn = document.getElementById("analyzeBtn");
+        var modelsAvailable = true;
+        var spec = defaultSpec();
+        var renderMode = "skew";
+        var compactView = false;
+        var placedLabels = [];
+        var forcedSize = null;
+        var sceneW = 720;
+        var sceneH = 480;
+
+        function esc(s) {
+          return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
+            return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+          });
+        }
+        function clamp(n, min, max) {
+          n = Number(n);
+          if (!isFinite(n)) return min;
+          return Math.max(min, Math.min(max, n));
+        }
+        function atanh(x) {
+          x = clamp(x, -0.999, 0.999);
+          return 0.5 * Math.log((1 + x) / (1 - x));
+        }
+        function fmt(n) {
+          if (!isFinite(n)) return "0";
+          return Number(n).toFixed(2);
+        }
+        function compactCaption(text) {
+          var s = String(text || "").replace(/\s+/g, " ").trim();
+          if (!s) return "AI 해석은 학습 보조이므로 반드시 직접 검토하세요.";
+          var parts = s.match(/[^.!?。！？]+[.!?。！？]?/g) || [s];
+          s = parts.slice(0, 2).join(" ").trim();
+          return s.length > 180 ? s.slice(0, 177).trim() + "..." : s;
+        }
+        function defaultSpec() {
+          return {
+            diagramType: "minkowski-clean",
+            title: "민코프스키 평면",
+            beta: 0.5,
+            eta: atanh(0.5),
+            events: [
+              { id: "O", label: "출발", x: 0, t: 0, color: "#0f9d6b" },
+              { id: "A", label: "도착", x: 6.5, t: 5.2, color: "#2563eb" }
+            ],
+            worldlines: [
+              { id: "source", label: "출발점", color: "#6b7280", points: [{ x: 0, t: 0 }, { x: 0, t: 7 }] },
+              { id: "moving", label: "이동 물체", color: "#2563eb", points: [{ x: 0, t: 0 }, { x: 6.5, t: 7.2 }] },
+              { id: "target", label: "도착점", color: "#0f9d6b", points: [{ x: 7.5, t: 0 }, { x: 7.5, t: 7.4 }] }
+            ],
+            annotations: [],
+            segments: [
+              { label: "측정선", kind: "bracket", from: { x: 0, t: 0 }, to: { x: 6.5, t: 0 }, color: "#047857" }
+            ],
+            explanation: "빛원뿔 안에서 이동 물체의 세계선과 두 사건만 비교하는 단순 도식입니다.",
+            assumptions: ["c=1 단위계 사용", "β=0.5는 초기 샘플값"],
+            warnings: []
+          };
+        }
+        function pointList() {
+          var pts = [];
+          (spec.events || []).forEach(function (p) { pts.push(p); });
+          (spec.annotations || []).forEach(function (p) { pts.push(p); });
+          (spec.segments || []).forEach(function (seg) {
+            if (seg && seg.from) pts.push(seg.from);
+            if (seg && seg.to) pts.push(seg.to);
+          });
+          (spec.worldlines || []).forEach(function (w) {
+            (w.points || []).forEach(function (p) { pts.push(p); });
+          });
+          return pts;
+        }
+        function currentBeta() {
+          return clamp(Number(betaRange.value), -0.95, 0.95);
+        }
+        function currentEta() {
+          return clamp(Number(etaRange.value), -2.5, 2.5);
+        }
+        function boost(p, eta) {
+          return {
+            x: p.x * Math.cosh(eta) + p.t * Math.sinh(eta),
+            t: p.x * Math.sinh(eta) + p.t * Math.cosh(eta)
+          };
+        }
+        function worldRange(eta) {
+          var m = 4;
+          pointList().forEach(function (p) {
+            m = Math.max(m, Math.abs(Number(p.x) || 0), Math.abs(Number(p.t) || 0));
+            if (renderMode === "boost") {
+              var q = boost({ x: Number(p.x) || 0, t: Number(p.t) || 0 }, eta);
+              m = Math.max(m, Math.abs(q.x), Math.abs(q.t));
+            }
+          });
+          return Math.min(24, Math.max(4, Math.ceil(m + 2)));
+        }
+        function setupCanvas() {
+          var dpr, w, h;
+          if (forcedSize) {
+            // PNG 내보내기: 화면 DPR과 무관하게 고정 2x로 선명하게 렌더한다.
+            w = forcedSize.w;
+            h = forcedSize.h;
+            dpr = forcedSize.scale;
+          } else {
+            var rect = canvas.getBoundingClientRect();
+            dpr = window.devicePixelRatio || 1;
+            w = Math.max(520, rect.width || 720);
+            h = Math.max(330, rect.height || 480);
+          }
+          canvas.width = Math.round(w * dpr);
+          canvas.height = Math.round(h * dpr);
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          sceneW = w;
+          sceneH = h;
+          return { w: w, h: h };
+        }
+        function renderer(size, range) {
+          var padL = 78;
+          var padR = 52;
+          var padT = 48;
+          var padB = 76;
+          var scaleX = (size.w - padL - padR) / range;
+          var scaleY = (size.h - padT - padB) / range;
+          var cx = padL;
+          var cy = size.h - padB;
+          return {
+            toScreen: function (x, t) {
+              return { x: cx + x * scaleX, y: cy - t * scaleY };
+            },
+            range: range,
+            scale: Math.min(scaleX, scaleY),
+            scaleX: scaleX,
+            scaleY: scaleY,
+            cx: cx,
+            cy: cy,
+            padL: padL,
+            padR: padR,
+            padT: padT,
+            padB: padB
+          };
+        }
+        function linePoints(fn, min, max, steps) {
+          var pts = [];
+          for (var i = 0; i <= steps; i++) {
+            var u = min + (max - min) * i / steps;
+            pts.push(fn(u));
+          }
+          return pts;
+        }
+        function drawPath(r, pts, color, width, dash) {
+          if (!pts || pts.length < 2) return;
+          ctx.save();
+          ctx.strokeStyle = color;
+          ctx.lineWidth = width || 1;
+          ctx.setLineDash(dash || []);
+          ctx.beginPath();
+          pts.forEach(function (p, i) {
+            var s = r.toScreen(p.x, p.t);
+            if (i === 0) ctx.moveTo(s.x, s.y);
+            else ctx.lineTo(s.x, s.y);
+          });
+          ctx.stroke();
+          ctx.restore();
+        }
+        function drawArrowHead(from, to, color, width) {
+          var dx = to.x - from.x;
+          var dy = to.y - from.y;
+          var len = Math.sqrt(dx * dx + dy * dy);
+          if (!len) return;
+          var ux = dx / len;
+          var uy = dy / len;
+          var size = Math.max(9, (width || 2) * 4.5);
+          ctx.save();
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.moveTo(to.x, to.y);
+          ctx.lineTo(to.x - ux * size - uy * size * 0.42, to.y - uy * size + ux * size * 0.42);
+          ctx.lineTo(to.x - ux * size + uy * size * 0.42, to.y - uy * size - ux * size * 0.42);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+        function drawArrow(r, from, to, color, width, dash) {
+          drawPath(r, [from, to], color, width, dash);
+          var a = r.toScreen(from.x, from.t);
+          var b = r.toScreen(to.x, to.t);
+          drawArrowHead(a, b, color, width);
+        }
+        // 라벨 겹침 방지: 같은 렌더에서 이미 놓인 라벨 사각형과 겹치면 세로로 살짝 밀어 자리를 잡는다.
+        function labelRectsOverlap(a, b) {
+          return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+        }
+        function placeLabelY(tx, ty, width, fontSize, cssH) {
+          var step = fontSize + 5;
+          var offsets = [0, step, -step, 2 * step, -2 * step, 3 * step];
+          var lo = fontSize + 8;
+          var hi = Math.max(lo, cssH - 8);
+          for (var i = 0; i < offsets.length; i++) {
+            var cand = clamp(ty + offsets[i], lo, hi);
+            var rect = { x: tx - 3, y: cand - fontSize - 2, w: width + 6, h: fontSize + 6 };
+            var hit = false;
+            for (var j = 0; j < placedLabels.length; j++) {
+              if (labelRectsOverlap(rect, placedLabels[j])) { hit = true; break; }
+            }
+            if (!hit) { placedLabels.push(rect); return cand; }
+          }
+          var fallback = clamp(ty, lo, hi);
+          placedLabels.push({ x: tx - 3, y: fallback - fontSize - 2, w: width + 6, h: fontSize + 6 });
+          return fallback;
+        }
+        function drawText(r, text, x, t, color, size) {
+          var s = r.toScreen(x, t);
+          ctx.save();
+          var fontSize = size || 12;
+          var font = fontSize + "px -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Pretendard, sans-serif";
+          ctx.font = font;
+          var tx = s.x + 7;
+          var ty = s.y - 7;
+          var width = ctx.measureText(String(text || "")).width;
+          var cssW = sceneW;
+          var cssH = sceneH;
+          tx = clamp(tx, 8, Math.max(8, cssW - width - 8));
+          ty = placeLabelY(tx, clamp(ty, fontSize + 8, Math.max(fontSize + 8, cssH - 8)), width, fontSize, cssH);
+          ctx.fillStyle = "rgba(255, 255, 255, 0.78)";
+          ctx.fillRect(tx - 3, ty - fontSize, width + 6, fontSize + 5);
+          ctx.fillStyle = color || "#1f2937";
+          ctx.fillText(text, tx, ty);
+          ctx.restore();
+        }
+        function drawGrid(r) {
+          var R = r.range;
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          drawArrow(r, { x: 0, t: 0 }, { x: R, t: 0 }, "#6b7280", 1.6);
+          drawArrow(r, { x: 0, t: 0 }, { x: 0, t: R }, "#6b7280", 1.6);
+          var tick = Math.max(1, Math.ceil(R / 5));
+          for (var i = tick; i <= R; i += tick) {
+            if (i === 0) continue;
+            drawPath(r, [{ x: i, t: -0.11 }, { x: i, t: 0.11 }], "#9ca3af", 1);
+            drawPath(r, [{ x: -0.11, t: i }, { x: 0.11, t: i }], "#9ca3af", 1);
+          }
+          drawText(r, "x", R - 0.35, 0.2, "#111827", 15);
+          drawText(r, "ct", 0.18, R - 0.25, "#111827", 15);
+        }
+        function drawLightCone(r) {
+          var R = r.range;
+          drawArrow(r, { x: 0, t: 0 }, { x: R * 0.88, t: R * 0.88 }, "#cbd5e1", 1.5, [7, 6]);
+        }
+        function screenLine(a, b, color, width, dash) {
+          ctx.save();
+          ctx.strokeStyle = color;
+          ctx.lineWidth = width || 1;
+          ctx.setLineDash(dash || []);
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+          ctx.restore();
+        }
+        function screenLabel(text, x, y, color, size, weight, align) {
+          var s = String(text || "").trim();
+          if (!s) return;
+          ctx.save();
+          var fontSize = size || 13;
+          ctx.font = (weight || 700) + " " + fontSize + "px -apple-system, BlinkMacSystemFont, Apple SD Gothic Neo, Pretendard, sans-serif";
+          var width = ctx.measureText(s).width;
+          var cssW = sceneW;
+          var cssH = sceneH;
+          var tx = x;
+          var ty = y;
+          if ((align || "left") === "center") tx -= width / 2;
+          if (align === "right") tx -= width;
+          tx = clamp(tx, 8, Math.max(8, cssW - width - 8));
+          ty = placeLabelY(tx, clamp(ty, fontSize + 8, Math.max(fontSize + 8, cssH - 8)), width, fontSize, cssH);
+          ctx.fillStyle = "rgba(255,255,255,0.78)";
+          ctx.fillRect(tx - 4, ty - fontSize - 2, width + 8, fontSize + 7);
+          ctx.fillStyle = color || "#111827";
+          ctx.textAlign = "left";
+          ctx.textBaseline = "alphabetic";
+          ctx.fillText(s, tx, ty);
+          ctx.restore();
+        }
+        function drawSkewGrid(r, beta) {
+          var R = r.range;
+          drawArrow(r, { x: 0, t: 0 }, { x: R, t: beta * R }, "#2f80ed", 2.2, [8, 6]);
+          if (Math.abs(beta) > 0.02) {
+            drawArrow(r, { x: 0, t: 0 }, { x: beta * R, t: R }, "#2563eb", 2.8);
+          } else {
+            drawArrow(r, { x: 0, t: 0 }, { x: 0, t: R }, "#2563eb", 2.8, [5, 4]);
+          }
+          drawText(r, "x'", R - 0.95, beta * (R - 0.95), "#2f80ed", 14);
+          drawText(r, "ct'", beta * (R - 1.25), R - 0.65, "#2563eb", 14);
+        }
+        function drawInvariantCue(r) {
+          // 서버가 diagramType과 실제 사건으로 계산한 calibration만 그린다.
+          // axis "t" → 시간꼴 ct=√(k²+x²) (정점 (0,k)), axis "x" → 공간꼴 x=√(k²+ct²) (정점 (k,0)).
+          var cal = spec.calibration;
+          if (!cal) return;
+          var k = clamp(Number(cal.value), 0.3, r.range);
+          if (!isFinite(k) || k <= 0) return;
+          var R = r.range;
+          var span = Math.max(0.6, Math.sqrt(Math.max(0, R * R - k * k)));
+          var u = Math.min(span, R * 0.95);
+          var pts;
+          if (cal.axis === "t") {
+            pts = linePoints(function (x) { return { x: x, t: Math.sqrt(k * k + x * x) }; }, 0, u, 48);
+          } else {
+            pts = linePoints(function (t) { return { x: Math.sqrt(k * k + t * t), t: t }; }, 0, u, 48);
+          }
+          drawPath(r, pts, "#b56b13", 1.6, [6, 5]);
+          if (!compactView && pts.length) {
+            var mid = pts[Math.floor(pts.length * 0.6)];
+            drawText(r, cal.label || "보정쌍곡선", mid.x, mid.t, "#b45309", 12);
+          }
+        }
+        function drawSegmentOnScreen(a, b, color, width, dash, kind) {
+          var dx = b.x - a.x;
+          var dy = b.y - a.y;
+          var len = Math.sqrt(dx * dx + dy * dy);
+          if (!len) return;
+          screenLine(a, b, color, width, dash);
+          if (kind === "arrow") drawArrowHead(a, b, color, width || 2);
+          if (kind === "bracket") {
+            var nx = -dy / len;
+            var ny = dx / len;
+            var tick = 9;
+            screenLine({ x: a.x - nx * tick, y: a.y - ny * tick }, { x: a.x + nx * tick, y: a.y + ny * tick }, color, width || 2);
+            screenLine({ x: b.x - nx * tick, y: b.y - ny * tick }, { x: b.x + nx * tick, y: b.y + ny * tick }, color, width || 2);
+          }
+        }
+        function compactSegmentLabel(label, compact) {
+          var s = String(label || "").trim();
+          if (!compact) return s;
+          if (/고유시간|Δτ/.test(s)) return "Δτ";
+          if (/좌표시간|정지계 시간|Δt=|Δt/.test(s)) return "Δt=γΔτ";
+          if (/수축길이/.test(s)) return "L₀/γ";
+          if (/고유길이/.test(s)) return "L₀";
+          if (/수축거리/.test(s)) return "D=D₀/γ";
+          if (/고유거리/.test(s)) return "D₀";
+          if (/왕복/.test(s)) return "Δt(왕복)";
+          if (/거리 d|d=c/.test(s)) return "d";
+          if (/건너뛴/.test(s)) return "건너뜀";
+          if (/S′|기울/.test(s)) return "S′ 지금";
+          if (/S 동시|S에서|동시/.test(s)) return "S 동시";
+          return s.length > 8 ? s.slice(0, 8) : s;
+        }
+        function drawSegments(r, eta) {
+          (spec.segments || []).slice(0, 4).forEach(function (seg) {
+            var from = (seg && seg.from) || { x: 0, t: 0 };
+            var to = (seg && seg.to) || { x: 1, t: 0 };
+            var a = r.toScreen(Number(from.x) || 0, Number(from.t) || 0);
+            var b = r.toScreen(Number(to.x) || 0, Number(to.t) || 0);
+            var color = (seg && seg.color) || "#047857";
+            var kind = (seg && seg.kind) || "line";
+            var compact = compactView;
+            drawSegmentOnScreen(a, b, color, 2.8, seg && seg.dashed ? [7, 6] : null, kind);
+            var labelX = (a.x + b.x) / 2;
+            var labelY = (a.y + b.y) / 2 - 12;
+            var align = "center";
+            if (Math.abs(a.y - b.y) < 10) labelY += 34;
+            if (Math.abs(a.x - b.x) < 10) {
+              labelX += compact ? 18 : 34;
+              labelY += 8;
+              align = "left";
+            }
+            screenLabel(compactSegmentLabel(seg && seg.label, compact), labelX, labelY, color, compact ? 11 : 13, 760, align);
+            if (renderMode === "boost") {
+              var bf = boost({ x: Number(from.x) || 0, t: Number(from.t) || 0 }, eta);
+              var bt = boost({ x: Number(to.x) || 0, t: Number(to.t) || 0 }, eta);
+              var ba = r.toScreen(bf.x, bf.t);
+              var bb = r.toScreen(bt.x, bt.t);
+              drawSegmentOnScreen(ba, bb, color, 2, [5, 5], kind === "arrow" ? "arrow" : "line");
+            }
+          });
+        }
+        function drawAnnotations(r) {
+          (spec.annotations || []).slice(0, 3).forEach(function (a) {
+            drawText(r, a.label || "주석", Number(a.x) || 0, Number(a.t) || 0, a.color || "#64748b", 12);
+          });
+        }
+        function shortWorldlineLabel(label) {
+          var s = String(label || "").trim();
+          s = s
+            .replace("움직이는 관찰자", "관찰자")
+            .replace("정지 관찰자", "정지계")
+            .replace("오른쪽 위치", "오른쪽")
+            .replace("왼쪽 위치", "왼쪽")
+            .replace("가까운 끝", "앞 끝")
+            .replace("물체 끝", "뒤 끝");
+          return s.length > 8 ? s.slice(0, 8) : s;
+        }
+        function shortEventLabel(ev, index) {
+          var id = String((ev && ev.id) || "").trim();
+          if (id && id.length <= 3) return id;
+          return String.fromCharCode(65 + (index % 26));
+        }
+        function drawWorldlines(r, eta) {
+          (spec.worldlines || []).slice(0, 6).forEach(function (wl) {
+            var pts = (wl.points || []).map(function (p) { return { x: Number(p.x) || 0, t: Number(p.t) || 0 }; });
+            drawPath(r, pts, wl.color || "#2563eb", 2.8);
+            if (pts.length >= 2) {
+              var a = r.toScreen(pts[pts.length - 2].x, pts[pts.length - 2].t);
+              var b = r.toScreen(pts[pts.length - 1].x, pts[pts.length - 1].t);
+              drawArrowHead(a, b, wl.color || "#2563eb", 2.8);
+            }
+            if (renderMode === "boost") {
+              drawPath(r, pts.map(function (p) { return boost(p, eta); }), wl.color || "#2563eb", 2.2, [8, 5]);
+            }
+            if (pts.length) {
+              var first = pts[0];
+              var last = pts[pts.length - 1];
+              var labelPoint = { x: (first.x + last.x) / 2, t: (first.t + last.t) / 2 };
+              drawText(r, shortWorldlineLabel(wl.label || wl.id || "세계선"), labelPoint.x, labelPoint.t, wl.color || "#2563eb", 12);
+            }
+          });
+        }
+        function drawEvents(r, eta) {
+          (spec.events || []).slice(0, 8).forEach(function (ev, index) {
+            var p = { x: Number(ev.x) || 0, t: Number(ev.t) || 0 };
+            var s = r.toScreen(p.x, p.t);
+            ctx.save();
+            ctx.fillStyle = ev.color || "#0f9d6b";
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+            drawText(r, shortEventLabel(ev, index), p.x, p.t, ev.color || "#0f9d6b", 12);
+            if (renderMode === "boost") {
+              var q = boost(p, eta);
+              var sq = r.toScreen(q.x, q.t);
+              ctx.save();
+              ctx.strokeStyle = ev.color || "#0f9d6b";
+              ctx.lineWidth = 2.4;
+              ctx.beginPath();
+              ctx.arc(sq.x, sq.y, 7, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.restore();
+              if (index < 3) drawText(r, shortEventLabel(ev, index) + "'", q.x, q.t, ev.color || "#0f9d6b", 12);
+            }
+          });
+        }
+        function drawScene() {
+          var beta = currentBeta();
+          var eta = currentEta();
+          betaOut.textContent = fmt(beta);
+          etaOut.textContent = fmt(eta);
+          var size = setupCanvas();
+          compactView = size.w < 560;
+          placedLabels = [];
+          ctx.clearRect(0, 0, size.w, size.h);
+          // 모든 diagramType은 같은 좌표 기반 렌더러 경로를 탄다(뮤온 전용 픽셀 그림 제거).
+          var r = renderer(size, worldRange(eta));
+          drawGrid(r);
+          drawLightCone(r);
+          if (renderMode === "skew") drawSkewGrid(r, beta);
+          drawInvariantCue(r);
+          drawWorldlines(r, eta);
+          drawSegments(r, eta);
+          drawEvents(r, eta);
+          drawAnnotations(r);
+        }
+        function renderOn(targetCanvas, targetCtx) {
+          var prevCanvas = canvas;
+          var prevCtx = ctx;
+          canvas = targetCanvas;
+          ctx = targetCtx;
+          drawScene();
+          canvas = prevCanvas;
+          ctx = prevCtx;
+        }
+        function render() {
+          renderOn(mainCanvas, mainCtx);
+          renderZoom();
+        }
+        function zoomBaseWidth(stage) {
+          return Math.max(900, Math.max(1, stage.clientWidth - 6));
+        }
+        function fitZoomLevel() {
+          var stage = document.getElementById("studyZoomStage");
+          var baseW = zoomBaseWidth(stage);
+          var fitW = Math.max(1, stage.clientWidth - 44) / baseW;
+          var fitH = (Math.max(1, stage.clientHeight - 44) * 1.62) / baseW;
+          return Math.min(1, fitW, fitH);
+        }
+        function renderZoom() {
+          if (zoomModal.hidden) return;
+          var stage = document.getElementById("studyZoomStage");
+          var baseW = zoomBaseWidth(stage);
+          var cssW = Math.round(baseW * zoomLevel);
+          var cssH = Math.round(cssW / 1.62);
+          zoomCanvas.style.width = cssW + "px";
+          zoomCanvas.style.height = cssH + "px";
+          renderOn(zoomCanvas, zoomCtx);
+          document.getElementById("zoomScaleOut").textContent = Math.round(zoomLevel * 100) + "%";
+        }
+        function openZoom() {
+          zoomModal.hidden = false;
+          document.body.style.overflow = "hidden";
+          zoomLevel = clamp(fitZoomLevel(), 0.35, 1);
+          renderZoom();
+          document.getElementById("studyZoomStage").scrollTo({ left: 0, top: 0 });
+          document.getElementById("closeZoomBtn").focus();
+        }
+        function closeZoom() {
+          zoomModal.hidden = true;
+          document.body.style.overflow = "";
+        }
+        function setZoom(next) {
+          zoomLevel = clamp(next, 0.35, 2.5);
+          renderZoom();
+        }
+        function syncFromBeta() {
+          var beta = currentBeta();
+          etaRange.value = fmt(atanh(beta));
+          render();
+        }
+        function syncFromEta() {
+          var eta = currentEta();
+          betaRange.value = fmt(Math.tanh(eta));
+          render();
+        }
+        function updateLists() {
+          document.getElementById("diagramTitle").textContent = spec.title || "민코프스키 평면";
+          document.getElementById("diagramExplanation").textContent = compactCaption(spec.explanation);
+          function fill(id, arr, fallback, mapper) {
+            var el = document.getElementById(id);
+            arr = Array.isArray(arr) ? arr : [];
+            if (!arr.length) {
+              el.innerHTML = "<li>" + esc(fallback) + "</li>";
+              return;
+            }
+            el.innerHTML = arr.map(function (x) { return "<li>" + esc(mapper ? mapper(x) : x) + "</li>"; }).join("");
+          }
+          fill("eventList", spec.events, "표시할 사건 없음", function (e) {
+            return (e.label || e.id || "사건") + " (" + fmt(e.x) + ", " + fmt(e.t) + ")";
+          });
+          fill("worldlineList", spec.worldlines, "표시할 세계선 없음", function (w) {
+            return w.label || w.id || "세계선";
+          });
+          fill("assumptionList", spec.assumptions, "추가 가정 없음");
+          fill("warningList", spec.warnings, "주의 없음");
+        }
+        function setMessage(text, isError) {
+          msg.textContent = text || "";
+          msg.classList.toggle("error", !!isError);
+        }
+        function focusDiagram() {
+          var output = document.querySelector(".study-output");
+          if (output && typeof output.scrollIntoView === "function") {
+            output.scrollIntoView({ block: "start", inline: "nearest" });
+          }
+        }
+        function modelProviderLabel(provider) {
+          if (provider === "openai") return "GPT";
+          if (provider === "anthropic") return "Claude";
+          return "자동";
+        }
+        function describeAutoLadder(models, ladder) {
+          var byId = {};
+          (models || []).forEach(function (m) { byId[m.id] = m; });
+          return (ladder || [])
+            .map(function (id) { return byId[id] && byId[id].available ? byId[id].label : ""; })
+            .filter(Boolean)
+            .join(" → ");
+        }
+        async function loadModels() {
+          try {
+            var res = await fetch("/api/study/relativity/models");
+            var data = await res.json().catch(function () { return {}; });
+            if (!res.ok) throw new Error(data.error || "모델 목록을 불러오지 못했습니다.");
+            var models = Array.isArray(data.models) ? data.models : [];
+            var anyAvailable = models.some(function (m) { return m.id !== "auto" && m.available; });
+            modelSelect.innerHTML = "";
+            models.forEach(function (m) {
+              var opt = document.createElement("option");
+              opt.value = m.id;
+              opt.textContent = m.label + (m.id === "auto" ? "" : " · " + modelProviderLabel(m.provider));
+              if (m.id !== "auto" && !m.available) {
+                opt.disabled = true;
+                opt.textContent += " (키 없음)";
+              }
+              modelSelect.appendChild(opt);
+            });
+            var preferred = data.defaultModel || "auto";
+            var preferredModel = models.find(function (m) { return m.id === preferred; });
+            modelSelect.value = preferredModel && (preferred === "auto" || preferredModel.available) ? preferred : "auto";
+            modelsAvailable = anyAvailable;
+            analyzeBtn.disabled = !anyAvailable;
+            if (!anyAvailable) {
+              modelHint.textContent = "서버에 사용 가능한 AI API 키가 설정되지 않았습니다.";
+              setMessage("서버에 사용 가능한 AI API 키가 설정되지 않았습니다.", true);
+              return;
+            }
+            var ladder = describeAutoLadder(models, data.autoLadder);
+            modelHint.textContent = ladder
+              ? "자동 선택 순서: " + ladder
+              : "자동 선택은 서버에 설정된 사용 가능 모델을 순서대로 시도합니다.";
+          } catch (e) {
+            modelHint.textContent = e.message || "모델 목록을 확인하지 못했습니다.";
+          }
+        }
+        function applySpec(next) {
+          spec = Object.assign(defaultSpec(), next || {});
+          // 슬라이더는 서버가 계산한 물리값(frame.beta 우선)에서 시작해야 축과 도식이 어긋나지 않는다.
+          var baseBeta = spec.frame && isFinite(Number(spec.frame.beta)) ? Number(spec.frame.beta) : Number(spec.beta);
+          baseBeta = clamp(baseBeta, -0.95, 0.95);
+          betaRange.value = fmt(baseBeta);
+          etaRange.value = fmt(isFinite(Number(spec.eta)) ? clamp(Number(spec.eta), -2.5, 2.5) : atanh(baseBeta));
+          updateLists();
+          render();
+        }
+        async function analyze() {
+          var desc = document.getElementById("description").value.trim();
+          var file = document.getElementById("problemImage").files[0];
+          if (!modelsAvailable) {
+            setMessage("서버에 사용 가능한 AI API 키가 설정되지 않았습니다.", true);
+            return;
+          }
+          if (!desc && !file) {
+            setMessage("상황 설명을 쓰거나 문제 사진을 올려 주세요.", true);
+            return;
+          }
+          var btn = document.getElementById("analyzeBtn");
+          btn.disabled = true;
+          setMessage("AI가 문제를 읽고 도식 명세를 만드는 중입니다.");
+          try {
+            var fd = new FormData();
+            fd.append("description", desc);
+            fd.append("modeHint", renderMode === "skew" ? "기울어진 좌표계" : "쌍곡회전");
+            fd.append("model", modelSelect.value || "auto");
+            if (file) fd.append("image", file);
+            var res = await fetch("/api/study/relativity/analyze", { method: "POST", body: fd });
+            var data = await res.json().catch(function () { return {}; });
+            if (!res.ok) throw new Error(data.error || "분석에 실패했습니다.");
+            applySpec(data);
+            focusDiagram();
+            setMessage("분석 완료" + (data.modelLabel ? " (" + data.modelLabel + ")" : "") + ". β와 η를 조절하며 도식을 확인해 보세요.");
+          } catch (e) {
+            setMessage(e.message || "분석에 실패했습니다.", true);
+          } finally {
+            btn.disabled = !modelsAvailable;
+          }
+        }
+        function downloadPng() {
+          // 화면 캔버스는 비레티나에서 1x라 흐리다. 분리된 오프스크린 캔버스에 고정 2x로 다시 그려 선명하게 내보낸다.
+          var off = document.createElement("canvas");
+          var offCtx = off.getContext("2d");
+          var prevForced = forcedSize;
+          forcedSize = { w: 1440, h: Math.round(1440 / 1.62), scale: 2 };
+          var url;
+          try {
+            renderOn(off, offCtx);
+            url = off.toDataURL("image/png");
+          } finally {
+            forcedSize = prevForced;
+            render();
+          }
+          var a = document.createElement("a");
+          a.href = url;
+          a.download = (spec.title || "minkowski-plane") + ".png";
+          a.click();
+        }
+        async function initAccess() {
+          var status = document.getElementById("studyStatus");
+          var gate = document.getElementById("studyGate");
+          var main = document.getElementById("studyMain");
+          var access = await window.QuiloEntitlement.require({
+            feature: FEATURE,
+            gate: gate,
+            content: main,
+            forbiddenTitle: "상대론 공부 도구는 Pro 권한이 필요합니다",
+            forbiddenMessage: "Pro·Max 또는 별도 기능 권한이 있는 계정에서 사용할 수 있습니다."
+          });
+          if (!access.allowed) {
+            status.textContent = access.state === "logged-out" ? "로그인 필요" : (access.state === "forbidden" ? "Pro 권한 필요" : "접근 확인 실패");
+            return;
+          }
+          status.textContent = access.reason === "admin" ? "관리자 접근" : "Pro · Max 접근 가능";
+          await loadModels();
+          applySpec(spec);
+        }
+
+        // 예시로 채우기: 대표 시나리오 텍스트 + 어울리는 렌더링 모드를 입력에 채운다(생성/캔버스 로직은 그대로).
+        var STUDY_EXAMPLES = {
+          boost: {
+            mode: "boost",
+            text: "정지계 S에서 길이 L₀=4 광초인 막대가 정지해 있다. 이 막대를 β=0.6으로 움직이는 관찰자 S'가 보면 길이가 어떻게 수축하는지, 원본 막대와 로런츠 변환된 막대를 함께 비교해 그려줘."
+          },
+          twin: {
+            mode: "skew",
+            text: "쌍둥이 역설: 지구에 남은 쌍둥이 A와 β=0.8로 떠났다가 되돌아오는 쌍둥이 B의 세계선을 민코프스키 평면에 그려줘. 출발·반환·재회 사건을 표시하고 두 사람이 겪는 고유시간 차이를 보여줘."
+          },
+          signal: {
+            mode: "skew",
+            text: "우주선 S'가 지구계 S에 대해 β=0.6으로 움직인다. 원점에서 빛 신호를 보내고 x=3 광초 지점의 사건 A를 함께 표시해줘. S와 S'에서 동시성이 어떻게 달라지는지 기울어진 좌표축으로 보여줘."
+          }
+        };
+        function selectRenderMode(mode) {
+          var radio = document.querySelector('input[name="renderMode"][value="' + mode + '"]');
+          if (!radio || radio.checked) return;
+          radio.checked = true;
+          renderMode = mode;
+          render();
+        }
+        function applyExample(key) {
+          var ex = STUDY_EXAMPLES[key];
+          if (!ex) return;
+          var descEl = document.getElementById("description");
+          descEl.value = ex.text;
+          if (ex.mode) selectRenderMode(ex.mode);
+          setMessage("예시를 채웠습니다. 「AI로 분석」을 누르면 도식을 만들어 줍니다.");
+        }
+        document.querySelectorAll(".study-chip[data-example]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            applyExample(btn.getAttribute("data-example"));
+          });
+        });
+        // β 프리셋: 슬라이더 값만 바꾸고 기존 syncFromBeta로 η·도식을 함께 맞춘다.
+        document.querySelectorAll(".study-chip[data-beta]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            betaRange.value = fmt(clamp(Number(btn.getAttribute("data-beta")), -0.95, 0.95));
+            syncFromBeta();
+          });
+        });
+
+        betaRange.addEventListener("input", syncFromBeta);
+        etaRange.addEventListener("input", syncFromEta);
+        document.querySelectorAll('input[name="renderMode"]').forEach(function (r) {
+          r.addEventListener("change", function () {
+            renderMode = r.value;
+            render();
+          });
+        });
+        analyzeBtn.addEventListener("click", analyze);
+        document.getElementById("openZoomBtn").addEventListener("click", openZoom);
+        document.getElementById("closeZoomBtn").addEventListener("click", closeZoom);
+        document.getElementById("zoomMinusBtn").addEventListener("click", function () {
+          setZoom(zoomLevel - 0.25);
+        });
+        document.getElementById("zoomPlusBtn").addEventListener("click", function () {
+          setZoom(zoomLevel + 0.25);
+        });
+        document.getElementById("zoomFitBtn").addEventListener("click", function () {
+          setZoom(fitZoomLevel());
+          document.getElementById("studyZoomStage").scrollTo({ left: 0, top: 0 });
+        });
+        zoomModal.addEventListener("click", function (e) {
+          if (e.target === zoomModal) closeZoom();
+        });
+        window.addEventListener("keydown", function (e) {
+          if (e.key === "Escape" && !zoomModal.hidden) closeZoom();
+        });
+        document.getElementById("downloadBtn").addEventListener("click", downloadPng);
+        document.getElementById("resetBtn").addEventListener("click", function () {
+          document.getElementById("description").value = "";
+          document.getElementById("problemImage").value = "";
+          setMessage("");
+          applySpec(defaultSpec());
+        });
+        window.addEventListener("resize", render);
+        initAccess();
+      })();
+    </script>
+
+  </body>
+</html>

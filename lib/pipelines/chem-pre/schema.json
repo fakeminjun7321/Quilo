@@ -1,0 +1,24 @@
+{
+  "$doc": "화학 사전보고서(type=chem-pre) 콘텐츠 스키마 — 미니 형식은 lib/content-schema.js 상단 주석 참고. required 는 렌더러(docx-gen.js/hwpx-gen.py)가 실질적으로 빈 문서를 만들게 되는 필드만: 제목·이론·실험 과정. 나머지(시약·기구·목표 등)는 렌더러가 전부 || [] 로 방어하므로 warn.",
+  "required": [
+    { "path": "title_kr", "type": "string", "minLen": 1 },
+    { "path": "theory", "type": "array", "minItems": 1 },
+    { "path": "procedure", "type": "array", "minItems": 1 }
+  ],
+  "warn": [
+    { "path": "title_en", "type": "string", "minLen": 1, "optional": true },
+    { "path": "purpose", "type": "array", "minItems": 1 },
+    { "path": "apparatus", "type": "array", "minItems": 1 },
+    { "path": "chemicals", "type": "array", "minItems": 1 },
+    { "path": "references", "type": "array", "minItems": 1 },
+    { "path": "theory[]", "anyOf": ["topic"], "detail": "이론 섹션 제목(topic) 없음" },
+    { "path": "theory[]", "anyOf": ["items", "paragraphs"], "detail": "이론 섹션 본문(items/paragraphs) 없음" },
+    { "path": "procedure[].title", "type": "string", "minLen": 1 },
+    { "path": "procedure[].steps", "type": "array", "minItems": 1 },
+    { "path": "chemicals[].name", "type": "string", "minLen": 1 },
+    { "path": "chemicals[].formula", "type": "string", "minLen": 1, "optional": true },
+    { "path": "figures_needed", "type": "array", "optional": true }
+  ],
+  "forbidMarkers": true,
+  "metrics": ["theory", "procedure", "chemicals", "apparatus", "references"]
+}

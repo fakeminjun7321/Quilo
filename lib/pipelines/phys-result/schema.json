@@ -1,0 +1,29 @@
+{
+  "$doc": "물리 결과보고서(type=phys-result) 콘텐츠 스키마 — 미니 형식은 lib/content-schema.js 상단 주석 참고. required: title(템플릿 첫 페이지 '실험 주제' 박스), experiments 1개 이상, conclusion 객체, 그리고 각 실험 파트에 표·분석·차트 중 하나 이상(전부 비면 그 파트는 빈 섹션으로 렌더됨). '모든 파트에 표+그래프+분석'은 채점 품질 기준이므로 개별 필드는 warn.",
+  "required": [
+    { "path": "title", "type": "string", "minLen": 1 },
+    { "path": "experiments", "type": "array", "minItems": 1 },
+    { "path": "conclusion", "type": "object", "nonEmpty": true },
+    {
+      "path": "experiments[]",
+      "anyOf": ["data_table.rows", "analysis", "chart"],
+      "detail": "실험 파트에 표·분석·차트가 모두 없음 (빈 섹션)"
+    }
+  ],
+  "warn": [
+    { "path": "experiment_setup.description", "type": "string", "minLen": 1 },
+    { "path": "experiments[].name", "type": "string", "minLen": 1 },
+    { "path": "experiments[].method_summary", "type": "string", "minLen": 1 },
+    { "path": "experiments[].data_table.headers", "type": "array", "minItems": 1 },
+    { "path": "experiments[].data_table.rows", "type": "array", "minItems": 1 },
+    { "path": "experiments[].chart", "type": "object", "nonEmpty": true, "optional": true },
+    { "path": "experiments[].analysis", "type": "string", "minLen": 100, "detail": "분석은 경향·정량값·이론 비교·물리 해석 포함(3~5문장)" },
+    { "path": "conclusion.result_summary", "type": "string", "minLen": 100 },
+    { "path": "conclusion.error_analysis", "type": "array", "minItems": 2 },
+    { "path": "conclusion.problem_solving", "type": "string", "minLen": 50 },
+    { "path": "conclusion.physical_meaning", "type": "string", "minLen": 50 },
+    { "path": "additional_investigations", "type": "array", "optional": true }
+  ],
+  "forbidMarkers": true,
+  "metrics": ["experiments", "conclusion.error_analysis", "additional_investigations"]
+}

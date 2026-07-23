@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-labelledby="title desc">
+  <title id="title">수식 변환 엔진</title>
+  <desc id="desc">텍스트 수식이 문서 안의 편집 가능한 수식 객체로 바뀌는 과정</desc>
+  <defs><linearGradient id="bg" x1="0" y1="1" x2="1"><stop stop-color="#10223c"/><stop offset="1" stop-color="#0a5a72"/></linearGradient></defs>
+  <rect width="1200" height="675" rx="34" fill="url(#bg)"/>
+  <g opacity=".14" fill="#fff"><circle cx="1020" cy="120" r="140"/><circle cx="110" cy="590" r="190"/></g>
+  <g fill="none" stroke="#b9e6ee" stroke-width="3" opacity=".45"><path d="M180 338h230M790 338h230"/><path d="m386 319 24 19-24 19M996 319l24 19-24 19"/></g>
+  <rect x="76" y="224" width="306" height="226" rx="30" fill="#fff" fill-opacity=".08" stroke="#b9e6ee" stroke-opacity=".36"/>
+  <rect x="423" y="184" width="354" height="306" rx="38" fill="#fff"/>
+  <rect x="818" y="224" width="306" height="226" rx="30" fill="#fff" fill-opacity=".08" stroke="#b9e6ee" stroke-opacity=".36"/>
+  <g fill="#c7edf4" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="34"><text x="120" y="302">{{EQ-LATEX:</text><text x="120" y="352">I = m r^2</text><text x="120" y="402">}}</text></g>
+  <g fill="#0759ed" font-family="Georgia, serif"><text x="477" y="310" font-size="52">I</text><text x="506" y="331" font-size="25">pivot</text><text x="590" y="310" font-size="42">=</text><text x="651" y="310" font-size="52">m r</text><text x="735" y="281" font-size="28">2</text><path d="M473 359h225" stroke="#0759ed" stroke-width="4"/><text x="517" y="420" font-size="40">4π²</text></g>
+  <g fill="none" stroke="#c7edf4" stroke-width="7" stroke-linecap="round"><path d="M872 284h198M872 329h142M872 374h178"/><path d="M1040 407v-58h-58" stroke-width="5"/></g>
+</svg>

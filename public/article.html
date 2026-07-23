@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Quilo 개발 노트와 자료실 글을 읽습니다.">
+  <title>글 읽기 — Quilo</title>
+  <link rel="icon" href="/favicon.png">
+  <script>
+    (function () {
+      try {
+        var theme = localStorage.getItem("theme");
+        if (!theme) theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", theme);
+      } catch (_) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="/ui/foundation.css">
+  <link rel="stylesheet" href="/ui/shell.css">
+  <link rel="stylesheet" href="/ui/editorial.css">
+</head>
+<body class="q-shell-page editorial-page" data-editorial-page="article">
+  <a class="ui-skip-link" href="#articleContent">본문으로 건너뛰기</a>
+  <header class="ui-site-header" data-ui-shell></header>
+
+  <main id="articleContent" class="ed-article-main">
+    <div id="articleLoading" class="ed-article-loading" role="status">글을 불러오는 중입니다.</div>
+    <article id="article" hidden>
+      <header class="ed-article-header ed-reading-width">
+        <a id="articleBack" class="ed-back-link" href="/developer-notes.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg><span>목록으로</span></a>
+        <p class="ed-legacy-notice" data-legacy-notice hidden>이 글은 기존 Quilo Lab에서 이전된 읽기 전용 기록입니다.</p>
+        <div class="ed-article-category" id="articleCategory"></div>
+        <h1 id="articleTitle">글 제목</h1>
+        <p id="articleSummary" class="ed-article-summary"></p>
+        <div class="ed-article-byline">
+          <img id="articleAvatar" src="/favicon.png" alt="" hidden>
+          <div><strong id="articleAuthor"></strong><span id="articleRole"></span></div>
+          <span class="ed-byline-divider" aria-hidden="true"></span>
+          <time id="articleDate"></time><span id="articleReadingTime"></span>
+        </div>
+        <div class="ed-owner-actions" data-owner-actions hidden><a data-edit-post href="/editorial-write.html">수정</a><button type="button" data-delete-post>삭제</button></div>
+      </header>
+      <figure id="articleCover" class="ed-article-cover ed-wide-reading" hidden><img src="/favicon.png" alt=""></figure>
+      <div class="ed-article-layout ed-wide-reading">
+        <aside class="ed-article-tools" aria-label="글 도구">
+          <button type="button" data-bookmark-article aria-pressed="false" title="북마크"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4V3Z"></path></svg><span>저장</span></button>
+          <button type="button" data-share-article title="공유"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="2.5"></circle><circle cx="6" cy="12" r="2.5"></circle><circle cx="18" cy="19" r="2.5"></circle><path d="m8.2 10.8 7.6-4.5M8.2 13.2l7.6 4.5"></path></svg><span>공유</span></button>
+        </aside>
+        <div>
+          <div id="articleBody" class="ed-rich-body"></div>
+          <section id="articleAttachments" class="ed-attachments" aria-labelledby="attachmentTitle" hidden><h2 id="attachmentTitle">첨부 파일</h2><div></div></section>
+          <div id="articleTags" class="ed-article-tags"></div>
+        </div>
+      </div>
+      <footer class="ed-article-footer ed-reading-width"><a id="articleListLink" href="/developer-notes.html">목록의 다른 글 보기<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg></a></footer>
+    </article>
+    <section id="articleError" class="ed-error-state" hidden><span>404</span><h1>글을 찾을 수 없습니다</h1><p>주소가 바뀌었거나 공개되지 않은 글일 수 있습니다.</p><a href="/developer-notes.html">개발 노트로 돌아가기</a></section>
+  </main>
+  <footer class="ui-site-footer"></footer>
+  <div id="editorialToast" class="ed-toast" role="status" aria-live="polite" hidden></div>
+  <script src="/ui/shell.js"></script>
+  <script src="/ui/editorial.js" defer></script>
+</body>
+</html>

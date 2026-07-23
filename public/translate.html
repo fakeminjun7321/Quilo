@@ -1,0 +1,1141 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <link rel="canonical" href="https://quilolab.com/translate.html" />
+  <link rel="icon" href="/favicon.ico" sizes="any" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <meta name="theme-color" content="#3157d5" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>PDF 통번역 (Max) · Quilo</title>
+  <meta name="description" content="여러 PDF의 그림·표·레이아웃과 수식을 보존하며 한국어로 번역하거나 깨끗하게 재조판합니다." />
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("theme");
+        if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="/ui/foundation.css" />
+  <link rel="stylesheet" href="/ui/shell.css" />
+  <link rel="stylesheet" href="/ui/pdf-translate.css" />
+</head>
+<body class="pdf-translate-page ui-page">
+  <a class="ui-skip-link" href="#main-content">본문으로 건너뛰기</a>
+  <header class="ui-site-header" data-ui-shell></header>
+
+  <main id="main-content" class="pdf-app" aria-labelledby="pdfTranslateTitle">
+    <header class="pdf-page-head">
+      <div><h1 id="pdfTranslateTitle">PDF 통번역 <span>Max</span></h1><p>여러 PDF를 분석해 문서 구조에 맞는 번역 방식을 선택하고, 완료된 파일부터 바로 받습니다.</p></div>
+      <a class="pdf-guide-link" href="/guide.html#pdf-translate">이용 가이드</a>
+    </header>
+
+    <section id="gate" class="pdf-access-state" aria-live="polite"><span class="pdf-access-spinner" aria-hidden="true"></span><div><strong>사용 권한을 확인하고 있습니다.</strong><p>잠시만 기다려 주세요.</p></div></section>
+
+    <div id="tool" hidden>
+      <form id="trForm" class="pdf-workspace">
+        <aside class="pdf-files" aria-labelledby="pdfFilesTitle">
+          <div class="pdf-panel-head"><div><h2 id="pdfFilesTitle">파일 목록</h2><span id="trFileCount">0/10</span></div><label class="pdf-add-file" for="trPdf">파일 추가</label></div>
+          <div class="dropzone pdf-dropzone">
+            <input id="trPdf" name="pdf" type="file" accept="application/pdf,.pdf" multiple required aria-label="번역할 PDF (여러 개 가능)" />
+            <span class="dropzone-title">PDF를 끌어다 놓거나 선택하세요</span>
+            <span class="dropzone-sub">일반·스캔 PDF 지원 · 최대 10개</span>
+            <span class="dropzone-file" data-dz-file></span>
+          </div>
+          <div id="trFileList" class="pdf-file-list" aria-live="polite"><p class="pdf-empty-copy">선택한 PDF가 여기에 표시됩니다.</p></div>
+          <p class="pdf-privacy">업로드한 문서는 이 작업을 처리하는 데에만 사용됩니다.</p>
+        </aside>
+
+        <section class="pdf-options" aria-labelledby="pdfOptionsTitle">
+          <header class="pdf-document-head"><div><span>선택한 작업</span><h2 id="pdfOptionsTitle">번역 설정</h2></div><span class="pdf-document-scope">모든 파일에 적용</span></header>
+          <div class="pdf-control-block">
+            <label for="trMode">번역 방식</label>
+            <select id="trMode" name="mode">
+              <option value="auto" selected>자동 (권장) — 문서를 분석해 알맞은 방식 선택</option>
+              <option value="inplace">빠른 번역 — 레이아웃을 유지하며 텍스트 번역</option>
+              <option value="retypeset">재조판 — 수식 복원·스캔본 OCR·새 PDF 생성</option>
+            </select>
+            <p id="trModeHint">일반 문서는 빠른 번역, 스캔본과 수식이 많은 문서는 재조판을 권장합니다.</p>
+          </div>
+          <div class="pdf-control-block">
+            <label for="trRenderer">재조판 출력 엔진</label>
+            <select id="trRenderer" name="renderer">
+              <option value="auto" selected>자동 (권장) — 안정적인 기본 엔진</option>
+              <option value="tectonic">Tectonic — LaTeX 수식·학술 조판</option>
+              <option value="libreoffice" hidden disabled>LibreOffice — Writer 기반 문서 조판</option>
+            </select>
+            <p id="trRendererHint">재조판이 선택된 파일에만 적용됩니다. 자동은 Tectonic을 사용합니다.</p>
+          </div>
+          <div class="pdf-control-block">
+            <label for="trModel">번역 모델</label>
+            <select id="trModel" name="model">
+              <option value="claude-sonnet-5" selected>Sonnet 5 — 빠르고 저렴 (기본·권장)</option>
+              <option value="claude-opus-4-8">Opus 4.8 — 최고 품질·수식 복원</option>
+              <option value="gpt-5.4-mini">GPT-5.4 mini — 가장 빠르고 저렴</option>
+              <option value="gpt-5.4">GPT-5.4 — 균형</option>
+              <option value="gpt-5.5">GPT-5.5 — 최고 품질</option>
+            </select>
+          </div>
+          <details class="pdf-advanced">
+            <summary>고급 옵션</summary>
+            <div class="pdf-advanced-content">
+              <label class="pdf-check"><input type="checkbox" id="trRestoreOnly" /><span><b>복원만</b><small>번역하지 않고 원문 언어 그대로 깨끗한 PDF로 재조판합니다.</small></span></label>
+              <label class="pdf-check"><input type="checkbox" id="trChartRedraw" checked /><span><b>그래프 벡터 재생성</b><small>축과 수치가 확실할 때만 선명한 차트로 다시 그립니다.</small></span></label>
+            </div>
+          </details>
+          <div id="trEstimate" class="pdf-analysis" hidden aria-live="polite"></div>
+          <div id="progressArea" class="pdf-progress" hidden>
+            <div class="status-head"><span class="spinner" id="genSpinner" aria-hidden="true"></span><h2 id="statusTitle">번역 중...</h2><button type="button" id="stopBtn" class="pdf-stop" hidden>중지</button></div>
+            <p id="progressLatest" class="pdf-progress-latest" role="status" aria-live="polite">번역 요청을 준비하고 있습니다.</p>
+            <div class="pdf-progress-meta" aria-label="번역 진행 정보"><span id="progressStage">준비</span><span id="progressElapsed">경과 0:00</span></div>
+            <pre id="progress" hidden aria-hidden="true"></pre>
+          </div>
+          <details class="pdf-support-note"><summary>지원 범위와 제한 확인</summary><div><p>일반 문서는 레이아웃을 유지하고, 수식 문서와 스캔본은 재조판합니다. 여러 PDF는 최대 10개까지 순서대로 처리합니다.</p><p>3단 이상 불규칙 레이아웃, 손글씨, 암호 PDF는 제한될 수 있습니다. 결과물은 24시간 보관됩니다.</p></div></details>
+        </section>
+
+        <aside class="pdf-summary" aria-labelledby="pdfSummaryTitle">
+          <h2 id="pdfSummaryTitle">작업 요약</h2>
+          <dl><div><dt>파일</dt><dd id="trSummaryFiles">선택 안 함</dd></div><div><dt>모드</dt><dd id="trSummaryMode">자동 (권장)</dd></div><div><dt>출력 엔진</dt><dd id="trSummaryRenderer">자동 (권장)</dd></div><div><dt>복원만</dt><dd id="trSummaryRestore">사용 안 함</dd></div><div><dt>그래프 재생성</dt><dd id="trSummaryChart">사용</dd></div><div><dt>모델</dt><dd id="trSummaryModel">Sonnet 5</dd></div></dl>
+          <div id="trBgField" class="pdf-background" hidden><label class="pdf-switch"><input type="checkbox" id="trBg" /><span>백그라운드 실행</span></label><label id="trBgNotifyWrap" class="pdf-notify" hidden><input type="checkbox" id="trBgNotify" /><span>완료 이메일 알림</span></label></div>
+          <button type="submit" id="trBtn" class="pdf-primary" disabled>번역 시작</button>
+          <p class="pdf-submit-hint">파일을 선택하면 분석 후 시작할 수 있습니다.</p>
+          <p id="trError" class="pdf-error" role="alert" aria-live="assertive" hidden></p>
+          <div class="pdf-result-block"><h3>완료 결과</h3><div id="resultArea" aria-live="polite"><p class="pdf-empty-copy">완료된 파일이 여기에 표시됩니다.</p></div></div>
+        </aside>
+      </form>
+    </div>
+  </main>
+
+  <footer class="pdf-statusbar" aria-label="앱 상태"><span><i aria-hidden="true"></i>준비됨</span><span>PDF 통번역 · Quilo</span></footer>
+  <script src="/theme.js"></script>
+  <script type="module" src="/ui/shell.js"></script>
+    <script type="module">
+      const gate = document.getElementById("gate");
+      const tool = document.getElementById("tool");
+      let translateAccess = null;
+
+      // 접근 게이트: 로그인 + (관리자 또는 Max(백그라운드 구독) 회원)
+      (async function guard() {
+        try {
+          const shellSession = window.QuiloShellAuth?.ready
+            ? await window.QuiloShellAuth.ready
+            : null;
+          let me;
+          if (shellSession?.state === "anonymous") {
+            gate.innerHTML =
+              '<div><strong>로그인이 필요합니다.</strong><p>PDF 통번역은 Max 계정에서 사용할 수 있습니다.</p><a class="pdf-primary pdf-access-action" href="/login.html?next=/translate.html">로그인</a></div>';
+            return;
+          }
+          if (shellSession?.state === "unknown") throw new Error("account unavailable");
+          if (shellSession?.state === "authenticated") {
+            me = shellSession.user || {};
+          } else {
+            const res = await fetch("/api/me", { credentials: "same-origin", cache: "no-store" });
+            if (res.status === 401) {
+              gate.innerHTML =
+                '<div><strong>로그인이 필요합니다.</strong><p>PDF 통번역은 Max 계정에서 사용할 수 있습니다.</p><a class="pdf-primary pdf-access-action" href="/login.html?next=/translate.html">로그인</a></div>';
+              return;
+            }
+            if (!res.ok) throw new Error("account unavailable");
+            me = await res.json();
+          }
+          let allowed = !!me.isAdmin;
+          // Fable 5 — 관리자 전용 모델 옵션 노출 (서버에서도 비관리자 403). 단 일시 차단 중이면 숨김 유지.
+          if (me.isAdmin && !me.fableDisabled) {
+            const sel = document.getElementById("trModel");
+            if (sel && !sel.querySelector('option[value="claude-fable-5"]')) {
+              const o = document.createElement("option");
+              o.value = "claude-fable-5";
+              o.textContent = "Fable 5 — 최상위 (관리자 전용·가장 느림)";
+              sel.appendChild(o);
+            }
+          }
+          if (!allowed) {
+            try {
+              const subResponse = await fetch("/api/subscriptions/me", { credentials: "same-origin", cache: "no-store" });
+              if (subResponse.ok) translateAccess = await subResponse.json();
+              allowed = !!(translateAccess && translateAccess.active);
+            } catch {}
+          } else {
+            translateAccess = { active: true, admin: true };
+          }
+          if (!allowed) {
+            gate.innerHTML =
+              '<div><strong>Max 전용 기능입니다.</strong><p>개인 설정에서 Max 이용을 신청하거나 현재 플랜을 확인하세요.</p><a class="pdf-guide-link pdf-access-action" href="/#settings">개인 설정 열기</a></div>';
+            return;
+          }
+          gate.hidden = true;
+          tool.hidden = false;
+          initTool();
+        } catch (e) {
+          gate.innerHTML = '<div><strong>권한 상태를 확인하지 못했습니다.</strong><p>잠시 후 새로고침해 주세요. 현재 세션은 변경되지 않습니다.</p></div>';
+        }
+      })();
+
+      function initTool() {
+        // 백그라운드 실행 자격(관리자/구독자)이면 토글 노출.
+        if (translateAccess?.active || translateAccess?.admin) {
+          const f = document.getElementById("trBgField");
+          if (f) f.hidden = false;
+          const bg = document.getElementById("trBg");
+          const wrap = document.getElementById("trBgNotifyWrap");
+          bg?.addEventListener("change", () => {
+            if (wrap) wrap.hidden = !bg.checked;
+          });
+        }
+        // 변환 방식에 따라 안내문 + 권장 모델 갱신
+        const modeSel = document.getElementById("trMode");
+        const modeHint = document.getElementById("trModeHint");
+        const rendererSel = document.getElementById("trRenderer");
+        const rendererHint = document.getElementById("trRendererHint");
+        const modelSel = document.getElementById("trModel");
+        const MODE_HINTS = {
+          auto: "PDF만 올리면 됩니다 — 일반 문서는 ‘빠른 번역’, 스캔본·수식 많은 문서는 ‘재조판’을 권유합니다(진행 전에 한 번 더 여쭤봐요). 원하면 직접 고를 수도 있어요.",
+          retypeset:
+            "문서를 한국어로 다시 조판하고 수식을 복원해 새 PDF를 만듭니다. 스캔본·이미지 PDF도 이 방식(OCR)으로 처리되며 원본 그림도 복원합니다. 기본 Sonnet으로 빠르게 — 수식이 아주 복잡한 논문만 Opus를 고르세요(느림).",
+          inplace:
+            "레이아웃을 그대로 두고 글자만 바꿉니다. 텍스트 레이어가 있는 일반 문서에 적합합니다.",
+        };
+        const RENDERER_HINTS = {
+          auto: "재조판이 선택된 파일에만 적용됩니다. 자동은 Tectonic을 사용합니다.",
+          tectonic: "LaTeX 수식과 학술 문서 조판에 적합합니다.",
+          libreoffice: "Writer 문서를 거쳐 PDF를 만듭니다.",
+        };
+        const syncRendererState = () => {
+          const inplace = modeSel?.value === "inplace";
+          if (rendererSel) rendererSel.disabled = inplace;
+          if (rendererHint) {
+            rendererHint.textContent = inplace
+              ? "빠른 번역은 원본 배치를 유지하는 PyMuPDF 엔진으로 고정됩니다."
+              : RENDERER_HINTS[rendererSel?.value] || RENDERER_HINTS.auto;
+          }
+        };
+        modeSel?.addEventListener("change", () => {
+          modeHint.textContent = MODE_HINTS[modeSel.value] || MODE_HINTS.auto;
+          syncRendererState();
+          // 모델은 강제하지 않음 — 속도를 위해 기본 Sonnet 유지(사용자가 직접 Opus 선택 가능)
+        });
+        rendererSel?.addEventListener("change", syncRendererState);
+        syncRendererState();
+        // LibreOffice is an operator-enabled server capability. Keep the
+        // option hidden by default and only reveal it after the read-only
+        // capability endpoint confirms both the flag and executable.
+        void (async function loadRendererCapabilities() {
+          const option = rendererSel?.querySelector('option[value="libreoffice"]');
+          if (!option) return;
+          let available = false;
+          try {
+            const response = await fetch("/api/translate-pdf/capabilities", {
+              credentials: "same-origin",
+              cache: "no-store",
+            });
+            if (response.ok) {
+              const capabilities = await response.json();
+              available = capabilities?.renderers?.libreoffice?.available === true;
+            }
+          } catch (_) {
+            available = false;
+          }
+          if (available) {
+            option.hidden = false;
+            option.disabled = false;
+          } else {
+            if (rendererSel.value === "libreoffice") rendererSel.value = "auto";
+            option.remove();
+          }
+          syncRendererState();
+        })();
+
+        const form = document.getElementById("trForm");
+        const btn = document.getElementById("trBtn");
+        const stopBtn = document.getElementById("stopBtn");
+        const errEl = document.getElementById("trError");
+        const progressArea = document.getElementById("progressArea");
+        const progressEl = document.getElementById("progress");
+        const progressLatest = document.getElementById("progressLatest");
+        const progressStage = document.getElementById("progressStage");
+        const progressElapsed = document.getElementById("progressElapsed");
+        const resultArea = document.getElementById("resultArea");
+        const statusTitle = document.getElementById("statusTitle");
+        const genSpinner = document.getElementById("genSpinner");
+        const fileInput = document.getElementById("trPdf");
+        const fileListEl = document.getElementById("trFileList");
+        const fileCountEl = document.getElementById("trFileCount");
+        const summaryFilesEl = document.getElementById("trSummaryFiles");
+        const summaryModeEl = document.getElementById("trSummaryMode");
+        const summaryRendererEl = document.getElementById("trSummaryRenderer");
+        const summaryRestoreEl = document.getElementById("trSummaryRestore");
+        const summaryChartEl = document.getElementById("trSummaryChart");
+        const summaryModelEl = document.getElementById("trSummaryModel");
+        let currentJobId = null;
+        let currentEs = null;
+        // 마지막 번역 제출을 보관해 스트림 끊김 시 파일을 다시 고르지 않고 재시도한다.
+        let _lastTranslate = null; // { fd, isBg }
+        let selectedFilesValid = false;
+        let progressStartedAt = 0;
+        let progressTimer = null;
+
+        // 드롭존: 파일명 표시 + 드래그 하이라이트 (index.html 과 동일 동작)
+        document.querySelectorAll(".dropzone").forEach((dz) => {
+          const input = dz.querySelector('input[type="file"]');
+          if (!input || dz.dataset.dzInit) return;
+          dz.dataset.dzInit = "1";
+          const fileEl = dz.querySelector("[data-dz-file]");
+          const render = () => {
+            if (input.files && input.files.length) {
+              dz.classList.add("is-filled");
+              if (fileEl) {
+                const names = Array.from(input.files).map((f) => f.name);
+                fileEl.textContent =
+                  names.length === 1
+                    ? names[0]
+                    : `${names.length}개 파일: ${names.join(", ")}`;
+              }
+            } else {
+              dz.classList.remove("is-filled");
+              if (fileEl) fileEl.textContent = "";
+            }
+            renderFileQueue();
+          };
+          input.addEventListener("change", render);
+          ["dragenter", "dragover"].forEach((ev) =>
+            dz.addEventListener(ev, (e) => {
+              e.preventDefault();
+              dz.classList.add("is-dragover");
+            }),
+          );
+          ["dragleave", "drop"].forEach((ev) =>
+            dz.addEventListener(ev, () => dz.classList.remove("is-dragover")),
+          );
+          dz.addEventListener("drop", (e) => {
+            e.preventDefault();
+            if (e.dataTransfer && e.dataTransfer.files.length) {
+              input.files = e.dataTransfer.files;
+              render();
+            }
+          });
+        });
+
+        function formatBytes(bytes) {
+          const size = Number(bytes) || 0;
+          if (size < 1024 * 1024) return `${Math.max(1, Math.round(size / 1024))} KB`;
+          return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+        }
+
+        function renderFileQueue() {
+          const files = Array.from(fileInput.files || []);
+          const invalidFile = files.find(
+            (file) => file.type !== "application/pdf" && !/\.pdf$/i.test(file.name || ""),
+          );
+          selectedFilesValid = files.length > 0 && files.length <= 10 && !invalidFile;
+          if (fileCountEl) fileCountEl.textContent = `${files.length}/10`;
+          if (summaryFilesEl) summaryFilesEl.textContent = files.length ? `${files.length}개 PDF` : "선택 안 함";
+          btn.disabled = !selectedFilesValid;
+          if (files.length > 10) {
+            errEl.hidden = false;
+            errEl.textContent = "PDF는 한 번에 최대 10개까지 선택할 수 있습니다.";
+          } else if (invalidFile) {
+            errEl.hidden = false;
+            errEl.textContent = `PDF 파일만 선택할 수 있습니다: ${invalidFile.name}`;
+          } else if (!currentJobId) {
+            errEl.hidden = true;
+          }
+          if (!fileListEl) return;
+          fileListEl.replaceChildren();
+          if (!files.length) {
+            const empty = document.createElement("p");
+            empty.className = "pdf-empty-copy";
+            empty.textContent = "선택한 PDF가 여기에 표시됩니다.";
+            fileListEl.appendChild(empty);
+            return;
+          }
+          files.forEach((file) => {
+            const row = document.createElement("div");
+            row.className = "pdf-file-row";
+            const icon = document.createElement("span");
+            icon.className = "pdf-file-icon";
+            icon.textContent = "PDF";
+            const copy = document.createElement("span");
+            copy.className = "pdf-file-copy";
+            const name = document.createElement("strong");
+            name.textContent = file.name;
+            const meta = document.createElement("span");
+            meta.textContent = formatBytes(file.size);
+            copy.append(name, meta);
+            const state = document.createElement("span");
+            state.className = "pdf-file-state";
+            state.textContent = "준비";
+            row.append(icon, copy, state);
+            fileListEl.appendChild(row);
+          });
+        }
+
+        function syncSummary() {
+          const modeText = modeSel?.selectedOptions?.[0]?.textContent?.split("—")[0]?.trim() || "자동 (권장)";
+          const rendererText = modeSel?.value === "inplace"
+            ? "PyMuPDF"
+            : rendererSel?.selectedOptions?.[0]?.textContent?.split("—")[0]?.trim() || "자동 (권장)";
+          const modelText = modelSel?.selectedOptions?.[0]?.textContent?.split("—")[0]?.trim() || "Sonnet 5";
+          if (summaryModeEl) summaryModeEl.textContent = modeText;
+          if (summaryRendererEl) summaryRendererEl.textContent = rendererText;
+          if (summaryModelEl) summaryModelEl.textContent = modelText;
+          if (summaryRestoreEl) summaryRestoreEl.textContent = document.getElementById("trRestoreOnly")?.checked ? "사용" : "사용 안 함";
+          if (summaryChartEl) summaryChartEl.textContent = document.getElementById("trChartRedraw")?.checked ? "사용" : "사용 안 함";
+        }
+
+        modeSel?.addEventListener("change", syncSummary);
+        rendererSel?.addEventListener("change", syncSummary);
+        modelSel?.addEventListener("change", syncSummary);
+        document.getElementById("trRestoreOnly")?.addEventListener("change", syncSummary);
+        document.getElementById("trChartRedraw")?.addEventListener("change", syncSummary);
+        renderFileQueue();
+        syncSummary();
+
+        // ── 예상 비용·시간 ──
+        // 파일은 한 번만 업로드해 분석(meta)하고 캐시한다. 방식·모델만 바꾸면 재업로드
+        // 없이 즉시 다시 계산한다(속도↑). 업로드엔 30초 타임아웃(멈춤 방지).
+        // 여러 파일이면 파일별로 분석해 fileKey → meta 로 캐시하고 합산해 보여준다.
+        const estEl = document.getElementById("trEstimate");
+        let estSeq = 0;
+        const estMetas = new Map(); // fileKey(f) → meta
+        const escHtml = (s) =>
+          String(s || "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+        const fmtDur = (s) =>
+          s < 90 ? `${Math.round(s)}초` : `${Math.round(s / 60)}분`;
+        const EST_PRICE = {
+          "claude-sonnet-5": { input: 3, output: 15, cacheRead: 0.3 },
+          "claude-opus-4-8": { input: 15, output: 75, cacheRead: 1.5 },
+          "gpt-5.5": { input: 5, output: 30, cacheRead: 0.5 },
+          "gpt-5.4": { input: 2.5, output: 15, cacheRead: 0.25 },
+          "gpt-5.4-mini": { input: 0.75, output: 4.5, cacheRead: 0.075 },
+        };
+        // 서버 estimatePdfTranslation 과 동일 공식(미러) — 토글 시 즉시 재계산용.
+        function calcEstimate(meta, mode, modelId) {
+          const pages = Math.max(1, +meta.page_count || 1);
+          const chars = Math.max(0, +meta.text_chars || 0);
+          const scanned = !!meta.scanned;
+          // 깨진 텍스트층은 '글자 교체' 불가 → 스캔본과 동일하게 이미지 OCR 경로.
+          // (수학 폰트 깨짐 math_garbled 도 서버가 garbled 로 접어서 내려준다.)
+          const garbled = !!meta.garbled;
+          const mathGarbled = !!meta.math_garbled;
+          const visionOcr = scanned || garbled;
+          const density = +meta.math_density || 0;
+          const needs = visionOcr || density >= 12;
+          const rmode =
+            mode === "retypeset" ? "retypeset" : needs ? "retypeset" : "inplace";
+          const isOpus = /opus/i.test(modelId || ""); // Opus 만 느린 티어(GPT·Sonnet 은 빠름)
+          const charTok = chars / 3.5;
+          const configuredLimits = meta._translationLimits || {};
+          const unlimitedPages = !!configuredLimits.unlimitedPages;
+          const overallMaxPages = Math.max(1, +configuredLimits.overallMaxPages || 700);
+          const ocrMaxPages = Math.max(1, +configuredLimits.ocrMaxPages || overallMaxPages);
+          const maxPages = unlimitedPages
+            ? Number.POSITIVE_INFINITY
+            : visionOcr
+              ? Math.min(overallMaxPages, ocrMaxPages)
+              : overallMaxPages;
+          const chunkPages = 50;
+          const ocrChunk = 10, ocrConc = 6;
+          const tooManyPages = pages > maxPages;
+          let inTok = 0,
+            outTok = 0,
+            cacheRead = 0,
+            seconds = 0,
+            truncated = false;
+          if (visionOcr) {
+            // 모든 페이지를 이미지로 읽음(큰 문서는 10쪽씩 구간 병렬·병합 — 자르지 않음).
+            const t = Math.ceil(pages * 1.3);
+            inTok = t * 2300;
+            outTok = t * 900;
+            const nChunks = Math.max(1, Math.ceil(pages / ocrChunk));
+            const waves = Math.ceil(nChunks / ocrConc);
+            seconds = waves * (ocrChunk * (isOpus ? 4 : 2.6) + 22 + 3) + 18;
+          } else if (rmode === "retypeset") {
+            inTok = pages * 2000;
+            outTok = (charTok || pages * 800) * 1.3;
+            const c = Math.ceil(pages / 5),
+              w = Math.ceil(c / 6);
+            seconds = 0.3 * pages + w * (isOpus ? 45 : 28) + 18;
+          } else {
+            const b = Math.max(1, Math.ceil(chars / 3500));
+            inTok = charTok * 1.15;
+            outTok = charTok * 1.15;
+            cacheRead = b * 400;
+            const w = Math.ceil(b / 10);
+            seconds = 0.5 * pages + (w + 1) * (isOpus ? 13 : 8) + 0.7 * pages;
+          }
+          const p = EST_PRICE[modelId] || EST_PRICE["claude-sonnet-5"];
+          const usd =
+            (inTok / 1e6) * p.input +
+            (outTok / 1e6) * p.output +
+            (cacheRead / 1e6) * p.cacheRead;
+          const chunked = !visionOcr && rmode === "inplace" && pages > chunkPages;
+          return {
+            mode: rmode,
+            scanned,
+            garbled,
+            mathGarbled,
+            pages,
+            chars,
+            truncated,
+            tooManyPages,
+            maxPages,
+            unlimitedPages,
+            chunked,
+            chunks: chunked ? Math.ceil(pages / chunkPages) : 1,
+            chunkPages,
+            costUsd: { lo: usd * 0.7, hi: usd * 1.45 },
+            seconds: {
+              lo: Math.round(seconds * 0.8),
+              hi: Math.round(seconds * 1.55),
+            },
+          };
+        }
+        function renderEstimate(e) {
+          estEl.hidden = false;
+          if (e.tooManyPages) {
+            estEl.innerHTML =
+              `<b>${e.pages}쪽</b> · <b class="app-runtime-warning">처리 한도(약 ${e.maxPages}쪽) 초과</b>` +
+              `<br><span class="app-runtime-dim">PDF를 나눠서 업로드하면 번역할 수 있습니다.</span>`;
+            return;
+          }
+          const modeLabel = e.mathGarbled
+            ? "수식 폰트 깨짐 → OCR 재조판"
+            : e.garbled
+              ? "깨진 글자 PDF → OCR 재조판"
+              : e.scanned
+                ? "스캔본 OCR 재조판"
+                : e.mode === "retypeset"
+                  ? "재조판(수식·정밀)"
+                  : "빠른 번역(레이아웃 유지)";
+          const krwLo = Math.round(e.costUsd.lo * 1400);
+          const krwHi = Math.round(e.costUsd.hi * 1400);
+          estEl.innerHTML =
+            `<b>${e.pages}쪽</b> · 변환 방식 <b>${modeLabel}</b>` +
+            (e.truncated
+              ? ` <span class="app-runtime-warning">(페이지 준비 불완전 - 작업 중단)</span>`
+              : ``) +
+            (e.chunked
+              ? ` <span class="app-runtime-dim">· ${e.chunkPages}쪽씩 ${e.chunks}개 구간 병렬 번역 후 합침</span>`
+              : ``) +
+            `<br>예상 시간 <b>약 ${fmtDur(e.seconds.lo)} ~ ${fmtDur(e.seconds.hi)}</b>` +
+            ` · 예상 비용 <b>약 ₩${krwLo.toLocaleString()} ~ ₩${krwHi.toLocaleString()}</b>` +
+            `<br><span class="app-runtime-dimmer">문서 내용·서버 상황에 따라 달라질 수 있습니다(실제 비용은 완료 후 표시).</span>`;
+        }
+        const fileKey = (f) =>
+          f ? `${f.name}|${f.size}|${f.lastModified}` : "";
+        // 다중 파일 요약: 파일별 한 줄 + 합산 시간·비용.
+        function renderEstimateMulti(list, mode, model) {
+          let usdLo = 0,
+            usdHi = 0,
+            secLo = 0,
+            secHi = 0,
+            pages = 0,
+            unknown = 0;
+          const over = [];
+          const lines = list.map((f, i) => {
+            const meta = estMetas.get(fileKey(f));
+            if (!meta) {
+              unknown++;
+              return `${i + 1}. ${escHtml(f.name)} — <span class="app-runtime-faint">분석 지연/실패 (그대로 진행 가능)</span>`;
+            }
+            const e = calcEstimate(meta, mode, model);
+            if (e.tooManyPages) {
+              over.push(f.name);
+              return `${i + 1}. ${escHtml(f.name)} — <span class="app-runtime-warning">${e.pages}쪽 · 한도(약 ${e.maxPages}쪽) 초과</span>`;
+            }
+            usdLo += e.costUsd.lo;
+            usdHi += e.costUsd.hi;
+            secLo += e.seconds.lo;
+            secHi += e.seconds.hi;
+            pages += e.pages;
+            const label = e.mathGarbled
+              ? "수식 폰트 깨짐 OCR 재조판"
+              : e.garbled
+                ? "깨진 글자 OCR 재조판"
+                : e.scanned
+                  ? "스캔 OCR 재조판"
+                  : e.mode === "retypeset"
+                    ? "재조판"
+                    : "빠른 번역";
+            return `${i + 1}. ${escHtml(f.name)} — ${e.pages}쪽 · ${label}`;
+          });
+          estEl.hidden = false;
+          estEl.innerHTML =
+            lines.join("<br>") +
+            `<br>총 <b>${pages}쪽</b> · 순차 합계 <b>약 ${fmtDur(secLo)} ~ ${fmtDur(secHi)}</b> <span class="app-runtime-dim">(2개씩 겹쳐 처리해 실제는 더 짧을 수 있어요)</span>` +
+            ` · <b>약 ₩${Math.round(usdLo * 1400).toLocaleString()} ~ ₩${Math.round(usdHi * 1400).toLocaleString()}</b>` +
+            (over.length
+              ? `<br><span class="app-runtime-warning">한도 초과 파일은 번역에 실패합니다 — 나눠서 올리세요: ${escHtml(over.join(", "))}</span>`
+              : "") +
+            `<br><span class="app-runtime-dimmer">파일은 순서대로 번역되고, 끝난 파일부터 바로 내려받을 수 있습니다.</span>`;
+        }
+        // 캐시에 없는 파일들만 서버 분석을 받아 estMetas 를 채운다.
+        async function ensureMetas(list, mode, model, seq) {
+          const pending = list.filter((file) => !estMetas.has(fileKey(file)));
+          let cursor = 0;
+          async function worker() {
+            while (cursor < pending.length) {
+              const f = pending[cursor++];
+              if (seq !== estSeq) return false;
+              const fd = new FormData();
+              fd.append("pdf", f);
+              fd.append("model", model);
+              fd.append("mode", mode);
+              fd.append("renderer", rendererSel?.value || "auto");
+              const ctrl = new AbortController();
+              const timer = setTimeout(() => ctrl.abort(), 30000);
+              try {
+                const r = await fetch("/api/translate-pdf/estimate", {
+                  method: "POST",
+                  body: fd,
+                  signal: ctrl.signal,
+                });
+                if (seq !== estSeq) return false;
+                if (r.ok) {
+                  const e = await r.json();
+                  if (e.meta) {
+                    estMetas.set(fileKey(f), {
+                      ...e.meta,
+                      _translationLimits: {
+                        overallMaxPages: e.overallMaxPages || e.maxPages,
+                        ocrMaxPages: e.ocrMaxPages || e.maxPages,
+                        unlimitedPages: !!e.unlimitedPages,
+                      },
+                    });
+                  }
+                }
+              } catch (_) {
+                if (seq !== estSeq) return false;
+              } finally {
+                clearTimeout(timer);
+              }
+            }
+            return true;
+          }
+          const workers = await Promise.all([
+            worker(),
+            pending.length > 1 ? worker() : Promise.resolve(true),
+          ]);
+          return workers.every(Boolean);
+        }
+        async function updateEstimate() {
+          const list = Array.from(fileInput.files || []);
+          if (!list.length) {
+            estEl.hidden = true;
+            return;
+          }
+          const mode = document.getElementById("trMode").value;
+          const model = document.getElementById("trModel").value;
+          const seq = ++estSeq;
+          if (list.some((f) => !estMetas.has(fileKey(f)))) {
+            estEl.hidden = false;
+            estEl.textContent =
+              "예상 비용·시간 계산 중..." +
+              (list.length > 1 ? ` (${list.length}개 파일)` : "");
+            if (!(await ensureMetas(list, mode, model, seq))) return;
+          }
+          if (seq !== estSeq) return;
+          if (list.length > 1) {
+            renderEstimateMulti(list, mode, model);
+            return;
+          }
+          const meta = estMetas.get(fileKey(list[0]));
+          if (!meta) {
+            estEl.innerHTML =
+              '<span class="app-runtime-soft">예상 계산이 지연됩니다(파일이 크거나 네트워크가 느림) — 그냥 번역을 진행해도 됩니다.</span>';
+            return;
+          }
+          renderEstimate(calcEstimate(meta, mode, model));
+        }
+        fileInput.addEventListener("change", updateEstimate);
+        document
+          .getElementById("trMode")
+          .addEventListener("change", updateEstimate);
+        document
+          .getElementById("trModel")
+          .addEventListener("change", updateEstimate);
+
+        function formatElapsed(ms) {
+          const seconds = Math.max(0, Math.floor(ms / 1000));
+          return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+        }
+
+        function setProgressMessage(stage, message) {
+          progressStage.textContent = stage;
+          progressLatest.textContent = message;
+        }
+
+        function friendlyProgress(text) {
+          const raw = String(text || "").replace(/^\[\d{2}:\d{2}:\d{2}\]\s*/, "").trim();
+          if (/오류|실패|error|fail/i.test(raw)) return ["확인 필요", "번역을 마치지 못했습니다. 안내를 확인한 뒤 다시 시도해 주세요."];
+          if (/연결|재연결|stream|network/i.test(raw)) return ["연결 확인", "작업은 계속될 수 있습니다. 진행 상태를 다시 확인하고 있습니다."];
+          if (/^(?:완료|다운로드 (?:파일 )?준비 완료|파일 준비 완료)[.!…]*$/i.test(raw)) return ["파일 준비", "완료된 번역 파일을 준비하고 있습니다."];
+          if (/조판|렌더|render|package|파일.*(?:생성|저장|패키지)|pdf.*(?:생성|빌드|저장)/i.test(raw)) return ["파일 생성", "번역 내용을 PDF 파일로 정리하고 있습니다."];
+          if (/번역|translate|ocr|페이지.*(?:처리|번역)/i.test(raw)) return ["본문 번역", "문서 내용을 한국어로 옮기고 있습니다."];
+          if (/분석|확인|scan|업로드|구조|메타/i.test(raw)) return ["자료 분석", "문서 구조와 번역 방식을 확인하고 있습니다."];
+          return ["처리 중", "문서를 안전하게 처리하고 있습니다."];
+        }
+
+        function appendLine(text) {
+          progressEl.textContent += String(text || "") + "\n";
+          const [stage, message] = friendlyProgress(text);
+          setProgressMessage(stage, message);
+        }
+
+        function startProgressTimer() {
+          clearInterval(progressTimer);
+          progressStartedAt = Date.now();
+          progressElapsed.textContent = "경과 0:00";
+          progressTimer = window.setInterval(() => {
+            progressElapsed.textContent = `경과 ${formatElapsed(Date.now() - progressStartedAt)}`;
+          }, 1000);
+        }
+
+        function stopProgressTimer() {
+          clearInterval(progressTimer);
+          progressTimer = null;
+          if (progressStartedAt) progressElapsed.textContent = `경과 ${formatElapsed(Date.now() - progressStartedAt)}`;
+        }
+
+        function setBusy(busy) {
+          btn.disabled = busy || !selectedFilesValid;
+          fileInput.disabled = busy;
+          btn.textContent = busy ? "번역 중..." : "번역 시작";
+          genSpinner.hidden = !busy;
+          stopBtn.hidden = !busy;
+          if (!busy) stopProgressTimer();
+        }
+
+        // 재조판 권유 확인창. 사용자가 '재조판'을 명시하지 않았는데 문서가 재조판을
+        // 필요로 하면(스캔본·수식 많음) 자동 전환하지 않고 먼저 물어본다.
+        // 반환: 'retypeset' | 'inplace' | 'cancel'
+        function askRetypeset(kind, density, garbled, mathGarbled) {
+          return new Promise((resolve) => {
+            const scanned = kind === "scanned";
+            const trigger = document.activeElement;
+            const ov = document.createElement("div");
+            ov.className = "pdf-dialog-backdrop";
+            const card = document.createElement("div");
+            card.setAttribute("role", "dialog");
+            card.setAttribute("aria-modal", "true");
+            card.setAttribute("aria-labelledby", "retypesetDlgTitle");
+            card.setAttribute("aria-describedby", "retypesetDlgBody");
+            card.className = "pdf-dialog";
+            const title = mathGarbled
+              ? "수식 폰트가 깨진 PDF — 재조판이 필요합니다"
+              : garbled
+                ? "본문 글자가 깨진 PDF — 재조판이 필요합니다"
+                : scanned
+                  ? "스캔본 PDF — 재조판이 필요합니다"
+                  : "수식이 많은 문서입니다";
+            const body = mathGarbled
+              ? "이 PDF는 수학 기호가 깨진 폰트(Math Pi 계열)로 인코딩돼 있어, 글자만 바꾸는 <b>빠른 번역</b>은 수식을 훼손합니다(예: [a, b]→3a, b4, √x→2x). 페이지를 이미지로 읽는 <b>재조판(OCR)</b>으로만 정확하게 번역할 수 있어요. (PDF를 새로 생성 · 시간·비용이 더 듭니다.)"
+              : garbled
+                ? "이 PDF는 본문 글자가 깨진 폰트로 박혀 있어(글자 추출 불가) 글자만 바꾸는 <b>빠른 번역</b>이 불가능합니다. 페이지를 이미지로 읽는 <b>재조판(OCR)</b>으로만 번역할 수 있어요. (PDF를 새로 생성 · 시간·비용이 더 듭니다.)"
+                : scanned
+                ? "이 PDF는 스캔본/이미지예요. 글자만 바꾸는 <b>빠른 번역</b>은 불가능하고, OCR로 새로 조판하는 <b>재조판</b>으로만 번역할 수 있습니다. (PDF를 새로 생성 · 시간·비용이 더 듭니다.)"
+                : `이 문서는 수식이 많습니다(수식밀도 <b>${density}</b>).<br><b>빠른 번역</b>은 레이아웃·그림은 그대로지만 복잡한 수식·전하·구조식이 깨질 수 있어요.<br><b>재조판</b>은 PDF를 새로 만들어 수식을 정확히 복원합니다(시간·비용↑, 레이아웃은 달라짐).`;
+            card.innerHTML =
+              `<div id="retypesetDlgTitle" class="app-runtime-dialog-title">${title}</div>` +
+              `<div id="retypesetDlgBody" class="app-runtime-dialog-body">${body}</div>`;
+            const row = document.createElement("div");
+            row.className = "pdf-dialog-actions";
+            const onKeydown = (ev) => {
+              if (ev.key === "Escape") {
+                ev.preventDefault();
+                close("cancel");
+              }
+            };
+            const close = (val) => {
+              document.removeEventListener("keydown", onKeydown);
+              if (ov.parentNode) document.body.removeChild(ov);
+              if (trigger && trigger.focus) trigger.focus();
+              resolve(val);
+            };
+            const mk = (label, val, primary) => {
+              const b = document.createElement("button");
+              b.type = "button";
+              b.textContent = label;
+              b.className = primary ? "primary" : "secondary";
+              b.addEventListener("click", () => close(val));
+              return b;
+            };
+            row.appendChild(mk("취소", "cancel", false));
+            if (!scanned) row.appendChild(mk("빠른 번역 그대로", "inplace", false));
+            row.appendChild(
+              mk(scanned ? "재조판으로 진행" : "재조판으로 진행 (권장)", "retypeset", true),
+            );
+            card.appendChild(row);
+            ov.appendChild(card);
+            ov.addEventListener("click", (ev) => {
+              if (ev.target === ov) close("cancel");
+            });
+            document.addEventListener("keydown", onKeydown);
+            document.body.appendChild(ov);
+            // 키보드 사용자: 권장(맨 끝) 버튼에 기본 포커스
+            const primaryBtn = row.lastElementChild;
+            if (primaryBtn && primaryBtn.focus) primaryBtn.focus();
+          });
+        }
+
+        // 다중 파일용 재조판 확인창 — 해당 파일 목록을 한 번에 보여주고 일괄 결정한다.
+        // 반환: 'retypeset' | 'inplace' | 'cancel' (inplace 는 수식 파일에만 적용됨)
+        function askRetypesetMulti(affected) {
+          return new Promise((resolve) => {
+            const forced = affected.filter(
+              (x) => x.meta.scanned || x.meta.garbled,
+            );
+            const mathOnly = affected.filter(
+              (x) => !(x.meta.scanned || x.meta.garbled),
+            );
+            const trigger = document.activeElement;
+            const ov = document.createElement("div");
+            ov.className = "pdf-dialog-backdrop";
+            const card = document.createElement("div");
+            card.setAttribute("role", "dialog");
+            card.setAttribute("aria-modal", "true");
+            card.setAttribute("aria-labelledby", "retypesetMultiTitle");
+            card.setAttribute("aria-describedby", "retypesetMultiBody");
+            card.className = "pdf-dialog pdf-dialog-wide";
+            const items = affected
+              .map(({ f, meta }) => {
+                const why =
+                  meta.scanned || meta.garbled
+                    ? meta.math_garbled
+                      ? "수식 폰트 깨짐 — 재조판(OCR) 필수"
+                      : meta.garbled
+                        ? "깨진 글자 — 재조판(OCR) 필수"
+                        : "스캔본 — 재조판(OCR) 필수"
+                    : `수식 많음(밀도 ${+meta.math_density || 0}) — 재조판 권장`;
+                return `<li><b>${escHtml(f.name)}</b> · ${why}</li>`;
+              })
+              .join("");
+            card.innerHTML =
+              `<div id="retypesetMultiTitle" class="app-runtime-dialog-title">재조판이 필요한 파일이 있습니다 (${affected.length}개)</div>` +
+              `<div id="retypesetMultiBody" class="app-runtime-dialog-body"><ul class="app-runtime-dialog-list">${items}</ul>` +
+              `재조판은 PDF를 새로 만들어 수식·스캔을 정확히 복원하지만 시간·비용이 더 듭니다. 나머지 파일은 선택한 방식 그대로 진행됩니다.</div>`;
+            const row = document.createElement("div");
+            row.className = "pdf-dialog-actions";
+            const onKeydown = (ev) => {
+              if (ev.key === "Escape") {
+                ev.preventDefault();
+                close("cancel");
+              }
+            };
+            const close = (val) => {
+              document.removeEventListener("keydown", onKeydown);
+              if (ov.parentNode) document.body.removeChild(ov);
+              if (trigger && trigger.focus) trigger.focus();
+              resolve(val);
+            };
+            const mk = (label, val, primary) => {
+              const b = document.createElement("button");
+              b.type = "button";
+              b.textContent = label;
+              b.className = primary ? "primary" : "secondary";
+              b.addEventListener("click", () => close(val));
+              return b;
+            };
+            row.appendChild(mk("취소", "cancel", false));
+            if (mathOnly.length)
+              row.appendChild(
+                mk("수식 파일은 빠른 번역 유지", "inplace", false),
+              );
+            row.appendChild(mk("재조판으로 진행 (권장)", "retypeset", true));
+            card.appendChild(row);
+            ov.appendChild(card);
+            ov.addEventListener("click", (ev) => {
+              if (ev.target === ov) close("cancel");
+            });
+            document.addEventListener("keydown", onKeydown);
+            document.body.appendChild(ov);
+            const primaryBtn = row.lastElementChild;
+            if (primaryBtn && primaryBtn.focus) primaryBtn.focus();
+          });
+        }
+
+        form.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          errEl.hidden = true;
+          const list = Array.from(fileInput.files || []);
+          if (!list.length) {
+            errEl.textContent = "PDF 파일을 선택하세요.";
+            errEl.hidden = false;
+            return;
+          }
+          if (list.length > 10) {
+            errEl.textContent = "한 번에 최대 10개 파일까지 번역할 수 있습니다.";
+            errEl.hidden = false;
+            return;
+          }
+          if (!selectedFilesValid) {
+            renderFileQueue();
+            return;
+          }
+
+          // 재조판이 필요한 문서인데 사용자가 '재조판'을 고르지 않았으면 먼저 확인.
+          let chosenMode = document.getElementById("trMode").value;
+          if (list.some((f) => !estMetas.has(fileKey(f)))) {
+            // 추정이 아직 없는 파일이 있으면 한 번 계산해서 메타 확보.
+            try {
+              await updateEstimate();
+            } catch (_) {}
+          }
+          const chosenModel = document.getElementById("trModel").value;
+          const chosenRenderer = rendererSel?.value || "auto";
+          const overLimit = list.find((file) => {
+            const meta = estMetas.get(fileKey(file));
+            return meta && calcEstimate(meta, chosenMode, chosenModel).tooManyPages;
+          });
+          if (overLimit) {
+            errEl.textContent = `${overLimit.name}: 서버 페이지 한도를 초과했습니다.`;
+            errEl.hidden = false;
+            return;
+          }
+          // 파일별 변환 방식(서버 'modes' 배열) — 기본은 선택한 공통 방식.
+          let modes = list.map(() => chosenMode);
+          if (chosenMode !== "retypeset") {
+            const affected = list
+              .map((f, i) => ({ f, i, meta: estMetas.get(fileKey(f)) }))
+              .filter(
+                (x) =>
+                  x.meta &&
+                  (x.meta.scanned ||
+                    x.meta.garbled ||
+                    (+x.meta.math_density || 0) >= 12),
+              );
+            if (affected.length && list.length === 1) {
+              const m = affected[0].meta;
+              const scanned = !!m.scanned;
+              const garbled = !!m.garbled;
+              const density = +m.math_density || 0;
+              // 깨진 글자(garbled)·스캔본은 글자 교체가 불가하므로 스캔본 다이얼로그로
+              // (빠른 번역 옵션 없이) 안내한다.
+              const choice = await askRetypeset(
+                scanned || garbled ? "scanned" : "math",
+                density,
+                garbled,
+                !!m.math_garbled,
+              );
+              if (choice === "cancel") return;
+              chosenMode = choice; // 'retypeset' 또는 'inplace'
+              modes = [choice];
+            } else if (affected.length) {
+              // 여러 파일: 해당 파일 목록을 한 번에 보여주고 일괄 결정.
+              const choice = await askRetypesetMulti(affected);
+              if (choice === "cancel") return;
+              affected.forEach(({ i, meta }) => {
+                // 스캔본/깨진 글자는 어차피 재조판만 가능 → 항상 재조판.
+                modes[i] =
+                  meta.scanned || meta.garbled ? "retypeset" : choice;
+              });
+            }
+          }
+
+          const fd = new FormData();
+          list.forEach((f) => fd.append("pdf", f));
+          fd.append("model", document.getElementById("trModel").value);
+          fd.append("mode", chosenMode);
+          fd.append("modes", JSON.stringify(modes));
+          fd.append("renderer", chosenRenderer);
+          fd.append("renderers", JSON.stringify(list.map(() => chosenRenderer)));
+          const roEl = document.getElementById("trRestoreOnly");
+          if (roEl && roEl.checked) fd.append("restoreOnly", "1");
+          const crEl = document.getElementById("trChartRedraw");
+          if (crEl && crEl.checked) fd.append("chartRedraw", "1");
+          const bgEl = document.getElementById("trBg");
+          const isBg = !!(bgEl && bgEl.checked);
+          if (isBg) {
+            fd.append("backgroundMode", "true");
+            const ne = document.getElementById("trBgNotify");
+            if (ne && ne.checked) fd.append("notifyEmail", "true");
+          }
+
+          // 스트림 끊김 시 파일 재선택 없이 재시도할 수 있도록 제출을 보관한다.
+          _lastTranslate = { fd, isBg };
+          await startTranslate(fd, isBg);
+        });
+
+        // 번역 요청 전송(제출·재시도 공용). fd 는 File 핸들을 유지하므로 재사용 안전.
+        async function startTranslate(fd, isBg) {
+          progressArea.hidden = false;
+          progressEl.textContent = "";
+          resultArea.innerHTML = "";
+          statusTitle.textContent = "번역 중...";
+          setProgressMessage("준비", "번역 요청을 준비하고 있습니다.");
+          startProgressTimer();
+          setBusy(true);
+
+          try {
+            const res = await fetch("/api/translate-pdf", {
+              method: "POST",
+              body: fd,
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "요청 실패");
+            currentJobId = data.jobId;
+            streamJob(data.jobId);
+            if (isBg) {
+              const note = document.createElement("p");
+              note.className = "pdf-background-note";
+              note.textContent =
+                "백그라운드로 실행 중입니다. 이 창을 닫아도 작업이 계속되고, 완료 파일은 ‘내 파일’에서 24시간 동안 받을 수 있습니다.";
+              resultArea.appendChild(note);
+            }
+          } catch (err) {
+            appendLine("오류: " + err.message);
+            statusTitle.textContent = "오류";
+            setBusy(false);
+            // 제출 단계 실패 — 같은 입력으로 다시 시도할 수 있게 버튼 제공.
+            showTranslateRetry(false);
+          }
+        }
+
+        // 스트림 끊김/오류 시 '다시 시도' 버튼을 결과 영역에 추가한다.
+        // maybeRunning=true 면 서버에서 번역이 계속 진행 중일 수 있음을 안내한다.
+        function showTranslateRetry(maybeRunning) {
+          try {
+            const box = document.createElement("div");
+            box.className = "pdf-retry-box";
+            const p = document.createElement("div");
+            p.textContent = maybeRunning
+              ? "화면과의 연결만 끊겼을 수 있어요. 긴 문서는 서버에서 계속 번역 중일 수 있으니, 잠시 뒤 ‘내 파일’을 확인하세요. 파일이 없으면 아래로 다시 시도할 수 있어요(창을 닫지 않으면 그대로 완료될 수도 있어요)."
+              : "다시 시도할 수 있어요. 파일은 그대로 선택돼 있어요.";
+            box.appendChild(p);
+            if (!maybeRunning && _lastTranslate && _lastTranslate.fd) {
+              const retry = document.createElement("button");
+              retry.type = "button";
+              retry.className = "primary";
+              retry.textContent = "다시 시도";
+              retry.addEventListener("click", () => {
+                if (currentJobId) return; // 진행 중이면 무시
+                box.remove();
+                startTranslate(_lastTranslate.fd, _lastTranslate.isBg);
+              });
+              box.appendChild(retry);
+            }
+            if (maybeRunning) {
+              const filesLink = document.createElement("a");
+              filesLink.href = "/#files";
+              filesLink.className = "pdf-download-link pdf-files-link";
+              filesLink.textContent = "내 파일 확인";
+              box.appendChild(filesLink);
+            }
+            resultArea.appendChild(box);
+          } catch (_) {}
+        }
+
+        stopBtn.addEventListener("click", async () => {
+          if (!currentJobId) return;
+          stopBtn.textContent = "중지 중...";
+          setProgressMessage("중지 요청", "안전하게 작업을 중지하고 있습니다.");
+          try {
+            await fetch(`/api/jobs/${currentJobId}/abort`, { method: "POST" });
+          } catch (e) {}
+        });
+
+        function streamJob(jobId, reconnectAttempt = 0) {
+          const es = new EventSource(`/api/jobs/${jobId}/stream`);
+          currentEs = es;
+          // 다중 파일: 파일이 끝날 때마다 개별 다운로드 링크(중복 방지 index 기준).
+          const addedFileLinks = new Set();
+          function addFileLink(d) {
+            if (d == null || d.index == null || addedFileLinks.has(d.index)) return;
+            addedFileLinks.add(d.index);
+            const preview = document.createElement("a");
+            preview.href = `/api/jobs/${jobId}/preview?file=${d.index}`;
+            preview.textContent = `${d.filename} 미리보기`;
+            preview.target = "_blank";
+            preview.rel = "noopener";
+            preview.className = "pdf-download-link pdf-preview-link";
+            resultArea.appendChild(preview);
+            const link = document.createElement("a");
+            link.href = `/api/jobs/${jobId}/download?file=${d.index}`;
+            link.textContent = `${d.filename} 다운로드`;
+            link.download = d.filename;
+            link.className = "pdf-download-link";
+            resultArea.appendChild(link);
+          }
+
+          es.addEventListener("progress", (e) => {
+            appendLine(JSON.parse(e.data));
+          });
+
+          // 다중 파일 job: 완료된 파일부터 바로 받을 수 있게 즉시 링크를 붙인다.
+          es.addEventListener("file", (e) => {
+            addFileLink(JSON.parse(e.data));
+          });
+
+          es.addEventListener("done", (e) => {
+            const data = JSON.parse(e.data);
+            statusTitle.textContent = "완료";
+            setProgressMessage("완료", "번역이 완료되었습니다. 아래에서 파일을 받을 수 있습니다.");
+            if (data.files && data.files.length > 1) {
+              data.files.forEach(addFileLink);
+            } else {
+              const preview = document.createElement("a");
+              preview.href = `/api/jobs/${jobId}/preview`;
+              preview.textContent = `${data.filename} 미리보기`;
+              preview.target = "_blank";
+              preview.rel = "noopener";
+              preview.className = "pdf-download-link pdf-preview-link";
+              resultArea.appendChild(preview);
+              const link = document.createElement("a");
+              link.href = `/api/jobs/${jobId}/download`;
+              link.textContent = `${data.filename} 다운로드`;
+              link.download = data.filename;
+              link.className = "pdf-download-link";
+              resultArea.appendChild(link);
+            }
+            es.close();
+            currentJobId = null;
+            setBusy(false);
+            stopBtn.textContent = "중지";
+          });
+
+          es.addEventListener("error", (e) => {
+            // 서버가 보낸 error 이벤트(e.data 있음)면 진짜 실패 — 크레딧 미차감·재시도 안전.
+            // e.data 가 없으면 연결만 끊긴 것일 수 있고, 긴 번역은 서버에서 계속
+            // 진행/완료될 수 있으므로 '실패로 단정'하지 않는다.
+            const serverError = e && e.data != null;
+            es.close();
+            if (serverError) {
+              currentJobId = null;
+              setBusy(false);
+              stopBtn.textContent = "중지";
+              let msg;
+              try { msg = JSON.parse(e.data); } catch (_) { msg = e.data; }
+              appendLine("오류: " + msg);
+              statusTitle.textContent = "오류";
+              showTranslateRetry(false);
+            } else {
+              appendLine("화면 연결이 잠시 끊겼습니다. 서버 작업 상태를 다시 확인합니다.");
+              statusTitle.textContent = "연결 복구 중...";
+              if (reconnectAttempt < 2) {
+                window.setTimeout(() => {
+                  if (currentJobId === jobId) streamJob(jobId, reconnectAttempt + 1);
+                }, 1400 * (reconnectAttempt + 1));
+                return;
+              }
+              currentJobId = null;
+              setBusy(false);
+              stopBtn.textContent = "중지";
+              appendLine(
+                "연결 복구가 지연됩니다. 서버에서는 번역이 계속될 수 있으니 잠시 뒤 ‘내 파일’을 확인하세요.",
+              );
+              statusTitle.textContent = "서버에서 처리 중일 수 있음";
+              showTranslateRetry(true);
+            }
+          });
+        }
+      }
+    </script>
+</body>
+</html>

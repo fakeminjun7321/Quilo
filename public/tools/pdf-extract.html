@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="canonical" href="https://quilolab.com/tools/pdf-extract.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PDF 페이지 추출 — 보고서 도구</title>
+    <meta name="description" content="PDF에서 원하는 페이지만 골라 새 PDF로 만드는 브라우저 도구. 업로드 없이 기기 안에서 처리." />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("theme");
+          if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          document.documentElement.setAttribute("data-theme", t);
+          if (new URLSearchParams(location.search).has("embed"))
+            document.documentElement.classList.add("embed");
+        } catch (e) {}
+      })();
+    </script>
+
+    <link rel="stylesheet" href="/ui/foundation.css" />
+    <link rel="stylesheet" href="/ui/shell.css" />
+    <link rel="stylesheet" href="/ui/pages.css" />
+    <link rel="stylesheet" href="/ui/tool-shell.css" />
+  </head>
+  <body class="landing q-shell-page ui-page">
+    <div class="landing-bg" aria-hidden="true"></div>
+    <a class="ui-skip-link" href="#main-content">본문으로 건너뛰기</a>
+    <header class="ui-site-header" data-ui-shell></header>
+
+    <main class="landing-shell" id="main-content">
+      <section class="section ui-inline-tools-pdf-extract-1">
+        <div class="tool-page-head">
+          <h1>PDF 페이지 추출</h1>
+          <p>원하는 페이지만 새 PDF로. 모든 처리는 브라우저 안에서만 이뤄지고 파일은 서버로 전송되지 않습니다.</p>
+        </div>
+
+        <div class="tool-card">
+          <div id="pxDrop" role="button" tabindex="0" class="ui-inline-tools-pdf-extract-2" >
+            <div class="ui-inline-tools-pdf-extract-3" >PDF 파일을 끌어다 놓기</div>
+            <div class="ui-inline-tools-pdf-extract-4" >또는 클릭해서 선택 · PDF 1개</div>
+          </div>
+          <input type="file" id="pxFile" accept="application/pdf,.pdf" class="ui-inline-tools-pdf-extract-5" />
+
+          <div id="pxInfo" class="ui-inline-tools-pdf-extract-6" >
+            <span id="pxName" class="ui-inline-tools-pdf-extract-7" ></span>
+            <span id="pxMeta" class="ui-inline-tools-pdf-extract-8" ></span>
+          </div>
+
+          <div class="ui-inline-tools-pdf-extract-9" >
+            <label class="tool-label" for="pxRange">남길 페이지 <span class="req">*</span></label>
+            <input type="text" id="pxRange" class="tool-input" placeholder="예: 1,3,5-8" inputmode="numeric" autocomplete="off" />
+            <p class="hint ui-inline-tools-pdf-extract-10">쉼표로 구분하고 범위는 하이픈으로 적습니다. 적은 순서대로 새 PDF가 만들어지며, 같은 페이지를 여러 번 넣을 수도 있습니다.</p>
+          </div>
+
+          <div class="actions">
+            <button class="btn-primary" id="pxRun" disabled>페이지 추출</button>
+            <button class="btn-ghost" id="pxClear">비우기</button>
+          </div>
+          <div id="pxOut" class="tool-result ui-inline-tools-pdf-extract-11">
+            <div class="badge ok ui-inline-tools-pdf-extract-12" id="pxStat" role="status" aria-live="polite" aria-atomic="true"></div>
+            <a id="pxDl" class="btn-lg btn-primary ui-inline-tools-pdf-extract-13" download>↓ 추출한 PDF 내려받기</a>
+          </div>
+          <p class="hint ui-inline-tools-pdf-extract-14" id="pxMsg" role="status" aria-live="polite" aria-atomic="true"></p>
+        </div>
+      </section>
+    </main>
+    <footer class="ui-site-footer">
+      <div class="ui-site-footer__inner">
+        <nav class="ui-site-footer__links" aria-label="푸터 메뉴"><a href="/terms.html">이용약관</a><a href="/privacy.html">개인정보처리방침</a><a href="/refund.html">환불정책</a><a href="/guide.html">이용 가이드</a><a href="/community.html">커뮤니티</a><a href="https://github.com/fakeminjun7321/Quilo" target="_blank" rel="noopener">GitHub</a></nav>
+        <div class="ui-site-footer__copy">© 2026 Quilo · <span data-site-version>버전 확인 중...</span></div>
+      </div>
+    </footer>
+
+    <script src="/ui/shell.js"></script>
+    <script src="/ui/tool-shell.js"></script>
+    <script>
+      (function () {
+        var drop = document.getElementById("pxDrop"), input = document.getElementById("pxFile");
+        var infoBox = document.getElementById("pxInfo"), nameEl = document.getElementById("pxName"), metaEl = document.getElementById("pxMeta");
+        var rangeInput = document.getElementById("pxRange");
+        var runBtn = document.getElementById("pxRun"), clearBtn = document.getElementById("pxClear"), out = document.getElementById("pxOut"), msg = document.getElementById("pxMsg");
+        var file = null, pageCount = 0, lastUrl = null;
+
+        function fmt(b) { return b < 1024 ? b + " B" : b < 1048576 ? (b / 1024).toFixed(0) + " KB" : (b / 1048576).toFixed(1) + " MB"; }
+        function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+
+        // Parse "1,3,5-8" into a 1-based, ordered list of page numbers (duplicates allowed, order preserved).
+        // max is the total page count (0 = unknown yet, so no upper-bound check).
+        function parseRanges(text, max) {
+          var pages = [], errors = [];
+          var parts = String(text || "").split(",");
+          for (var i = 0; i < parts.length; i++) {
+            var p = parts[i].trim();
+            if (p === "") continue;
+            var m = p.match(/^(\d+)\s*-\s*(\d+)$/);
+            if (m) {
+              var a = parseInt(m[1], 10), b = parseInt(m[2], 10);
+              if (a < 1 || b < 1) { errors.push(p); continue; }
+              if (max && (a > max || b > max)) { errors.push(p); continue; }
+              if (a <= b) { for (var n = a; n <= b; n++) pages.push(n); }
+              else { for (var n2 = a; n2 >= b; n2--) pages.push(n2); }
+              continue;
+            }
+            if (/^\d+$/.test(p)) {
+              var v = parseInt(p, 10);
+              if (v < 1 || (max && v > max)) { errors.push(p); continue; }
+              pages.push(v);
+              continue;
+            }
+            errors.push(p);
+          }
+          return { pages: pages, errors: errors };
+        }
+
+        function refresh() {
+          var ok = !!file && rangeInput.value.trim() !== "";
+          runBtn.disabled = !ok;
+        }
+
+        function setFile(f) {
+          if (f && !window.PDFLib) {
+            msg.textContent = "PDF 작업 엔진을 불러오는 중…";
+            window.QuiloToolAssets.load("pdfLib").then(function () { setFile(f); }).catch(function (e) {
+              msg.innerHTML = '<span class="error">' + esc(e.message || "PDF 작업 엔진을 불러오지 못했습니다.") + "</span>";
+            });
+            return;
+          }
+          file = f; pageCount = 0;
+          out.style.display = "none"; msg.textContent = "";
+          if (f) {
+            nameEl.textContent = f.name;
+            metaEl.textContent = fmt(f.size);
+            infoBox.style.display = "flex";
+            // Read page count up front so we can validate and hint.
+            f.arrayBuffer().then(function (bytes) {
+              if (!window.PDFLib) return;
+              return PDFLib.PDFDocument.load(bytes, { ignoreEncryption: true }).then(function (doc) {
+                if (file !== f) return; // a newer file was picked meanwhile
+                pageCount = doc.getPageCount();
+                metaEl.textContent = fmt(f.size) + " · " + pageCount + "쪽";
+                if (!rangeInput.value.trim()) rangeInput.placeholder = "예: 1,3,5-" + pageCount;
+              });
+            }).catch(function (e) {
+              if (file !== f) return;
+              msg.innerHTML = '<span class="error">PDF를 읽지 못했습니다: ' + esc(e.message || "알 수 없는 오류") + " (암호가 걸린 PDF는 처리할 수 없습니다)</span>";
+            });
+          } else {
+            infoBox.style.display = "none";
+          }
+          refresh();
+        }
+
+        function accept(fl) {
+          for (var i = 0; i < fl.length; i++) {
+            if (/\.pdf$/i.test(fl[i].name) || fl[i].type === "application/pdf") { setFile(fl[i]); return; }
+          }
+          msg.innerHTML = '<span class="error">PDF 파일만 추가할 수 있습니다.</span>';
+        }
+
+        drop.addEventListener("click", function () { input.click(); });
+        drop.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); input.click(); } });
+        input.addEventListener("change", function () { if (input.files && input.files.length) accept(input.files); input.value = ""; });
+        ["dragover", "dragenter"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.style.borderColor = "var(--accent)"; }); });
+        ["dragleave", "drop"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.style.borderColor = "var(--border-strong)"; }); });
+        drop.addEventListener("drop", function (e) { if (e.dataTransfer && e.dataTransfer.files) accept(e.dataTransfer.files); });
+        rangeInput.addEventListener("input", function () { out.style.display = "none"; msg.textContent = ""; refresh(); });
+        clearBtn.addEventListener("click", function () { rangeInput.value = ""; rangeInput.placeholder = "예: 1,3,5-8"; setFile(null); });
+
+        runBtn.addEventListener("click", function () {
+          if (!file || !window.PDFLib) { msg.innerHTML = !window.PDFLib ? '<span class="error">PDF 라이브러리를 불러오지 못했습니다.</span>' : ""; return; }
+          var parsed = parseRanges(rangeInput.value, pageCount || 0);
+          if (parsed.errors.length) {
+            msg.innerHTML = '<span class="error">페이지 표현이 올바르지 않습니다: ' + esc(parsed.errors.join(", ")) +
+              (pageCount ? " (이 PDF는 1~" + pageCount + "쪽)" : "") + "</span>";
+            return;
+          }
+          if (!parsed.pages.length) {
+            msg.innerHTML = '<span class="error">남길 페이지를 한 개 이상 적어주세요. 예: 1,3,5-8</span>';
+            return;
+          }
+          runBtn.disabled = true; runBtn.textContent = "추출하는 중…"; msg.textContent = "";
+          (async function () {
+            try {
+              var PDFDocument = PDFLib.PDFDocument;
+              var bytes = await file.arrayBuffer();
+              var src = await PDFDocument.load(bytes, { ignoreEncryption: true });
+              var total = src.getPageCount();
+              // Re-validate against the live page count, then convert to 0-based indices.
+              var indices = [];
+              for (var i = 0; i < parsed.pages.length; i++) {
+                var pg = parsed.pages[i];
+                if (pg < 1 || pg > total) throw new Error(pg + "쪽은 범위를 벗어납니다 (1~" + total + "쪽)");
+                indices.push(pg - 1);
+              }
+              var outDoc = await PDFDocument.create();
+              var copied = await outDoc.copyPages(src, indices);
+              copied.forEach(function (p) { outDoc.addPage(p); });
+              var outBytes = await outDoc.save();
+              if (lastUrl) URL.revokeObjectURL(lastUrl);
+              lastUrl = URL.createObjectURL(new Blob([outBytes], { type: "application/pdf" }));
+              document.getElementById("pxStat").textContent = "✓ " + indices.length + "쪽 추출 완료";
+              var base = file.name.replace(/\.pdf$/i, "");
+              var dl = document.getElementById("pxDl"); dl.href = lastUrl; dl.download = base + "_추출.pdf";
+              out.style.display = "grid";
+            } catch (e) {
+              msg.innerHTML = '<span class="error">추출 실패: ' + esc(e.message || "알 수 없는 오류") + " (암호가 걸린 PDF는 처리할 수 없습니다)</span>";
+            } finally {
+              runBtn.textContent = "페이지 추출"; refresh();
+            }
+          })();
+        });
+
+        refresh();
+      })();
+    </script>
+  </body>
+</html>

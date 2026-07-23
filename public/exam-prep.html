@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="canonical" href="https://quilolab.com/exam-prep.html" />
+    <meta name="description" content="읽은 책의 정보와 감상 메모를 학교 독서활동 기록지(.hwpx) 양식으로 정리합니다." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="/ui/foundation.css" />
+    <link rel="stylesheet" href="/ui/shell.css" />
+    <link rel="stylesheet" href="/ui/app-shell.css" />
+    <link rel="stylesheet" href="/ui/app-workbench.css" />
+    <script src="/ui/app-assets.js"></script>
+    <meta name="theme-color" content="#2563eb" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <title>독서활동 기록지 — Quilo</title>
+    <script>
+      // 다크모드 깜빡임 방지(다른 페이지와 동일 패턴)
+      try {
+        var t = localStorage.getItem("theme");
+        if (t) document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {}
+    </script>
+</head>
+  <body id="appShell" class="app-shell app-shell--exam-prep" data-app-shell>
+    <header class="ui-site-header" data-ui-shell data-shell-mode="fixed"></header>
+    <script src="/ui/shell.js"></script>
+<main class="epwrap" id="main-content" aria-label="독서활동 기록지">
+
+      <div class="eptabs" role="tablist" aria-label="독서활동 기록지">
+        <!-- 코딩 테스트 탭 — 비활성화(노출 제거). JS·#paneCoding 코드는 보존하되 화면에 나오지 않는다.
+             .eptabs button 규칙(display:inline-flex)이 [hidden]을 덮으므로 인라인 display:none 으로 확실히 숨긴다. -->
+        <button id="tabCoding" role="tab" aria-selected="false" aria-controls="paneCoding" hidden class="app-inline-exam-prep-1">코딩 테스트 <span class="muted app-inline-exam-prep-2">(정보)</span><span id="badgeCoding" class="ep-tabbadge" hidden></span></button>
+        <button id="tabReading" class="active" role="tab" aria-selected="true" aria-controls="paneReading">독서록<span id="badgeReading" class="ep-tabbadge" hidden></span></button>
+      </div>
+
+      <!-- ── 코딩 테스트 (노출 제거 — 코드 보존, 화면에는 안 나옴) ── -->
+      <section id="paneCoding" role="tabpanel" aria-labelledby="tabCoding" hidden>
+        <div id="codingGate" class="locked" hidden></div>
+        <div id="codingMain" hidden>
+          <p class="muted app-inline-exam-prep-4">
+            정보 수행평가(프로그래밍 실습) 대비 — 함수를 작성하고 <b>제출</b>하면 숨은 테스트까지
+            브라우저 안에서 바로 채점합니다(백준식). 파이썬으로 풉니다.
+          </p>
+          <div class="ct">
+            <aside class="ct-list" id="ctList"><p class="muted app-inline-exam-prep-5">불러오는 중…</p></aside>
+            <div class="ct-detail" id="ctDetail">
+              <div class="ct-empty">← 왼쪽에서 문제를 선택하세요.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── 독서록 ── -->
+      <section id="paneReading" role="tabpanel" aria-labelledby="tabReading" hidden>
+        <div id="readingGate" class="locked" hidden></div>
+        <div id="readingMain" class="pi-card" hidden>
+          <h2>독서록 「독서활동 기록지」</h2>
+          <p>
+            읽은 책의 정보를 입력하면 AI가 <b>선택 계기 → 내용 요약 → 느낀 점</b>을 써서
+            학교 「독서활동 기록지」 양식에 채워 줍니다. (실제 사용 토큰만큼 크레딧 차감)
+          </p>
+          <ul>
+            <li>입력: 도서명(+선택: 저자·출판사·영역·기록 구분·감상 메모)</li>
+            <li>출력: 학교 양식 그대로 <b>.hwpx</b> (이름은 개인 설정 값으로 자동 출력)</li>
+          </ul>
+          <p class="muted">보고서 생성은 홈 화면의 생성기에서 이어집니다.</p>
+          <a class="qbtn primary" href="/?report=reading-log">독서록 만들기 →</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-statusbar" aria-label="앱 상태">
+      <span class="app-statusbar__dot" aria-hidden="true"></span>
+      <span>준비됨</span>
+      <span class="app-statusbar__meta">독서활동 기록지 · Quilo</span>
+    </footer>
+
+    <script>
+      // ───────────────────────── 공통 ─────────────────────────
+      var me = null, beta = { features: [], admin: false };
+      function esc(s) {
+        return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
+          return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+        });
+      }
+      function showTab(t) {
+        document.getElementById("paneCoding").hidden = t !== "coding";
+        document.getElementById("paneReading").hidden = t !== "reading";
+        document.getElementById("tabCoding").classList.toggle("active", t === "coding");
+        document.getElementById("tabReading").classList.toggle("active", t === "reading");
+        document.getElementById("tabCoding").setAttribute("aria-selected", t === "coding" ? "true" : "false");
+        document.getElementById("tabReading").setAttribute("aria-selected", t === "reading" ? "true" : "false");
+        if (t === "coding") initCoding();
+      }
+      [["tabCoding", "coding"], ["tabReading", "reading"]]
+        .forEach(function (entry) {
+          document.getElementById(entry[0]).addEventListener("click", function () { showTab(entry[1]); });
+        });
+      function lockedHtml(name) {
+        if (!me)
+          return '<p>🔒 <b>' + name + '</b>은 로그인 후 Pro 회원에게 열립니다.</p>' +
+            '<p class="app-runtime-gap-top"><a class="qbtn primary" href="/login.html?next=%2Fexam-prep.html">로그인</a></p>';
+        return '<p>🧩 <b>' + name + '</b>은 현재 <b>Pro 회원</b>에게만 열려 있습니다.<br>' +
+          '사용을 원하면 운영자에게 요청하세요.</p>' +
+          '<p class="app-runtime-gap-top"><a class="qbtn" href="/">메인으로</a></p>';
+      }
+      function hasBeta(key) { return beta.admin === true || String(beta.tier || "").toLowerCase() === "max" || (beta.features || []).indexOf(key) >= 0; }
+
+      // 각 탭이 어떤 베타 키로 열리는지 (클릭 전에 잠금/베타 상태를 배지로 노출).
+      // coding 은 노출하지 않지만(탭 hidden) 키 매핑은 코드 보존 차원에서 남겨 둔다.
+      var TAB_KEYS = { coding: "coding-test", reading: "reading-log" };
+      var TAB_BADGE = { coding: "badgeCoding", reading: "badgeReading" };
+      // 현재 공개된 첫 탭을 고른다.
+      function firstUnlockedTab() {
+        var order = ["reading"];
+        for (var i = 0; i < order.length; i++) {
+          if (hasBeta(TAB_KEYS[order[i]])) return order[i];
+        }
+        return "reading";
+      }
+      // 잠긴 탭엔 🔒, 열렸지만 베타인 탭엔 '베타' 배지. (관리자는 배지 없음)
+      function decorateTabs() {
+        ["reading"].forEach(function (t) {
+          var el = document.getElementById(TAB_BADGE[t]);
+          if (!el) return;
+          // 독서록은 전 사용자 공개(크레딧 과금) — 잠금/Pro 배지 없음.
+          if (t === "reading") { el.hidden = true; el.className = "ep-tabbadge"; el.textContent = ""; el.removeAttribute("title"); return; }
+          if (beta.admin === true) { el.hidden = true; el.className = "ep-tabbadge"; el.textContent = ""; el.removeAttribute("title"); return; }
+          if (!hasBeta(TAB_KEYS[t])) {
+            el.hidden = false; el.className = "ep-tabbadge lock"; el.textContent = "🔒";
+            el.setAttribute("title", me ? "Pro 회원에게 열립니다" : "로그인 후 Pro 회원에게 열립니다");
+          } else {
+            el.hidden = false; el.className = "ep-tabbadge beta"; el.textContent = "Pro";
+            el.removeAttribute("title");
+          }
+        });
+      }
+
+      // ── 안전한 마크다운 렌더(escape 먼저 → 정해진 태그만) ──
+      function mdEsc(s) { return String(s == null ? "" : s).replace(/[&<>]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]; }); }
+      function mdInline(s) {
+        return mdEsc(s)
+          .replace(/`([^`]+)`/g, "<code>$1</code>")
+          .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+      }
+      function mdProse(seg) {
+        var lines = seg.split("\n"), html = "", inList = false, para = [];
+        function flush() { if (para.length) { html += "<p>" + mdInline(para.join(" ")) + "</p>"; para = []; } }
+        function closeList() { if (inList) { html += "</ul>"; inList = false; } }
+        for (var i = 0; i < lines.length; i++) {
+          var line = lines[i].replace(/\s+$/, ""), m;
+          if (!line.trim()) { flush(); closeList(); continue; }
+          if ((m = line.match(/^(#{1,6})\s+(.*)$/))) {
+            flush(); closeList();
+            var tag = m[1].length <= 3 ? "h3" : "h4";
+            html += "<" + tag + ">" + mdInline(m[2]) + "</" + tag + ">";
+          } else if ((m = line.match(/^\s*[-•]\s+(.*)$/))) {
+            flush(); if (!inList) { html += "<ul>"; inList = true; }
+            html += "<li>" + mdInline(m[1]) + "</li>";
+          } else { para.push(line.trim()); }
+        }
+        flush(); closeList();
+        return html;
+      }
+      function mdToHtml(md) {
+        var parts = String(md || "").split("```"), out = "";
+        for (var i = 0; i < parts.length; i++) {
+          if (i % 2 === 1) {
+            var code = parts[i].replace(/^[a-z]*\n/i, "");
+            out += '<pre><code>' + mdEsc(code.replace(/\n$/, "")) + "</code></pre>";
+          } else { out += mdProse(parts[i]); }
+        }
+        return out;
+      }
+
+      // ───────────────────────── 코딩 테스트 ─────────────────────────
+      var codingInit = false, problems = [], weeks = {}, curProblem = null, solved = {};
+      try { solved = JSON.parse(localStorage.getItem("codingSolved") || "{}") || {}; } catch (e) { solved = {}; }
+
+      function initCoding() {
+        if (codingInit) return;
+        codingInit = true;
+        if (!hasBeta("coding-test")) {
+          document.getElementById("codingGate").hidden = false;
+          document.getElementById("codingGate").innerHTML = lockedHtml("코딩 테스트");
+          codingInit = false; // 권한 생기면 다시 시도 가능
+          return;
+        }
+        document.getElementById("codingMain").hidden = false;
+        loadProblems();
+      }
+
+      function loadProblems() {
+        var listEl = document.getElementById("ctList");
+        fetch("/api/coding/problems")
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (x) {
+            if (!x.ok) throw new Error((x.j && x.j.error) || "불러오기 실패");
+            problems = x.j.problems || [];
+            weeks = x.j.weeks || {};
+            renderList();
+          })
+          .catch(function (e) { listEl.innerHTML = '<p class="err app-runtime-pad">' + esc(e.message) + "</p>"; });
+      }
+
+      function renderList() {
+        var listEl = document.getElementById("ctList");
+        if (!problems.length) { listEl.innerHTML = '<p class="muted app-runtime-pad">문제가 없습니다.</p>'; return; }
+        var byWeek = {};
+        problems.forEach(function (p) { (byWeek[p.week] = byWeek[p.week] || []).push(p); });
+        var html = "";
+        Object.keys(byWeek).sort(function (a, b) { return a - b; }).forEach(function (wk) {
+          var done = byWeek[wk].filter(function (p) { return solved[p.id]; }).length;
+          html += '<div class="ct-week">' + wk + "주차 · " + esc(weeks[wk] || "") +
+            " <small>(" + done + "/" + byWeek[wk].length + ")</small></div>";
+          byWeek[wk].forEach(function (p) {
+            html += '<div class="ct-item" role="button" tabindex="0" aria-label="' + esc(p.difficulty) + " · " + esc(p.title) + (solved[p.id] ? " · 해결됨" : "") + '" data-id="' + esc(p.id) + '">' +
+              '<span class="ct-diff d-' + esc(p.difficulty) + '">' + esc(p.difficulty) + "</span>" +
+              '<span class="ct-it-title">' + esc(p.title) + "</span>" +
+              (solved[p.id] ? '<span class="solved">✓</span>' : "") +
+              "</div>";
+          });
+        });
+        listEl.innerHTML = html;
+        Array.prototype.forEach.call(listEl.querySelectorAll(".ct-item"), function (it) {
+          it.onclick = function () { openProblem(it.dataset.id); };
+          it.addEventListener("keydown", function (e) {
+            if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openProblem(it.dataset.id); }
+          });
+        });
+        markActive();
+      }
+      function markActive() {
+        Array.prototype.forEach.call(document.querySelectorAll(".ct-item"), function (it) {
+          it.classList.toggle("on", curProblem && it.dataset.id === curProblem.id);
+        });
+      }
+
+      function openProblem(id) {
+        var detail = document.getElementById("ctDetail");
+        detail.innerHTML = '<p class="muted">불러오는 중…</p>';
+        fetch("/api/coding/problem/" + encodeURIComponent(id))
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (x) {
+            if (!x.ok) throw new Error((x.j && x.j.error) || "오류");
+            curProblem = x.j;
+            renderProblem(curProblem);
+            markActive();
+          })
+          .catch(function (e) { detail.innerHTML = '<p class="err">' + esc(e.message) + "</p>"; });
+      }
+
+      // 함수형 테스트의 args 리터럴에서 바깥 괄호/끝쉼표를 벗겨 보기 좋게.
+      function argsInner(args) {
+        var s = String(args || "()").trim();
+        if (s.charAt(0) === "(" && s.charAt(s.length - 1) === ")") s = s.slice(1, -1);
+        return s.replace(/,\s*$/, "").trim();
+      }
+      function exampleHtml(p, t) {
+        var mode = t.mode || p.mode || "function";
+        var html = '<div class="ct-ex"><div class="lab">예시 — ' + esc(t.name || "") + "</div>";
+        if (mode === "snippet") {
+          html += '<div class="lab">실행 코드</div><pre>' + esc(t.epilogue || "") + "</pre>";
+        } else {
+          if (t.files) {
+            Object.keys(t.files).forEach(function (fn) {
+              html += '<div class="lab">파일 ' + esc(fn) + "</div><pre>" + esc(t.files[fn]) + "</pre>";
+            });
+          }
+          html += '<div class="lab">호출</div><pre>' + esc(p.entry + "(" + argsInner(t.args) + ")") + "</pre>";
+        }
+        html += '<div class="lab">기대 출력</div><pre>' + esc(t.expected) + "</pre></div>";
+        return html;
+      }
+
+      function renderProblem(p) {
+        var examples = (p.tests || []).filter(function (t) { return !t.hidden; });
+        var hiddenCount = Number(p.hidden_test_count || 0);
+        var html = "";
+        html += '<div class="ct-titlerow">' +
+          '<span class="ct-diff d-' + esc(p.difficulty) + '">' + esc(p.difficulty) + "</span>" +
+          "<h2>" + esc(p.week) + ". " + esc(p.title) + "</h2>" +
+          (solved[p.id] ? '<span class="solved app-runtime-solved">✓ 해결</span>' : "") +
+          "</div>";
+        if (p.tags && p.tags.length) {
+          html += '<div class="ct-tags">' + p.tags.map(function (t) { return '<span class="ct-tag">#' + esc(t) + "</span>"; }).join("") + "</div>";
+        }
+        html += '<div class="ct-prose">' + mdToHtml(p.statement_md) + "</div>";
+        if (p.constraints_md) {
+          html += '<div class="ct-constraints"><div class="lab app-runtime-constraint-label">제약 조건</div><div class="ct-prose">' + mdToHtml(p.constraints_md) + "</div></div>";
+        }
+        html += '<div class="ct-section-h">예시 (' + examples.length + "개)" + (hiddenCount ? " · 숨은 테스트 " + hiddenCount + "개는 비공개" : "") + "</div>";
+        examples.forEach(function (t) { html += exampleHtml(p, t); });
+
+        html += '<div class="ct-editor-wrap">' +
+          '<div class="ct-editor-bar"><span>🐍 Python</span><span class="app-runtime-flex-spacer"></span><span class="muted app-runtime-faint-text">' + esc(p.entry) + "() 함수를 완성하세요</span></div>" +
+          '<div class="ct-editor" id="ctEditor"></div></div>';
+        html += '<div class="ct-btns">' +
+          '<button class="qbtn primary" id="btnSubmit">✅ 제출 (공개 테스트)</button>' +
+          '<button class="qbtn" id="btnRunEx">▶ 예제 실행</button>' +
+          '<button class="qbtn" id="btnConsole">🖥 콘솔 실행</button>' +
+          '<button class="qbtn" id="btnReset">↺ 초기화</button>' +
+          '<span class="muted" id="ctStatus"></span></div>';
+        html += '<div class="ct-results" id="ctResults" aria-live="polite"></div>';
+
+        html += '<div class="ct-assist" id="ctAssist">' +
+          '<div class="ct-assist-head">🤖 코딩 도우미' +
+            '<span class="muted">— 답(코드)은 안 알려줘요. 스스로 풀도록 옆에서 도와줘요 · GPT-5.4 mini</span>' +
+          "</div>" +
+          '<div class="ct-assist-msgs" id="ctAssistMsgs">' +
+            '<div class="ct-assist-empty">막히는 부분을 물어보세요.<br>예: "이 문제 어디서부터 생각해야 할지 모르겠어요" · "왜 자꾸 빈 리스트가 나올까요?"</div>' +
+          "</div>" +
+          '<div class="ct-assist-input">' +
+            '<textarea id="ctAssistInput" rows="1" aria-label="코딩 도우미에게 질문하기" placeholder="질문하기 (Ctrl/⌘+Enter 전송) — 답은 스스로!"></textarea>' +
+            '<button class="qbtn primary" id="ctAssistSend">보내기</button>' +
+          "</div>" +
+        "</div>";
+
+        document.getElementById("ctDetail").innerHTML = html;
+
+        var saved = null;
+        try { saved = localStorage.getItem("codingCode:" + p.id); } catch (e) {}
+        mountEditor(saved != null ? saved : p.starter, p);
+
+        document.getElementById("btnSubmit").onclick = function () { judgeProblem(p, false); };
+        document.getElementById("btnRunEx").onclick = function () { judgeProblem(p, true); };
+        document.getElementById("btnConsole").onclick = function () { runConsole(p); };
+        document.getElementById("btnReset").onclick = function () {
+          if (editor) editor.setValue(p.starter);
+          try { localStorage.removeItem("codingCode:" + p.id); } catch (e) {}
+        };
+
+        // AI 코딩 도우미(튜터) — 문제마다 대화 새로 시작
+        assistHistory = [];
+        var aSend = document.getElementById("ctAssistSend");
+        var aInput = document.getElementById("ctAssistInput");
+        if (aSend) aSend.onclick = function () { sendAssist(p); };
+        if (aInput)
+          aInput.addEventListener("keydown", function (e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); sendAssist(p); }
+          });
+
+        // 문제를 열면 실행 환경을 미리 데워(첫 제출 지연·무반응 방지) '준비 중' 안내를 띄운다.
+        warmRuntime();
+      }
+
+      // ── AI 코딩 도우미: 정답을 주지 않고 옆에서 돕는 튜터(GPT-5.4 mini) ──
+      var assistHistory = [], assistBusy = false;
+      function appendAssist(role, text) {
+        var box = document.getElementById("ctAssistMsgs");
+        if (!box) return null;
+        var empty = box.querySelector(".ct-assist-empty");
+        if (empty) empty.remove();
+        var d = document.createElement("div");
+        d.className = "ct-amsg " + (role === "user" ? "user" : "ai");
+        if (role === "ai") d.innerHTML = mdToHtml(text);
+        else d.textContent = text;
+        box.appendChild(d);
+        box.scrollTop = box.scrollHeight;
+        return d;
+      }
+      function sendAssist(p) {
+        var input = document.getElementById("ctAssistInput");
+        var q = (input && input.value || "").trim();
+        if (!q || assistBusy) return;
+        appendAssist("user", q);
+        input.value = "";
+        assistBusy = true;
+        var btn = document.getElementById("ctAssistSend");
+        if (btn) btn.disabled = true;
+        var bubble = appendAssist("ai", "생각 중…");
+        fetch("/api/coding/assist", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            problemId: p.id,
+            code: getCode(),
+            question: q,
+            history: assistHistory.slice(-6),
+          }),
+        })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (x) {
+            if (!x.ok) {
+              bubble.innerHTML = '<span class="app-runtime-error">⚠ ' + esc((x.j && x.j.error) || "오류") + "</span>";
+              return;
+            }
+            var ans = (x.j && x.j.answer) || "(빈 응답)";
+            bubble.innerHTML = mdToHtml(ans);
+            assistHistory.push({ role: "user", content: q }, { role: "assistant", content: ans });
+            var box = document.getElementById("ctAssistMsgs");
+            if (box) box.scrollTop = box.scrollHeight;
+          })
+          .catch(function () { bubble.innerHTML = '<span class="app-runtime-error">⚠ 요청 실패</span>'; })
+          .finally(function () { assistBusy = false; if (btn) btn.disabled = false; });
+      }
+
+      // ── Monaco 에디터(Quilo Code 와 동일 엔진) ──
+      var monacoReady = null, editor = null;
+      var MONACO_BASE = "https://cdn.jsdelivr.net/npm/monaco-editor@0.52.0/min/";
+      function loadMonaco() {
+        if (monacoReady) return monacoReady;
+        monacoReady = window.QuiloAssets.monacoLoader().then(function () { return new Promise(function (resolve, reject) {
+          window.MonacoEnvironment = {
+            getWorkerUrl: function () {
+              return "data:text/javascript;charset=utf-8," + encodeURIComponent(
+                "self.MonacoEnvironment={baseUrl:'" + MONACO_BASE + "'};" +
+                "importScripts('" + MONACO_BASE + "vs/base/worker/workerMain.js');"
+              );
+            },
+          };
+          try {
+            require.config({ paths: { vs: MONACO_BASE + "vs" } });
+            require(["vs/editor/editor.main"], function () { resolve(window.monaco); });
+          } catch (e) { reject(e); }
+        }); });
+        return monacoReady;
+      }
+      function mountEditor(code, p) {
+        var host = document.getElementById("ctEditor");
+        if (!host) return;
+        host.innerHTML = '<div class="app-runtime-editor-loading">에디터 로딩 중…</div>';
+        loadMonaco().then(function (monaco) {
+          host.innerHTML = "";
+          var dark = true;
+          if (editor) { try { editor.dispose(); } catch (e) {} editor = null; }
+          editor = monaco.editor.create(host, {
+            value: code || "",
+            language: "python",
+            theme: "vs-dark",
+            automaticLayout: true,
+            fontSize: 13.5,
+            tabSize: 4,
+            insertSpaces: true,
+            minimap: { enabled: false },
+            scrollBeyondLastLine: false,
+            renderLineHighlight: "all",
+            autoClosingBrackets: "always",
+            autoClosingQuotes: "always",
+            autoIndent: "full",
+            padding: { top: 8 },
+          });
+          editor.onDidChangeModelContent(function () {
+            try { localStorage.setItem("codingCode:" + p.id, editor.getValue()); } catch (e) {}
+          });
+          editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, function () { judgeProblem(p, false); });
+        }).catch(function (e) {
+          host.innerHTML = '<textarea id="ctFallback" class="app-runtime-editor-fallback" aria-label="Python 코드 편집기">' + esc(code || "") + "</textarea>";
+          editor = { getValue: function () { return document.getElementById("ctFallback").value; }, setValue: function (v) { document.getElementById("ctFallback").value = v; } };
+        });
+      }
+      function getCode() { return editor ? editor.getValue() : ""; }
+
+      // ── Pyodide(브라우저 CPython) — Quilo Code 와 동일 버전 ──
+      var PYODIDE_VER = "0.26.4";
+      var pyReady = null, harnessInjected = false, harnessText = "", pyWarmDone = false;
+      function setStatus(msg) { var el = document.getElementById("ctStatus"); if (el) el.textContent = msg || ""; }
+      // 문제를 열 때 실행 환경(Pyodide)을 미리 데우고 '준비 중' 안내를 보여준다.
+      // 이미 준비됐거나(=재방문) 진행 중이면 중복 다운로드 없이 상태만 갱신한다.
+      function warmRuntime() {
+        if (pyWarmDone) { setStatus(""); return; }
+        if (typeof window.__qpy !== "undefined") { pyWarmDone = true; setStatus(""); return; }
+        setStatus("⏳ 실행 환경 준비 중… (최초 1회, 수십 초 — 끝나면 바로 제출 가능)");
+        loadPyodideOnce()
+          .then(function () { pyWarmDone = true; setStatus("✅ 실행 환경 준비 완료"); })
+          .catch(function () { setStatus(""); /* 실제 채점 시 다시 시도/오류 표시 */ });
+      }
+      function loadPyodideOnce() {
+        if (pyReady) return pyReady;
+        setStatus("🐍 Python 런타임 로딩 중… (최초 1회, 수십 초)");
+        pyReady = new Promise(function (resolve, reject) {
+          var s = document.createElement("script");
+          s.src = "https://cdn.jsdelivr.net/pyodide/v" + PYODIDE_VER + "/full/pyodide.js";
+          s.onload = function () {
+            loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v" + PYODIDE_VER + "/full/" })
+              .then(function (py) { window.__qpy = py; resolve(py); })
+              .catch(reject);
+          };
+          s.onerror = function () { reject(new Error("Pyodide 로드 실패(네트워크 확인)")); };
+          document.head.appendChild(s);
+        });
+        return pyReady;
+      }
+      function ensureHarness(py) {
+        if (harnessInjected) return Promise.resolve(py);
+        var pr = harnessText
+          ? Promise.resolve(harnessText)
+          : fetch("/api/coding/harness.py").then(function (r) {
+              if (!r.ok) throw new Error("채점기를 불러오지 못했습니다.");
+              return r.text();
+            });
+        return pr.then(function (txt) { harnessText = txt; py.runPython(txt); harnessInjected = true; return py; });
+      }
+
+      function judgeProblem(p, examplesOnly) {
+        var btns = ["btnSubmit", "btnRunEx", "btnConsole"].map(function (id) { return document.getElementById(id); });
+        btns.forEach(function (b) { if (b) b.disabled = true; });
+        var resEl = document.getElementById("ctResults");
+        resEl.innerHTML = "";
+        setStatus("채점 준비 중…");
+        loadPyodideOnce()
+          .then(function (py) { return ensureHarness(py); })
+          .then(function (py) {
+            setStatus("채점 중…");
+            var sub = p;
+            if (examplesOnly) {
+              sub = JSON.parse(JSON.stringify(p));
+              sub.tests = (p.tests || []).filter(function (t) { return !t.hidden; });
+            }
+            var fn = py.globals.get("judge");
+            var outStr;
+            try { outStr = fn(getCode(), JSON.stringify(sub)); }
+            finally { if (fn && fn.destroy) fn.destroy(); }
+            var results = JSON.parse(outStr);
+            renderResults(p, results, examplesOnly);
+            setStatus("");
+          })
+          .catch(function (e) {
+            resEl.innerHTML = '<div class="ct-summary fail">⚠ ' + esc(e && e.message ? e.message : String(e)) + "</div>";
+            setStatus("");
+          })
+          .finally(function () { btns.forEach(function (b) { if (b) b.disabled = false; }); });
+      }
+
+      function renderResults(p, results, examplesOnly) {
+        var resEl = document.getElementById("ctResults");
+        var passed = results.filter(function (r) { return r.passed; }).length;
+        var total = results.length;
+        var allPass = passed === total && total > 0;
+        var cls = examplesOnly ? "run" : allPass ? "pass" : "fail";
+        var head = examplesOnly
+          ? "▶ 예제 " + passed + "/" + total + " 통과"
+          : allPass ? "✅ 공개 테스트 " + passed + "/" + total + " 통과"
+                    : "❌ " + passed + "/" + total + " 통과 — 다시 시도해 보세요";
+        var html = '<div class="ct-summary ' + cls + '">' + esc(head) + "</div>";
+        results.forEach(function (r, i) {
+          var ok = r.passed;
+          var name = r.hidden ? "숨은 테스트 " + (i + 1) : (r.name || "테스트 " + (i + 1));
+          html += '<div class="ct-case ' + (ok ? "ok" : "no") + '"><div class="ttl">' +
+            (ok ? "✅" : "❌") + " " + esc(name) + "</div>";
+          if (!ok) {
+            var det = "";
+            if (r.error) det += "<b>오류:</b> " + esc(r.error) + "\n";
+            // 숨은 테스트는 입력/기대값을 노출하지 않는다(오류 메시지만).
+            if (!r.hidden) {
+              det += "<b>기대:</b> " + esc(r.expected) + "\n<b>출력:</b> " + esc(r.got);
+              if (r.stdout) det += "\n<b>print:</b> " + esc(r.stdout.replace(/\n$/, ""));
+            } else if (!r.error) {
+              det += "출력이 기대값과 다릅니다.";
+            }
+            if (det) html += '<div class="det">' + det + "</div>";
+          } else if (!r.hidden && r.stdout) {
+            html += '<div class="det"><b>print:</b> ' + esc(r.stdout.replace(/\n$/, "")) + "</div>";
+          }
+          html += "</div>";
+        });
+        resEl.innerHTML = html;
+
+        if (allPass && !examplesOnly) {
+          if (!solved[p.id]) {
+            solved[p.id] = true;
+            try { localStorage.setItem("codingSolved", JSON.stringify(solved)); } catch (e) {}
+            renderList();
+          }
+        }
+      }
+
+      // 콘솔 실행: 학생 코드를 그대로 돌려 print 출력만 보여준다(디버깅용).
+      function runConsole(p) {
+        var resEl = document.getElementById("ctResults");
+        resEl.innerHTML = '<div class="ct-summary run">🖥 콘솔 실행 중…</div>';
+        setStatus("실행 중…");
+        loadPyodideOnce()
+          .then(function (py) {
+            var buf = [];
+            try {
+              py.setStdout({ batched: function (s) { buf.push(s); } });
+              py.setStderr({ batched: function (s) { buf.push(s); } });
+            } catch (e) {}
+            return py.runPythonAsync(getCode()).then(function () { return buf; })
+              .catch(function (err) { buf.push("⚠ " + (err && err.message ? err.message : err)); return buf; });
+          })
+          .then(function (buf) {
+            var text = buf.join("\n") || "(출력 없음 — print 로 확인하세요)";
+            resEl.innerHTML = '<div class="ct-summary run">🖥 콘솔 출력</div><div class="ct-case"><div class="det">' + esc(text) + "</div></div>";
+            setStatus("");
+          })
+          .catch(function (e) {
+            resEl.innerHTML = '<div class="ct-summary fail">⚠ ' + esc(e && e.message ? e.message : e) + "</div>";
+            setStatus("");
+          });
+      }
+
+      // ───────────────────────── 독서록 ─────────────────────────
+      // 독서록은 전 사용자 공개(크레딧 과금). 잠금 없이 항상 안내를 보여 준다.
+      // 로그인·크레딧 검증은 실제 생성 시점(/api/generate)에서 처리된다.
+      function initReading() {
+        document.getElementById("readingMain").hidden = false;
+        document.getElementById("readingGate").hidden = true;
+      }
+
+      // ───────────────────────── 초기화 ─────────────────────────
+      (function init() {
+        fetch("/api/me")
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (m) { me = m; return fetch("/api/me/beta"); })
+          .then(function (r) { return r.ok ? r.json() : { features: [], admin: false }; })
+          .then(function (b) { beta = b || { features: [], admin: false }; })
+          .catch(function () {})
+          .finally(function () {
+            initReading();
+            decorateTabs(); // 클릭 전에 잠금/베타 상태를 탭에 표시
+            showTab(firstUnlockedTab());
+          });
+      })();
+    </script>
+
+  </body>
+</html>

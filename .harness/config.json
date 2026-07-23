@@ -1,0 +1,130 @@
+{
+  "version": 1,
+  "nodeMajor": 24,
+  "runDirectory": ".harness/runs",
+  "allowedExecutables": ["git", "node", "npm", "bash", "python3", ".venv/bin/python"],
+  "requiredFiles": [
+    "AGENTS.md",
+    "CLAUDE.md",
+    "docs/engineering/agent-harness.md",
+    "docs/engineering/agent-memory.md",
+    ".harness/state.schema.json"
+  ],
+  "learning": {
+    "reviewRequiredOnComplete": true,
+    "durableSources": [
+      "AGENTS.md",
+      "docs/engineering/agent-harness.md",
+      "docs/engineering/agent-memory.md",
+      ".harness/config.json",
+      "tests/agent-harness.test.js"
+    ],
+    "promotionCriteria": [
+      "reusable across future Quilo tasks",
+      "supported by observed evidence or a regression test",
+      "free of secrets, personal data, transient ids, and raw conversation text"
+    ]
+  },
+  "tiers": {
+    "quick": [
+      {
+        "name": "Git whitespace and patch integrity",
+        "argv": ["git", "diff", "--check"],
+        "timeoutMs": 300000
+      },
+      {
+        "name": "Harness contract",
+        "argv": ["node", "--test", "tests/agent-harness.test.js"],
+        "timeoutMs": 300000
+      },
+      {
+        "name": "Open-source distribution boundary",
+        "argv": ["npm", "run", "release:oss-check"],
+        "timeoutMs": 300000
+      }
+    ],
+    "core": [
+      {
+        "name": "Root unit and contract tests",
+        "argv": ["npm", "run", "test:unit"],
+        "timeoutMs": 1200000
+      },
+      {
+        "name": "Security regression tests",
+        "argv": ["npm", "run", "test:security"],
+        "timeoutMs": 1200000
+      },
+      {
+        "name": "Report pipeline tests",
+        "argv": ["npm", "run", "test:pipelines"],
+        "timeoutMs": 1200000
+      }
+    ],
+    "release": [
+      {
+        "name": "Core verification",
+        "argv": ["npm", "run", "verify:core"],
+        "timeoutMs": 1800000
+      },
+      {
+        "name": "Isolated browser QA",
+        "argv": ["npm", "run", "test:qa"],
+        "timeoutMs": 1800000
+      },
+      {
+        "name": "Production dependency audit",
+        "argv": ["npm", "audit", "--omit=dev"],
+        "timeoutMs": 600000
+      }
+    ]
+  },
+  "routes": [
+    {
+      "paths": ["server.js", "lib/auth/**", "lib/api/**", "lib/supabase/**", "db/**"],
+      "read": ["docs/render-release-checklist.md"],
+      "required": ["node -c server.js", "focused tests", "npm run test:security", "npm run test:unit"]
+    },
+    {
+      "paths": ["public/**"],
+      "read": ["docs/design-system.md", "design-qa.md"],
+      "required": ["relevant Playwright spec", "npm run verify:quick", "actual browser journey"]
+    },
+    {
+      "paths": ["lib/pipelines/chem-pre/**"],
+      "read": ["docs/chem-pre-pipeline.md"],
+      "required": ["focused pipeline tests", "output structure validation"]
+    },
+    {
+      "paths": ["lib/pipelines/chem-result/**"],
+      "read": ["docs/chem-result-pipeline.md"],
+      "required": ["focused pipeline tests", "output structure validation"]
+    },
+    {
+      "paths": ["lib/pipelines/phys-result/**"],
+      "read": ["docs/phys-result-pipeline.md"],
+      "required": ["npm run test:pipelines", "DOCX and HWPX structure validation"]
+    },
+    {
+      "paths": ["lib/pipelines/print-pdf-restore/**"],
+      "read": ["docs/print-pdf-restore-pipeline.md"],
+      "required": ["focused print restore tests", "PDF magic and EOF", "300dpi QA"]
+    },
+    {
+      "paths": ["lib/equation/**", "lib/pipelines/**/hwpx-gen.py"],
+      "read": ["docs/hwp-equation-quirks.md"],
+      "required": ["bash scripts/eq_gate.sh"]
+    },
+    {
+      "paths": ["lib/pdf-translate/**", "translate-server.js", "tests/pdf-translate/**"],
+      "read": ["docs/pdf-translation-libreoffice-colab.md"],
+      "required": ["npm run test:pdf-translate"]
+    }
+  ],
+  "loop": {
+    "checkpointEveryIterations": 8,
+    "sameFailureLimit": 3,
+    "noNewEvidenceLimit": 2,
+    "flakyRetryLimit": 1,
+    "tokenStopPercent": 5
+  }
+}

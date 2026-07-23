@@ -1,0 +1,40 @@
+name: 버그 제보
+description: 합성 데이터로 재현 가능한 문제를 알려 주세요.
+title: "[Bug] "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        보안 취약점과 개인정보는 공개 이슈에 올리지 말고 SECURITY.md를 따라 주세요.
+  - type: input
+    id: version
+    attributes:
+      label: Commit 또는 버전
+      placeholder: main@abcdef0
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 재현 방법
+      description: 실제 사용자 파일 대신 최소 합성 자료를 사용해 주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 기대 결과
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 실제 결과
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: 확인 환경
+      placeholder: macOS, Node 24, Python 3.x, DOCX/HWPX 등

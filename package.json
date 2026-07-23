@@ -1,0 +1,62 @@
+{
+  "name": "quilo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Open-source AI workspace for evidence-grounded reports, research, data, translation, and document generation",
+  "license": "AGPL-3.0-or-later",
+  "homepage": "https://github.com/fakeminjun7321/Quilo#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fakeminjun7321/Quilo.git"
+  },
+  "bugs": {
+    "url": "https://github.com/fakeminjun7321/Quilo/issues"
+  },
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "start:translate": "node translate-server.js",
+    "dev": "node server.js",
+    "harness:doctor": "node scripts/agent-harness.mjs doctor",
+    "harness:init": "node scripts/agent-harness.mjs init",
+    "harness:checkpoint": "node scripts/agent-harness.mjs checkpoint",
+    "harness:resume": "node scripts/agent-harness.mjs resume",
+    "harness:validate": "node scripts/agent-harness.mjs validate",
+    "verify:quick": "node scripts/agent-harness.mjs verify quick",
+    "verify:core": "node scripts/agent-harness.mjs verify core",
+    "verify:release": "node scripts/agent-harness.mjs verify release",
+    "release:oss-check": "node scripts/check-open-source-release.mjs",
+    "test:unit": "node --test tests/*.test.js",
+    "test:security": "node --test tests/security/*.test.js",
+    "test:pipelines": "node --test tests/pipelines/",
+    "test:qa": "npx --yes -p @playwright/test playwright test tests/QA --workers=1",
+    "test:qa:headed": "npx --yes -p @playwright/test playwright test tests/QA --headed --workers=1",
+    "test:pdf-translate": "node --test tests/pdf-translate/*.test.js && .venv/bin/python -m unittest discover -s tests/pdf-translate -p 'test_*.py' && .venv/bin/python tests/pdf-translate/generate_fixtures.py && .venv/bin/python tests/pdf-translate/verify_fixtures.py",
+    "fixtures:pdf-translate": ".venv/bin/python tests/pdf-translate/generate_fixtures.py && .venv/bin/python tests/pdf-translate/verify_fixtures.py",
+    "eval:pdf-translate": "node scripts/eval_pdf_translation.js",
+    "eval:pdf-translate:subscription": "node scripts/eval_pdf_translation_subscription.js",
+    "postinstall": "npm ci --prefix apps/classbot --include=dev && npm run build --prefix apps/classbot && ((python3 -m venv .venv && .venv/bin/pip install --upgrade pip && .venv/bin/pip install -r requirements.txt || echo 'WARN: python venv setup failed — hwpx output will be unavailable, docx still works'); bash scripts/install-tectonic.sh; bash scripts/install-pandoc.sh || echo 'WARN: pandoc setup failed — docx→hwpx unavailable')"
+  },
+  "engines": {
+    "node": "24.x"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.30.1",
+    "@supabase/supabase-js": "^2.45.0",
+    "chart.js": "^4.5.1",
+    "chartjs-node-canvas": "^5.0.0",
+    "compression": "^1.8.1",
+    "cookie-session": "^2.1.1",
+    "docx": "^9.0.2",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "express-session": "^1.18.1",
+    "fast-xml-parser": "^5.7.2",
+    "image-size": "^1.2.0",
+    "jszip": "^3.10.1",
+    "multer": "^2.0.0",
+    "sharp": "^0.35.3",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+  }
+}

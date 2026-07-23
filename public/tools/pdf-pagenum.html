@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="canonical" href="https://quilolab.com/tools/pdf-pagenum.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PDF 페이지 번호 — 보고서 도구</title>
+    <meta name="description" content="PDF 각 페이지에 페이지 번호를 새기는 브라우저 도구. 업로드 없이 기기 안에서 처리." />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("theme");
+          if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          document.documentElement.setAttribute("data-theme", t);
+          if (new URLSearchParams(location.search).has("embed"))
+            document.documentElement.classList.add("embed");
+        } catch (e) {}
+      })();
+    </script>
+
+    <link rel="stylesheet" href="/ui/foundation.css" />
+    <link rel="stylesheet" href="/ui/shell.css" />
+    <link rel="stylesheet" href="/ui/pages.css" />
+    <link rel="stylesheet" href="/ui/tool-shell.css" />
+  </head>
+  <body class="landing q-shell-page ui-page">
+    <div class="landing-bg" aria-hidden="true"></div>
+    <a class="ui-skip-link" href="#main-content">본문으로 건너뛰기</a>
+    <header class="ui-site-header" data-ui-shell></header>
+
+    <main class="landing-shell" id="main-content">
+      <section class="section ui-inline-tools-pdf-pagenum-1">
+        <div class="tool-page-head">
+          <h1>PDF 페이지 번호</h1>
+          <p>페이지 번호를 새깁니다. 모든 처리는 브라우저 안에서만 이뤄지고 파일은 서버로 전송되지 않습니다.</p>
+        </div>
+
+        <div class="tool-card">
+          <div id="pnDrop" role="button" tabindex="0" class="ui-inline-tools-pdf-pagenum-2" >
+            <div class="ui-inline-tools-pdf-pagenum-3" >PDF 파일을 끌어다 놓기</div>
+            <div class="ui-inline-tools-pdf-pagenum-4" >또는 클릭해서 선택</div>
+          </div>
+          <input type="file" id="pnFile" accept="application/pdf,.pdf" class="ui-inline-tools-pdf-pagenum-5" />
+
+          <div id="pnInfo" class="ui-inline-tools-pdf-pagenum-6" >
+            <span id="pnName" class="ui-inline-tools-pdf-pagenum-7" ></span>
+            <span id="pnSize" class="ui-inline-tools-pdf-pagenum-8" ></span>
+            <button type="button" data-rm class="btn-ghost ui-inline-tools-pdf-pagenum-9" title="삭제">✕</button>
+          </div>
+
+          <div class="ui-inline-tools-pdf-pagenum-10" >
+            <div>
+              <label class="tool-label" for="pnPos">위치</label>
+              <select id="pnPos" class="tool-input">
+                <option value="bc">아래 가운데</option>
+                <option value="br">아래 오른쪽</option>
+                <option value="tr">위 오른쪽</option>
+              </select>
+            </div>
+            <div class="ui-inline-tools-pdf-pagenum-11" >
+              <div>
+                <label class="tool-label" for="pnStart">시작 번호</label>
+                <input type="number" id="pnStart" class="tool-input" value="1" min="0" step="1" inputmode="numeric" />
+              </div>
+              <div>
+                <label class="tool-label" for="pnSize2">글자 크기</label>
+                <input type="number" id="pnSize2" class="tool-input" value="11" min="6" max="48" step="1" inputmode="numeric" />
+              </div>
+            </div>
+            <label class="ui-inline-tools-pdf-pagenum-12" >
+              <input type="checkbox" id="pnTotal" class="ui-inline-tools-pdf-pagenum-13" />
+              총 페이지 수 함께 표시 (예: 3 / 12)
+            </label>
+          </div>
+
+          <div class="actions">
+            <button class="btn-primary" id="pnRun" disabled>페이지 번호 넣기</button>
+            <button class="btn-ghost" id="pnClear">비우기</button>
+          </div>
+          <div id="pnOut" class="tool-result ui-inline-tools-pdf-pagenum-14">
+            <div class="badge ok ui-inline-tools-pdf-pagenum-15" id="pnStat" role="status" aria-live="polite" aria-atomic="true"></div>
+            <a id="pnDl" class="btn-lg btn-primary ui-inline-tools-pdf-pagenum-16" download>↓ PDF 내려받기</a>
+          </div>
+          <p class="hint ui-inline-tools-pdf-pagenum-17" id="pnMsg" role="status" aria-live="polite" aria-atomic="true"></p>
+        </div>
+      </section>
+    </main>
+    <footer class="ui-site-footer">
+      <div class="ui-site-footer__inner">
+        <nav class="ui-site-footer__links" aria-label="푸터 메뉴"><a href="/terms.html">이용약관</a><a href="/privacy.html">개인정보처리방침</a><a href="/refund.html">환불정책</a><a href="/guide.html">이용 가이드</a><a href="/community.html">커뮤니티</a><a href="https://github.com/fakeminjun7321/Quilo" target="_blank" rel="noopener">GitHub</a></nav>
+        <div class="ui-site-footer__copy">© 2026 Quilo · <span data-site-version>버전 확인 중...</span></div>
+      </div>
+    </footer>
+
+    <script src="/ui/shell.js"></script>
+    <script src="/ui/tool-shell.js"></script>
+    <script>
+      (function () {
+        var drop = document.getElementById("pnDrop"), input = document.getElementById("pnFile");
+        var info = document.getElementById("pnInfo"), nameEl = document.getElementById("pnName"), sizeEl = document.getElementById("pnSize");
+        var runBtn = document.getElementById("pnRun"), clearBtn = document.getElementById("pnClear"), out = document.getElementById("pnOut"), msg = document.getElementById("pnMsg");
+        var posSel = document.getElementById("pnPos"), startEl = document.getElementById("pnStart"), sizeInp = document.getElementById("pnSize2"), totalChk = document.getElementById("pnTotal");
+        var file = null, lastUrl = null;
+
+        function fmt(b) { return b < 1024 ? b + " B" : b < 1048576 ? (b / 1024).toFixed(0) + " KB" : (b / 1048576).toFixed(1) + " MB"; }
+        function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+        function reset() { out.style.display = "none"; msg.textContent = ""; }
+
+        function setFile(f) {
+          if (!f) return;
+          if (!/\.pdf$/i.test(f.name) && f.type !== "application/pdf") {
+            msg.innerHTML = '<span class="error">PDF 파일만 넣을 수 있습니다.</span>';
+            return;
+          }
+          file = f;
+          nameEl.textContent = f.name;
+          sizeEl.textContent = fmt(f.size);
+          info.style.display = "flex";
+          runBtn.disabled = false;
+          reset();
+        }
+        function clearFile() {
+          file = null; info.style.display = "none"; runBtn.disabled = true; reset();
+        }
+
+        drop.addEventListener("click", function () { input.click(); });
+        drop.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); input.click(); } });
+        input.addEventListener("change", function () { if (input.files && input.files[0]) setFile(input.files[0]); input.value = ""; });
+        ["dragover", "dragenter"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.style.borderColor = "var(--accent)"; }); });
+        ["dragleave", "drop"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.style.borderColor = "var(--border-strong)"; }); });
+        drop.addEventListener("drop", function (e) { if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); });
+        info.querySelector("[data-rm]").addEventListener("click", clearFile);
+        clearBtn.addEventListener("click", clearFile);
+
+        runBtn.addEventListener("click", function () {
+          if (!file || !window.PDFLib) { msg.innerHTML = !window.PDFLib ? '<span class="error">PDF 라이브러리를 불러오지 못했습니다.</span>' : ""; return; }
+          var fontSize = Math.max(6, Math.min(48, parseInt(sizeInp.value, 10) || 11));
+          var start = parseInt(startEl.value, 10); if (isNaN(start)) start = 1;
+          var pos = posSel.value, withTotal = totalChk.checked;
+          var margin = 28;
+
+          runBtn.disabled = true; runBtn.textContent = "처리 중…"; msg.textContent = "";
+          (async function () {
+            try {
+              var PDFDocument = PDFLib.PDFDocument, rgb = PDFLib.rgb, StandardFonts = PDFLib.StandardFonts;
+              var bytes = await file.arrayBuffer();
+              var doc = await PDFDocument.load(bytes, { ignoreEncryption: true });
+              var font = await doc.embedFont(StandardFonts.Helvetica);
+              var pages = doc.getPages();
+              var total = pages.length;
+              for (var i = 0; i < total; i++) {
+                var page = pages[i];
+                var w = page.getWidth(), h = page.getHeight();
+                var label = withTotal ? (start + i) + " / " + (start + total - 1) : String(start + i);
+                var tw = font.widthOfTextAtSize(label, fontSize);
+                var x, y;
+                if (pos === "bc") { x = (w - tw) / 2; y = margin; }
+                else if (pos === "br") { x = w - margin - tw; y = margin; }
+                else { x = w - margin - tw; y = h - margin - fontSize; }
+                if (x < 4) x = 4;
+                page.drawText(label, { x: x, y: y, size: fontSize, font: font, color: rgb(0.1, 0.1, 0.1) });
+              }
+              var outBytes = await doc.save();
+              if (lastUrl) URL.revokeObjectURL(lastUrl);
+              lastUrl = URL.createObjectURL(new Blob([outBytes], { type: "application/pdf" }));
+              document.getElementById("pnStat").textContent = "✓ " + total + "쪽에 페이지 번호 추가 완료";
+              var base = file.name.replace(/\.pdf$/i, "");
+              var dl = document.getElementById("pnDl"); dl.href = lastUrl; dl.download = base + "_번호.pdf";
+              out.style.display = "grid";
+            } catch (e) {
+              msg.innerHTML = '<span class="error">처리 실패: ' + esc(e.message || "알 수 없는 오류") + " (암호가 걸린 PDF는 처리할 수 없습니다)</span>";
+            } finally {
+              runBtn.disabled = false; runBtn.textContent = "페이지 번호 넣기";
+            }
+          })();
+        });
+      })();
+    </script>
+  </body>
+</html>

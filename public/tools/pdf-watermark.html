@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="canonical" href="https://quilolab.com/tools/pdf-watermark.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PDF 워터마크 — 보고서 도구</title>
+    <meta name="description" content="PDF 모든 페이지에 텍스트 워터마크를 추가하는 브라우저 도구. 업로드 없이 기기 안에서 처리." />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("theme");
+          if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          document.documentElement.setAttribute("data-theme", t);
+          if (new URLSearchParams(location.search).has("embed"))
+            document.documentElement.classList.add("embed");
+        } catch (e) {}
+      })();
+    </script>
+
+    <link rel="stylesheet" href="/ui/foundation.css" />
+    <link rel="stylesheet" href="/ui/shell.css" />
+    <link rel="stylesheet" href="/ui/pages.css" />
+    <link rel="stylesheet" href="/ui/tool-shell.css" />
+  </head>
+  <body class="landing q-shell-page ui-page">
+    <div class="landing-bg" aria-hidden="true"></div>
+    <a class="ui-skip-link" href="#main-content">본문으로 건너뛰기</a>
+    <header class="ui-site-header" data-ui-shell></header>
+
+    <main class="landing-shell" id="main-content">
+      <section class="section ui-inline-tools-pdf-watermark-1">
+        <div class="tool-page-head">
+          <h1>PDF 워터마크</h1>
+          <p>텍스트 워터마크 추가. 모든 처리는 브라우저 안에서만 이뤄지고 파일은 서버로 전송되지 않습니다.</p>
+        </div>
+
+        <div class="tool-card">
+          <div id="wmDrop" role="button" tabindex="0" class="ui-inline-tools-pdf-watermark-2" >
+            <div class="ui-inline-tools-pdf-watermark-3" >PDF 파일을 끌어다 놓기</div>
+            <div class="ui-inline-tools-pdf-watermark-4" >또는 클릭해서 선택 · 1개</div>
+          </div>
+          <input type="file" id="wmFile" accept="application/pdf,.pdf" class="ui-inline-tools-pdf-watermark-5" />
+
+          <div id="wmInfo" class="hint ui-inline-tools-pdf-watermark-6"></div>
+
+          <div class="ui-inline-tools-pdf-watermark-7" >
+            <div>
+              <label class="tool-label" for="wmText">워터마크 텍스트 <span class="req">*</span></label>
+              <input type="text" id="wmText" class="tool-input" placeholder="예: 대외비, CONFIDENTIAL, 초안" value="CONFIDENTIAL" />
+            </div>
+
+            <div class="ui-inline-tools-pdf-watermark-8" >
+              <div>
+                <label class="tool-label" for="wmSize">글자 크기 (pt)</label>
+                <input type="number" id="wmSize" class="tool-input" min="6" max="400" step="1" value="60" />
+              </div>
+              <div>
+                <label class="tool-label" for="wmRot">회전 (도)</label>
+                <input type="number" id="wmRot" class="tool-input" min="-180" max="180" step="1" value="45" />
+              </div>
+              <div>
+                <label class="tool-label" for="wmOpacity">불투명도 (0–1)</label>
+                <input type="number" id="wmOpacity" class="tool-input" min="0" max="1" step="0.05" value="0.2" />
+              </div>
+              <div>
+                <label class="tool-label" for="wmColor">색상</label>
+                <input type="color" id="wmColor" class="tool-input ui-inline-tools-pdf-watermark-9" value="#ff0000" />
+              </div>
+            </div>
+
+            <div>
+              <label class="tool-label">배치 방식</label>
+              <div class="ui-inline-tools-pdf-watermark-10" >
+                <label class="ui-inline-tools-pdf-watermark-11" >
+                  <input type="radio" name="wmMode" value="single" checked /> 가운데 1개
+                </label>
+                <label class="ui-inline-tools-pdf-watermark-12" >
+                  <input type="radio" name="wmMode" value="tiled" /> 바둑판식 반복
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="btn-primary" id="wmApply" disabled>워터마크 추가</button>
+            <button class="btn-ghost" id="wmClear">비우기</button>
+          </div>
+          <div id="wmOutWrap" class="tool-result ui-inline-tools-pdf-watermark-13">
+            <div class="badge ok ui-inline-tools-pdf-watermark-14" id="wmStat" role="status" aria-live="polite" aria-atomic="true"></div>
+            <a id="wmDl" class="btn-lg btn-primary ui-inline-tools-pdf-watermark-15" download>↓ 워터마크 PDF 내려받기</a>
+          </div>
+          <p class="hint ui-inline-tools-pdf-watermark-16" id="wmMsg" role="status" aria-live="polite" aria-atomic="true"></p>
+          <p class="hint ui-inline-tools-pdf-watermark-17">텍스트는 영문/숫자 표준 글꼴(Helvetica)로 그려집니다. 한글 워터마크는 안전한 대체 글꼴로 처리되며 일부 문자가 다르게 보일 수 있습니다.</p>
+        </div>
+      </section>
+    </main>
+    <footer class="ui-site-footer">
+      <div class="ui-site-footer__inner">
+        <nav class="ui-site-footer__links" aria-label="푸터 메뉴"><a href="/terms.html">이용약관</a><a href="/privacy.html">개인정보처리방침</a><a href="/refund.html">환불정책</a><a href="/guide.html">이용 가이드</a><a href="/community.html">커뮤니티</a><a href="https://github.com/fakeminjun7321/Quilo" target="_blank" rel="noopener">GitHub</a></nav>
+        <div class="ui-site-footer__copy">© 2026 Quilo · <span data-site-version>버전 확인 중...</span></div>
+      </div>
+    </footer>
+
+    <script src="/ui/shell.js"></script>
+    <script src="/ui/tool-shell.js"></script>
+    <script>
+      (function () {
+        var drop = document.getElementById("wmDrop"), input = document.getElementById("wmFile"), info = document.getElementById("wmInfo");
+        var applyBtn = document.getElementById("wmApply"), clearBtn = document.getElementById("wmClear");
+        var out = document.getElementById("wmOutWrap"), msg = document.getElementById("wmMsg");
+        var elText = document.getElementById("wmText"), elSize = document.getElementById("wmSize"), elRot = document.getElementById("wmRot");
+        var elOpacity = document.getElementById("wmOpacity"), elColor = document.getElementById("wmColor");
+        var file = null, lastUrl = null;
+
+        function fmt(b) { return b < 1024 ? b + " B" : b < 1048576 ? (b / 1024).toFixed(0) + " KB" : (b / 1048576).toFixed(1) + " MB"; }
+        function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+        function clamp(v, lo, hi, def) { v = parseFloat(v); if (!isFinite(v)) return def; return Math.min(hi, Math.max(lo, v)); }
+
+        function hexToRgb(hex) {
+          var m = /^#?([0-9a-f]{6})$/i.exec(String(hex).trim());
+          if (!m) return { r: 1, g: 0, b: 0 };
+          var n = parseInt(m[1], 16);
+          return { r: ((n >> 16) & 255) / 255, g: ((n >> 8) & 255) / 255, b: (n & 255) / 255 };
+        }
+        // pdf-lib's WinAnsi (Helvetica) encoding can't render arbitrary unicode (e.g. Hangul) and throws.
+        // Replace unsupported chars so we never crash; warn the user if anything was substituted.
+        function sanitizeText(s) {
+          var changed = false;
+          var outStr = String(s).replace(/[^\x20-\x7E]/g, function () { changed = true; return "?"; });
+          return { text: outStr, changed: changed };
+        }
+
+        function setFile(f) {
+          file = f;
+          out.style.display = "none"; msg.textContent = "";
+          if (f) {
+            info.style.display = "block";
+            info.textContent = "선택됨: " + f.name + " · " + fmt(f.size);
+          } else {
+            info.style.display = "none"; info.textContent = "";
+          }
+          applyBtn.disabled = !f;
+        }
+        function add(fl) {
+          for (var i = 0; i < fl.length; i++) {
+            if (/\.pdf$/i.test(fl[i].name) || fl[i].type === "application/pdf") { setFile(fl[i]); return; }
+          }
+          msg.innerHTML = '<span class="error">PDF 파일을 선택해 주세요.</span>';
+        }
+
+        drop.addEventListener("click", function () { input.click(); });
+        drop.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); input.click(); } });
+        input.addEventListener("change", function () { add(input.files); input.value = ""; });
+        ["dragover", "dragenter"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.style.borderColor = "var(--accent)"; }); });
+        ["dragleave", "drop"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.style.borderColor = "var(--border-strong)"; }); });
+        drop.addEventListener("drop", function (e) { if (e.dataTransfer && e.dataTransfer.files) add(e.dataTransfer.files); });
+        clearBtn.addEventListener("click", function () { setFile(null); });
+
+        applyBtn.addEventListener("click", function () {
+          if (!file) return;
+          if (!window.PDFLib) { msg.innerHTML = '<span class="error">PDF 라이브러리를 불러오지 못했습니다.</span>'; return; }
+          var raw = elText.value || "";
+          if (!raw.trim()) { msg.innerHTML = '<span class="error">워터마크 텍스트를 입력해 주세요.</span>'; elText.focus(); return; }
+
+          var clean = sanitizeText(raw);
+          var size = clamp(elSize.value, 6, 400, 60);
+          var rotDeg = clamp(elRot.value, -180, 180, 45);
+          var opacity = clamp(elOpacity.value, 0, 1, 0.2);
+          var col = hexToRgb(elColor.value);
+          var mode = (document.querySelector('input[name="wmMode"]:checked') || {}).value || "single";
+
+          applyBtn.disabled = true; applyBtn.textContent = "처리 중…"; msg.textContent = "";
+
+          (async function () {
+            try {
+              var PDFLibRef = window.PDFLib, PDFDocument = PDFLibRef.PDFDocument, degrees = PDFLibRef.degrees, rgb = PDFLibRef.rgb, StandardFonts = PDFLibRef.StandardFonts;
+              var bytes = await file.arrayBuffer();
+              var pdf = await PDFDocument.load(bytes, { ignoreEncryption: true });
+              var font = await pdf.embedFont(StandardFonts.HelveticaBold);
+              var color = rgb(col.r, col.g, col.b);
+              var pages = pdf.getPages();
+              var textW = font.widthOfTextAtSize(clean.text, size);
+              var textH = font.heightAtSize(size);
+              var rad = rotDeg * Math.PI / 180;
+
+              pages.forEach(function (page) {
+                var w = page.getWidth(), h = page.getHeight();
+                if (mode === "tiled") {
+                  // Step large enough to avoid overlap; rotation handled per-draw.
+                  var stepX = Math.max(textW + 80, 160);
+                  var stepY = Math.max(textH + 110, 140);
+                  for (var y = -stepY; y < h + stepY; y += stepY) {
+                    for (var x = -stepX; x < w + stepX; x += stepX) {
+                      page.drawText(clean.text, {
+                        x: x, y: y, size: size, font: font, color: color, opacity: opacity, rotate: degrees(rotDeg)
+                      });
+                    }
+                  }
+                } else {
+                  // Center the rotated text block on the page.
+                  var cx = w / 2, cy = h / 2;
+                  var dx = (textW / 2) * Math.cos(rad) - (textH / 2) * Math.sin(rad);
+                  var dy = (textW / 2) * Math.sin(rad) + (textH / 2) * Math.cos(rad);
+                  page.drawText(clean.text, {
+                    x: cx - dx, y: cy - dy, size: size, font: font, color: color, opacity: opacity, rotate: degrees(rotDeg)
+                  });
+                }
+              });
+
+              var outBytes = await pdf.save();
+              if (lastUrl) URL.revokeObjectURL(lastUrl);
+              lastUrl = URL.createObjectURL(new Blob([outBytes], { type: "application/pdf" }));
+              document.getElementById("wmStat").textContent = "✓ " + pages.length + "쪽에 워터마크 추가 완료";
+              var dl = document.getElementById("wmDl");
+              dl.href = lastUrl;
+              dl.download = (file.name.replace(/\.pdf$/i, "") || "문서") + "_워터마크.pdf";
+              out.style.display = "grid";
+              if (clean.changed) {
+                msg.innerHTML = '<span class="runtime-muted">일부 문자(예: 한글)는 표준 글꼴이 지원하지 않아 “?”로 대체되었습니다.</span>';
+              }
+            } catch (e) {
+              msg.innerHTML = '<span class="error">처리 실패: ' + esc(e && e.message || "알 수 없는 오류") + "</span>";
+            } finally {
+              applyBtn.disabled = false; applyBtn.textContent = "워터마크 추가";
+            }
+          })();
+        });
+      })();
+    </script>
+  </body>
+</html>

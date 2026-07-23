@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#215fe5" />
+    <meta name="description" content="Quilo 계정에 로그인해 작업과 생성 파일을 안전하게 관리하세요." />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <title>로그인 — Quilo</title>
+    <script>
+      (function () {
+        try {
+          var theme = localStorage.getItem("theme");
+          if (!theme) theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          document.documentElement.setAttribute("data-theme", theme);
+        } catch (_) {}
+      })();
+    </script>
+    <link rel="stylesheet" href="/ui/foundation.css" />
+    <link rel="stylesheet" href="/ui/auth.css" />
+  </head>
+  <body class="auth-page">
+    <a class="auth-skip" href="#authMain">로그인 폼으로 건너뛰기</a>
+
+    <header class="auth-header">
+      <div class="auth-header__inner">
+        <a class="auth-brand" href="/" aria-label="Quilo 홈">
+          <img src="/favicon.png" alt="" width="38" height="38" />
+          <span>Quilo</span>
+        </a>
+        <div class="auth-header__actions">
+          <span class="auth-header__copy">계정이 없으신가요?</span>
+          <a class="auth-header__link" href="/signup.html">회원가입</a>
+          <button type="button" id="themeToggle" class="context-theme auth-theme" aria-label="다크 모드로 전환" title="다크 모드로 전환">
+            <span class="context-theme__icon context-theme__icon--moon auth-theme__moon" aria-hidden="true">☾</span>
+            <span class="context-theme__icon context-theme__icon--sun auth-theme__sun" aria-hidden="true">☀</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="auth-main" id="authMain">
+      <div class="auth-frame">
+        <aside class="auth-context" aria-label="Quilo 계정 안내">
+          <p class="auth-context__label">Secure workspace</p>
+          <p class="auth-context__title">작업의 맥락을<br />안전하게 이어가세요.</p>
+          <p class="auth-context__lead">
+            보고서 작업, 생성 파일, 크레딧과 개인 설정을 하나의 계정에서 이어서 관리합니다.
+          </p>
+          <ul class="auth-context__list">
+            <li>
+              <b>01</b>
+              <div><strong>작업 연속성</strong><span>최근 생성 파일과 설정을 로그인한 계정에서 확인합니다.</span></div>
+            </li>
+            <li>
+              <b>02</b>
+              <div><strong>학생 인증</strong><span>학교 이메일 인증과 승인 상태를 생성 전에 확인합니다.</span></div>
+            </li>
+            <li>
+              <b>03</b>
+              <div><strong>공용 기기 보호</strong><span>로그인 유지 여부를 기기마다 직접 선택할 수 있습니다.</span></div>
+            </li>
+          </ul>
+        </aside>
+
+        <section class="auth-content" aria-labelledby="loginTitle">
+          <div class="auth-card">
+            <p class="auth-card__label">Account sign in</p>
+            <h1 id="loginTitle">로그인</h1>
+            <p class="auth-card__intro">가입할 때 만든 아이디와 비밀번호를 입력하세요.</p>
+
+            <form id="loginForm" class="auth-form">
+              <div class="auth-field">
+                <label for="li_username">아이디</label>
+                <input id="li_username" name="username" required maxlength="50" autocomplete="username" autofocus />
+              </div>
+
+              <div class="auth-field">
+                <label for="li_password">비밀번호</label>
+                <span class="auth-password">
+                  <input id="li_password" name="password" type="password" required autocomplete="current-password" />
+                  <button
+                    type="button"
+                    class="auth-password__toggle"
+                    data-password-toggle="li_password"
+                    aria-label="비밀번호 표시"
+                    aria-pressed="false"
+                  >보기</button>
+                </span>
+              </div>
+
+              <label class="auth-check">
+                <input id="li_remember" name="remember" type="checkbox" checked />
+                <span>이 기기에서 로그인 유지</span>
+              </label>
+
+              <div class="auth-form__meta">
+                <a id="passwordResetLink" href="/password-reset.html">비밀번호를 잊으셨나요?</a>
+              </div>
+
+              <p id="loginNotice" class="auth-status" role="status" aria-live="polite"></p>
+              <button type="submit" id="li_btn" class="ui-button ui-button--primary auth-submit">로그인</button>
+              <p id="li_err" class="auth-error" role="alert" aria-live="polite"></p>
+            </form>
+
+            <p class="auth-alternate">아직 계정이 없으신가요? <a href="/signup.html">회원가입</a></p>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="auth-footer">
+      <div class="auth-footer__links">
+        <a href="/terms.html">이용약관</a>
+        <a href="/privacy.html">개인정보처리방침</a>
+        <a href="/refund.html">환불정책</a>
+        <a href="/guide.html">이용 가이드</a>
+      </div>
+      <span>© 2026 Quilo</span>
+    </footer>
+
+    <script src="/theme.js"></script>
+    <script src="/ui/shell.js"></script>
+    <script>
+      (function () {
+        "use strict";
+
+        const form = document.getElementById("loginForm");
+        const username = document.getElementById("li_username");
+        const password = document.getElementById("li_password");
+        const remember = document.getElementById("li_remember");
+        const button = document.getElementById("li_btn");
+        const error = document.getElementById("li_err");
+        const notice = document.getElementById("loginNotice");
+        const passwordResetLink = document.getElementById("passwordResetLink");
+
+        // 로그인 화면은 세션이 끝난 공유 기기일 수 있다. 이전 principal의 자동완성용
+        // 아이디·초안·코드가 보이기 전에 계정 브라우저 상태를 먼저 정리한다. 보고서
+        // 종류만 담은 짧은 이동 의도는 개인정보가 아니므로 로그인 뒤 복원할 수 있게 보존한다.
+        let pendingReport = "";
+        try { pendingReport = sessionStorage.getItem("pendingReportType") || ""; } catch (_) {}
+        window.QuiloStoragePrivacy?.signOut?.();
+        if (/^[a-z0-9-]{1,64}$/.test(pendingReport)) {
+          try { sessionStorage.setItem("pendingReportType", pendingReport); } catch (_) {}
+        }
+
+        function safeReturnPath(value) {
+          const raw = String(value || "").trim();
+          if (!raw.startsWith("/") || raw.startsWith("//") || raw.includes("\\")) return "/";
+          try {
+            const target = new URL(raw, location.origin);
+            if (target.origin !== location.origin || ["/login", "/login.html"].includes(target.pathname)) return "/";
+            return `${target.pathname}${target.search}${target.hash}`;
+          } catch (_) {
+            return "/";
+          }
+        }
+
+        const params = new URLSearchParams(location.search);
+        const returnPath = safeReturnPath(params.get("next") || params.get("returnTo"));
+        if (returnPath !== "/") {
+          passwordResetLink.href = `/password-reset.html?next=${encodeURIComponent(returnPath)}`;
+        }
+        if (params.get("passwordReset") === "1") {
+          notice.className = "auth-status is-success";
+          notice.textContent = "비밀번호가 변경되었습니다. 새 비밀번호로 로그인하세요.";
+        }
+
+        function announceAuthChange() {
+          const message = { action: "login", at: Date.now() };
+          try {
+            const channel = new BroadcastChannel("quilo-auth");
+            channel.postMessage(message);
+            channel.close();
+          } catch (_) {}
+          try { localStorage.setItem("quilo:auth-sync", JSON.stringify(message)); } catch (_) {}
+        }
+        try {
+          const saved = localStorage.getItem("lastUsername");
+          if (saved && !username.value) username.value = saved;
+        } catch (_) {}
+
+        document.querySelectorAll("[data-password-toggle]").forEach((toggle) => {
+          toggle.addEventListener("click", () => {
+            const input = document.getElementById(toggle.dataset.passwordToggle);
+            if (!input) return;
+            const show = input.type === "password";
+            input.type = show ? "text" : "password";
+            toggle.textContent = show ? "숨기기" : "보기";
+            toggle.setAttribute("aria-label", show ? "비밀번호 숨기기" : "비밀번호 표시");
+            toggle.setAttribute("aria-pressed", show ? "true" : "false");
+            input.focus();
+          });
+        });
+
+        form.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          error.textContent = "";
+          button.disabled = true;
+          button.textContent = "로그인 중...";
+          const keepSignedIn = remember.checked;
+
+          try {
+            const response = await fetch("/api/login", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                username: username.value,
+                password: password.value,
+                remember: keepSignedIn,
+              }),
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || "로그인 실패");
+
+            window.QuiloStoragePrivacy?.protect?.(data.id);
+            try {
+              if (keepSignedIn) localStorage.setItem("lastUsername", username.value);
+              else localStorage.removeItem("lastUsername");
+            } catch (_) {}
+
+            announceAuthChange();
+            if (data.redirect && String(data.redirect).startsWith("/oauth/authorize?")) {
+              location.assign(data.redirect);
+            } else {
+              location.assign(returnPath);
+            }
+          } catch (exception) {
+            error.textContent = exception.message;
+            button.disabled = false;
+            button.textContent = "로그인";
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>

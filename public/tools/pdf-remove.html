@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="canonical" href="https://quilolab.com/tools/pdf-remove.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PDF 페이지 제거 — 보고서 도구</title>
+    <meta name="description" content="선택한 페이지를 삭제해 새 PDF를 만드는 브라우저 도구. 업로드 없이 기기 안에서 처리." />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("theme");
+          if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          document.documentElement.setAttribute("data-theme", t);
+          if (new URLSearchParams(location.search).has("embed"))
+            document.documentElement.classList.add("embed");
+        } catch (e) {}
+      })();
+    </script>
+
+    <link rel="stylesheet" href="/ui/foundation.css" />
+    <link rel="stylesheet" href="/ui/shell.css" />
+    <link rel="stylesheet" href="/ui/pages.css" />
+    <link rel="stylesheet" href="/ui/tool-shell.css" />
+  </head>
+  <body class="landing q-shell-page ui-page">
+    <div class="landing-bg" aria-hidden="true"></div>
+    <a class="ui-skip-link" href="#main-content">본문으로 건너뛰기</a>
+    <header class="ui-site-header" data-ui-shell></header>
+
+    <main class="landing-shell" id="main-content">
+      <section class="section ui-inline-tools-pdf-remove-1">
+        <div class="tool-page-head">
+          <h1>PDF 페이지 제거</h1>
+          <p>선택한 페이지를 삭제합니다. 모든 처리는 브라우저 안에서만 이뤄지고 파일은 서버로 전송되지 않습니다.</p>
+        </div>
+
+        <div class="tool-card">
+          <div id="prDrop" role="button" tabindex="0" class="ui-inline-tools-pdf-remove-2" >
+            <div class="ui-inline-tools-pdf-remove-3" >PDF 파일을 끌어다 놓기</div>
+            <div class="ui-inline-tools-pdf-remove-4" >또는 클릭해서 선택 · 한 개</div>
+          </div>
+          <input type="file" id="prFile" accept="application/pdf,.pdf" class="ui-inline-tools-pdf-remove-5" />
+
+          <div id="prInfo" class="ui-inline-tools-pdf-remove-6" >
+            <span id="prName" class="ui-inline-tools-pdf-remove-7" ></span>
+            <span id="prMeta" class="ui-inline-tools-pdf-remove-8" ></span>
+            <button class="btn-ghost ui-inline-tools-pdf-remove-9" id="prRemove" title="삭제">✕</button>
+          </div>
+
+          <div class="ui-inline-tools-pdf-remove-10" >
+            <label class="tool-label" for="prPages">삭제할 페이지 <span class="req">*</span></label>
+            <input type="text" id="prPages" class="tool-input" placeholder="예: 2,5,7-9" inputmode="text" autocomplete="off" />
+            <p class="hint ui-inline-tools-pdf-remove-11">쉼표로 여러 페이지, 하이픈으로 범위를 적습니다. 예) 2,5,7-9 · 페이지 번호는 1부터 셉니다.</p>
+          </div>
+
+          <div class="actions">
+            <button class="btn-primary" id="prRun" disabled>페이지 제거</button>
+            <button class="btn-ghost" id="prClear">비우기</button>
+          </div>
+          <div id="prOut" class="tool-result ui-inline-tools-pdf-remove-12">
+            <div class="badge ok ui-inline-tools-pdf-remove-13" id="prStat" role="status" aria-live="polite" aria-atomic="true"></div>
+            <a id="prDl" class="btn-lg btn-primary ui-inline-tools-pdf-remove-14" download>↓ 새 PDF 내려받기</a>
+          </div>
+          <p class="hint ui-inline-tools-pdf-remove-15" id="prMsg" role="status" aria-live="polite" aria-atomic="true"></p>
+        </div>
+      </section>
+    </main>
+    <footer class="ui-site-footer">
+      <div class="ui-site-footer__inner">
+        <nav class="ui-site-footer__links" aria-label="푸터 메뉴"><a href="/terms.html">이용약관</a><a href="/privacy.html">개인정보처리방침</a><a href="/refund.html">환불정책</a><a href="/guide.html">이용 가이드</a><a href="/community.html">커뮤니티</a><a href="https://github.com/fakeminjun7321/Quilo" target="_blank" rel="noopener">GitHub</a></nav>
+        <div class="ui-site-footer__copy">© 2026 Quilo · <span data-site-version>버전 확인 중...</span></div>
+      </div>
+    </footer>
+
+    <script src="/ui/shell.js"></script>
+    <script src="/ui/tool-shell.js"></script>
+    <script>
+      (function () {
+        var drop = document.getElementById("prDrop"), input = document.getElementById("prFile");
+        var info = document.getElementById("prInfo"), nameEl = document.getElementById("prName"), metaEl = document.getElementById("prMeta");
+        var removeBtn = document.getElementById("prRemove"), pagesInput = document.getElementById("prPages");
+        var runBtn = document.getElementById("prRun"), clearBtn = document.getElementById("prClear");
+        var out = document.getElementById("prOut"), msg = document.getElementById("prMsg");
+        var file = null, pageCount = 0, lastUrl = null;
+
+        function fmt(b) { return b < 1024 ? b + " B" : b < 1048576 ? (b / 1024).toFixed(0) + " KB" : (b / 1048576).toFixed(1) + " MB"; }
+        function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+        function setMsg(html) { msg.innerHTML = html || ""; }
+
+        // Parse a page list like "2,5,7-9" into a 0-based Set of indices.
+        // Validates against the total page count; throws on bad input.
+        function parsePages(text, total) {
+          var set = {}, found = false;
+          var parts = String(text).split(",");
+          for (var i = 0; i < parts.length; i++) {
+            var part = parts[i].trim();
+            if (!part) continue;
+            var m = part.match(/^(\d+)\s*-\s*(\d+)$/);
+            if (m) {
+              var a = parseInt(m[1], 10), b = parseInt(m[2], 10);
+              if (a < 1 || b < 1) throw new Error("페이지 번호는 1 이상이어야 합니다.");
+              if (a > b) { var t = a; a = b; b = t; }
+              if (b > total) throw new Error("문서에는 " + total + "쪽까지 있습니다. (" + part + ")");
+              for (var p = a; p <= b; p++) { set[p - 1] = true; found = true; }
+            } else if (/^\d+$/.test(part)) {
+              var n = parseInt(part, 10);
+              if (n < 1) throw new Error("페이지 번호는 1 이상이어야 합니다.");
+              if (n > total) throw new Error("문서에는 " + total + "쪽까지 있습니다. (" + n + "쪽)");
+              set[n - 1] = true; found = true;
+            } else {
+              throw new Error('"' + esc(part) + '" 형식을 알 수 없습니다. 예: 2,5,7-9');
+            }
+          }
+          if (!found) throw new Error("삭제할 페이지를 입력하세요.");
+          var idx = Object.keys(set).map(Number).sort(function (x, y) { return x - y; });
+          return idx;
+        }
+
+        function refresh() {
+          runBtn.disabled = !(file && pageCount > 0 && pagesInput.value.trim());
+        }
+
+        function setFile(f) {
+          if (f && !window.PDFLib) {
+            setMsg("PDF 작업 엔진을 불러오는 중…");
+            window.QuiloToolAssets.load("pdfLib").then(function () { setFile(f); }).catch(function (e) {
+              setMsg('<span class="error">' + esc(e.message || "PDF 작업 엔진을 불러오지 못했습니다.") + "</span>");
+            });
+            return;
+          }
+          file = f;
+          out.style.display = "none"; setMsg("");
+          nameEl.textContent = f.name;
+          metaEl.textContent = fmt(f.size);
+          info.style.display = "flex";
+          pageCount = 0;
+          refresh();
+          // Load to read the page count for the user.
+          (async function () {
+            try {
+              if (!window.PDFLib) throw new Error("PDF 라이브러리를 불러오지 못했습니다.");
+              var bytes = await f.arrayBuffer();
+              var doc = await PDFLib.PDFDocument.load(bytes, { ignoreEncryption: true });
+              pageCount = doc.getPageCount();
+              metaEl.textContent = fmt(f.size) + " · 총 " + pageCount + "쪽";
+              refresh();
+            } catch (e) {
+              setMsg('<span class="error">PDF를 읽지 못했습니다: ' + esc(e.message || "알 수 없는 오류") + "</span>");
+              metaEl.textContent = fmt(f.size);
+            }
+          })();
+        }
+
+        function add(fl) {
+          if (!fl || !fl.length) return;
+          var f = fl[0];
+          if (!(/\.pdf$/i.test(f.name) || f.type === "application/pdf")) {
+            setMsg('<span class="error">PDF 파일만 올릴 수 있습니다.</span>');
+            return;
+          }
+          setFile(f);
+        }
+
+        function reset() {
+          file = null; pageCount = 0;
+          info.style.display = "none";
+          out.style.display = "none";
+          setMsg("");
+          refresh();
+        }
+
+        drop.addEventListener("click", function () { input.click(); });
+        drop.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); input.click(); } });
+        input.addEventListener("change", function () { add(input.files); input.value = ""; });
+        ["dragover", "dragenter"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.style.borderColor = "var(--accent)"; }); });
+        ["dragleave", "drop"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.style.borderColor = "var(--border-strong)"; }); });
+        drop.addEventListener("drop", function (e) { if (e.dataTransfer && e.dataTransfer.files) add(e.dataTransfer.files); });
+        removeBtn.addEventListener("click", reset);
+        clearBtn.addEventListener("click", function () { reset(); pagesInput.value = ""; });
+        pagesInput.addEventListener("input", function () { out.style.display = "none"; setMsg(""); refresh(); });
+
+        runBtn.addEventListener("click", function () {
+          if (!file || !window.PDFLib) { setMsg(!window.PDFLib ? '<span class="error">PDF 라이브러리를 불러오지 못했습니다.</span>' : ""); return; }
+          var toRemove;
+          try {
+            toRemove = parsePages(pagesInput.value, pageCount);
+          } catch (e) {
+            setMsg('<span class="error">' + esc(e.message) + "</span>");
+            return;
+          }
+          if (toRemove.length >= pageCount) {
+            setMsg('<span class="error">모든 페이지를 삭제할 수는 없습니다. 한 쪽 이상 남겨주세요.</span>');
+            return;
+          }
+          runBtn.disabled = true; runBtn.textContent = "처리 중…"; setMsg("");
+          (async function () {
+            try {
+              var PDFDocument = PDFLib.PDFDocument;
+              var bytes = await file.arrayBuffer();
+              var src = await PDFDocument.load(bytes, { ignoreEncryption: true });
+              var total = src.getPageCount();
+              var removeSet = {};
+              toRemove.forEach(function (i) { removeSet[i] = true; });
+              // Build the list of kept indices, then copy only those into a fresh doc.
+              var keep = [];
+              for (var i = 0; i < total; i++) { if (!removeSet[i]) keep.push(i); }
+              var newDoc = await PDFDocument.create();
+              var pages = await newDoc.copyPages(src, keep);
+              pages.forEach(function (p) { newDoc.addPage(p); });
+              var outBytes = await newDoc.save();
+              if (lastUrl) URL.revokeObjectURL(lastUrl);
+              lastUrl = URL.createObjectURL(new Blob([outBytes], { type: "application/pdf" }));
+              document.getElementById("prStat").textContent = "✓ " + toRemove.length + "쪽 삭제 · " + keep.length + "쪽 남음";
+              var base = file.name.replace(/\.pdf$/i, "");
+              var dl = document.getElementById("prDl"); dl.href = lastUrl; dl.download = base + "_페이지제거.pdf";
+              out.style.display = "grid";
+            } catch (e) {
+              setMsg('<span class="error">처리 실패: ' + esc(e.message || "알 수 없는 오류") + " (암호가 걸린 PDF는 처리할 수 없습니다)</span>");
+            } finally {
+              runBtn.textContent = "페이지 제거"; refresh();
+            }
+          })();
+        });
+
+        refresh();
+      })();
+    </script>
+  </body>
+</html>

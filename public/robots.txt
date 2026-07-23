@@ -1,0 +1,15 @@
+# https://quilolab.com
+# 모든 검색엔진 크롤러 허용. 비공개/앱/인증 경로만 제외.
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin
+Disallow: /admin.html
+Disallow: /login.html
+Disallow: /signup.html
+Disallow: /build.html
+Disallow: /editor.html
+Disallow: /studio.html
+Disallow: /translate-app.html
+
+Sitemap: https://quilolab.com/sitemap.xml

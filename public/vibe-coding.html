@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="canonical" href="https://quilolab.com/vibe-coding.html" />
+    <meta name="description" content="바이브 코딩 생성기 — 질문 몇 개에 답하면 AI가 아이디어를 프로젝트 설계로 정리하고 개념 이미지까지 만들어 줍니다. 어려운 용어는 쉽게 풀어서." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="/ui/foundation.css" />
+    <link rel="stylesheet" href="/ui/shell.css" />
+    <link rel="stylesheet" href="/ui/app-shell.css" />
+    <link rel="stylesheet" href="/ui/app-generator.css" />
+    <script src="/ui/entitlement-gate.js"></script>
+    <meta name="theme-color" content="#2563eb" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <title>바이브 코딩 생성기 — Quilo</title>
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("theme");
+          if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          document.documentElement.setAttribute("data-theme", t);
+        } catch (e) {}
+      })();
+    </script>
+
+</head>
+  <body id="appShell" class="app-shell app-shell--vibe-coding" data-app-shell>
+    <header class="ui-site-header" data-ui-shell data-shell-mode="fixed"></header>
+    <script src="/ui/shell.js"></script>
+<main class="page" id="main-content" aria-label="바이브 코딩 생성기">
+      <div class="intro" id="intro">
+        <span class="eyebrow">Vibe coding planner</span>
+        <h1>아이디어, 같이 정리해 볼까요?</h1>
+        <p>질문 몇 개에 답하면 AI가 무엇을·어떻게 만들지 설계로 정리하고, 개념 이미지까지 만들어 드려요.<br />어려운 용어는 옆에 쉽게 풀어 둘게요 — 처음이어도 괜찮아요.</p>
+      </div>
+
+      <div id="gate" class="gate app-inline-vibe-coding-1" hidden>
+        🔒 이 기능은 <b>로그인한 사용자</b>가 이용할 수 있어요.
+        <div class="app-inline-vibe-coding-2"><a class="btn app-inline-vibe-coding-3" href="/login.html?next=%2Fvibe-coding.html">로그인하기</a></div>
+      </div>
+
+      <!-- 위저드 -->
+      <section id="wizard" class="app-inline-vibe-coding-1" hidden>
+        <div class="progress" id="progress"></div>
+        <div id="stage"></div>
+      </section>
+
+      <!-- 로딩 -->
+      <section id="loading" class="loading app-inline-vibe-coding-1" hidden>
+        <div class="orb"></div>
+        <h3 id="loadTitle">AI가 설계 중이에요…</h3>
+        <p>아이디어를 프로젝트로 정리하고 있어요 (보통 30초~2분)</p>
+        <div class="step-msg" id="loadMsg"></div>
+      </section>
+
+      <!-- 결과 -->
+      <section id="result" class="result app-inline-vibe-coding-1" hidden></section>
+    </main>
+
+    <footer class="app-statusbar" aria-label="앱 상태">
+      <span class="app-statusbar__dot" aria-hidden="true"></span>
+      <span>준비됨</span>
+      <span class="app-statusbar__meta">바이브 코딩 생성기 · Quilo</span>
+    </footer>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+      let modelCredits = {}, lastResult = null, canCreate = false, imageAvailable = false, imageCredits = 1;
+      let heroImageUrl = null, refineHistory = [], chatBusy = false;
+      const state = { idea: "", mood: "", area: "", scope: "MVP", stack: "", model: "claude-opus-4-8", imageOn: true };
+
+      async function api(path, opts) {
+        const r = await fetch(path, { credentials: "same-origin", headers: { "Content-Type": "application/json" }, ...opts });
+        let j = null; try { j = await r.json(); } catch {}
+        if (!r.ok) { const e = new Error((j && j.error) || ("오류 " + r.status)); e.status = r.status; throw e; }
+        return j;
+      }
+
+      // ───────── 위저드 정의 (한 번에 한 질문) ─────────
+      const EXAMPLES = ["동아리 일정·회비 관리 웹앱", "매일 습관 체크 + 스트릭 트래커", "사진 모아 보는 무드보드", "친구끼리 영화 별점 공유"];
+      const STEPS = [
+        {
+          key: "idea", title: "무엇을 만들고 싶나요?",
+          help: "앱이든 사이트든, 머릿속 아이디어를 편하게 한 문장으로 적어 주세요. 막연해도 괜찮아요.",
+          required: true,
+          render() {
+            return `<textarea id="i_idea" placeholder="예: 동아리 부원들이 일정과 회비를 한곳에서 관리하는 웹앱">${esc(state.idea)}</textarea>
+              <div class="examples">${EXAMPLES.map((e) => `<span class="ex" data-ex="${esc(e)}">${esc(e)}</span>`).join("")}</div>`;
+          },
+          bind() {
+            $("i_idea").addEventListener("input", (e) => { state.idea = e.target.value; updateNav(); });
+            document.querySelectorAll("[data-ex]").forEach((b) => b.onclick = () => { state.idea = b.dataset.ex; $("i_idea").value = b.dataset.ex; updateNav(); });
+            setTimeout(() => $("i_idea").focus(), 60);
+          },
+          ok() { return state.idea.trim().length >= 3; },
+        },
+        {
+          key: "mood", title: "어떤 느낌이면 좋겠어요?",
+          help: "디자인 분위기예요. 골라도 되고, 그냥 넘어가도 AI가 알아서 잡아요.",
+          chips: ["깔끔·미니멀", "아기자기·귀여운", "프로페셔널", "활기찬·컬러풀", "차분한", "레트로·복고"],
+          freeLabel: "직접 적기 (선택)",
+        },
+        {
+          key: "area", title: "어떤 분야예요?",
+          help: "어떤 쓰임새인지 알면 AI가 더 맞춤으로 설계해요.",
+          chips: ["학교·교육", "생산성·할 일", "취미·생활", "커뮤니티·소셜", "게임·재미", "비즈니스", "기타"],
+          freeLabel: "직접 적기 (선택)",
+        },
+        {
+          key: "scope", title: "📏 얼마나 크게 시작할까요?",
+          help: "처음엔 작게 시작하는 걸 추천해요. 작게 만들어 보고 늘리면 되니까요.",
+          opts: [
+            { v: "주말 프로젝트", t: "🌱 주말 프로젝트", d: "딱 하루이틀. 핵심 기능 <b>하나만</b> 빠르게 만들어 보기. 가볍게 손풀기 좋아요." },
+            { v: "MVP", t: "🚀 MVP로 시작", d: "1~2주. <b>MVP = 최소 기능 제품</b> — '일단 이것만 되면 쓸 만하다' 싶은 최소한만 제대로 만드는 거예요. 가장 추천!" },
+            { v: "정식 제품", t: "🏛 정식 제품", d: "로그인·저장·결제까지 갖춘 <b>진짜 서비스급</b>. 할 게 많아요." },
+          ],
+        },
+        {
+          key: "stack", title: "🧰 쓰고 싶은 기술이 있나요?",
+          help: "<b>스택 = 앱을 만드는 데 쓰는 도구·언어 묶음</b>이에요. 모르면 '잘 모르겠어요'를 고르면 AI가 알아서 추천해 줘요.",
+          chips: ["잘 모르겠어요 (AI 추천)", "바닐라 HTML·JS", "React", "Python"],
+          freeLabel: "직접 적기 (선택)",
+          chipToValue(c) { return c.startsWith("잘 모르") ? "" : c; },
+        },
+      ];
+
+      function renderProgress(i) {
+        const total = STEPS.length + 1; // + 리뷰
+        let h = "";
+        for (let k = 0; k < total; k++) h += `<div class="dot ${k < i ? "done" : k === i ? "now" : ""}"></div>`;
+        $("progress").innerHTML = h;
+      }
+
+      let cur = 0;
+      function showStep(i) {
+        cur = i; renderProgress(i);
+        if (i >= STEPS.length) return showReview();
+        const s = STEPS[i];
+        let inner = "";
+        if (s.render) inner = s.render();
+        else if (s.chips) {
+          const val = state[s.key];
+          inner = `<div class="chips">${s.chips.map((c) => { const cv = s.chipToValue ? s.chipToValue(c) : c; return `<button type="button" class="chip ${val === cv ? "on" : ""}" data-chip="${esc(cv)}">${esc(c)}</button>`; }).join("")}</div>
+            <div class="freerow"><label>${esc(s.freeLabel || "직접 적기")}</label><input class="txt" id="i_free" value="${esc(s.chips.includes(val) || (s.chipToValue && s.chips.some((c) => s.chipToValue(c) === val)) ? "" : val)}" placeholder="원하는 걸 직접 적어도 돼요" /></div>`;
+        } else if (s.opts) {
+          inner = `<div class="opts">${s.opts.map((o) => `<button type="button" class="opt ${state[s.key] === o.v ? "on" : ""}" data-opt="${esc(o.v)}"><div class="ot">${o.t}</div><div class="od">${o.d}</div></button>`).join("")}</div>`;
+        }
+        $("stage").innerHTML = `<div class="qcard"><div class="qstep">STEP ${i + 1} / ${STEPS.length}</div><h2>${s.title}</h2><p class="qhelp">${s.help}</p>${inner}
+          <div class="navrow">
+            ${i > 0 ? `<button class="btn ghost" id="prevBtn">← 이전</button>` : ""}
+            <div class="sp"></div>
+            <button class="btn" id="nextBtn">다음 →</button>
+          </div></div>`;
+        if (s.bind) s.bind();
+        if (s.chips) {
+          document.querySelectorAll("[data-chip]").forEach((b) => b.onclick = () => { state[s.key] = b.dataset.chip; $("i_free").value = ""; document.querySelectorAll("[data-chip]").forEach((x) => x.classList.toggle("on", x === b)); });
+          $("i_free").addEventListener("input", (e) => { state[s.key] = e.target.value; document.querySelectorAll("[data-chip]").forEach((x) => x.classList.remove("on")); });
+        }
+        if (s.opts) document.querySelectorAll("[data-opt]").forEach((b) => b.onclick = () => { state[s.key] = b.dataset.opt; document.querySelectorAll("[data-opt]").forEach((x) => x.classList.toggle("on", x === b)); });
+        if ($("prevBtn")) $("prevBtn").onclick = () => showStep(i - 1);
+        $("nextBtn").onclick = () => { if (s.required && !s.ok()) return; showStep(i + 1); };
+        updateNav();
+      }
+      function updateNav() {
+        const s = STEPS[cur];
+        if (s && s.required && $("nextBtn")) $("nextBtn").disabled = !s.ok();
+      }
+
+      function showReview() {
+        renderProgress(STEPS.length);
+        const cost = modelCredits[state.model];
+        const costTxt = cost === 0 ? "무료" : (typeof cost === "number" ? cost + " 크레딧" : "–");
+        const modelOpts = Object.keys(modelCredits).length
+          ? Object.entries(modelLabels).map(([id, label]) => `<option value="${esc(id)}"${id === state.model ? " selected" : ""}>${esc(label)}</option>`).join("")
+          : `<option value="claude-opus-4-8">Claude Opus 4.8</option>`;
+        $("stage").innerHTML = `<div class="qcard"><div class="qstep">거의 다 왔어요!</div><h2>이렇게 만들게요</h2>
+          <div class="review">
+            <div class="rv"><span class="k">아이디어</span><span class="v">${esc(state.idea)}</span></div>
+            ${state.mood ? `<div class="rv"><span class="k">느낌</span><span class="v">${esc(state.mood)}</span></div>` : ""}
+            ${state.area ? `<div class="rv"><span class="k">분야</span><span class="v">${esc(state.area)}</span></div>` : ""}
+            <div class="rv"><span class="k">규모</span><span class="v">${esc(state.scope)}</span></div>
+            ${state.stack ? `<div class="rv"><span class="k">기술</span><span class="v">${esc(state.stack)}</span></div>` : ""}
+          </div>
+          <div class="ctrlrow">
+            <div class="ctrl"><label>생성 모델</label><select id="i_model">${modelOpts}</select></div>
+            <div class="ctrl"><label>예상 차감</label>
+              <label class="imgtoggle${imageAvailable ? "" : " app-runtime-disabled"}"><input type="checkbox" id="i_img" ${state.imageOn && imageAvailable ? "checked" : ""} ${imageAvailable ? "" : "disabled"} /><div><div>🎨 개념 이미지</div><div class="sub">+${imageCredits} 크레딧</div></div></label>
+            </div>
+          </div>
+          <div class="costline" id="costLine"></div>
+          <div class="navrow">
+            <button class="btn ghost" id="prevBtn">← 이전</button>
+            <div class="sp"></div>
+            <button class="btn" id="goBtn">설계 만들기</button>
+          </div>
+          <div class="err" id="err"></div>
+        </div>`;
+        $("i_model").onchange = (e) => { state.model = e.target.value; refreshCost(); };
+        $("i_img").onchange = (e) => { state.imageOn = e.target.checked; refreshCost(); };
+        $("prevBtn").onclick = () => showStep(STEPS.length - 1);
+        $("goBtn").onclick = generate;
+        refreshCost();
+      }
+      function refreshCost() {
+        const cost = modelCredits[state.model];
+        const base = typeof cost === "number" ? cost : 0;
+        const total = base + (state.imageOn && imageAvailable ? imageCredits : 0);
+        const baseTxt = cost === 0 ? "무료" : base + " 크레딧";
+        $("costLine").innerHTML = bal.isAdmin
+          ? `관리자 — 무제한`
+          : `설계 <span class="pill">${baseTxt}</span>${state.imageOn && imageAvailable ? ` + 이미지 <span class="pill">${imageCredits} 크레딧</span> = <b>총 ${total} 크레딧</b>` : ""}${typeof bal.credits === "number" ? ` · 보유 ${bal.credits}` : ""}`;
+      }
+
+      // ───────── 생성 ─────────
+      let bal = {};
+      const modelLabels = {};
+      async function generate() {
+        heroImageUrl = null; refineHistory = [];
+        $("wizard").hidden = true;
+        $("intro").hidden = true;
+        $("loading").hidden = false;
+        $("loadTitle").textContent = "AI가 설계 중이에요…";
+        try {
+          const j = await api("/api/vibe/generate", { method: "POST", body: JSON.stringify({
+            idea: state.idea, mood: state.mood, area: state.area, scope: state.scope, stack: state.stack, model: state.model }) });
+          lastResult = j.result;
+          if (typeof j.newBalance === "number") bal.credits = j.newBalance;
+          $("loading").hidden = true;
+          renderResult(lastResult);
+          if (state.imageOn && imageAvailable && lastResult.imagePrompt) loadImage(lastResult.imagePrompt);
+        } catch (e) {
+          if (e.status === 401) { location.href = "/login.html?next=%2Fvibe-coding.html"; return; }
+          $("loading").hidden = true;
+          $("wizard").hidden = false; $("intro").hidden = false;
+          showReview();
+          setTimeout(() => { if ($("err")) $("err").textContent = "생성 실패: " + e.message; }, 30);
+        }
+      }
+
+      async function loadImage(prompt) {
+        const slot = $("heroImg"); if (!slot) return;
+        slot.innerHTML = `<div class="ph"><div class="ico">🎨</div>개념 이미지 그리는 중… (1분 정도 걸려요)</div><div class="shimmer"></div>`;
+        try {
+          const j = await api("/api/vibe/image", { method: "POST", body: JSON.stringify({ prompt }) });
+          if (j.dataUrl) { heroImageUrl = j.dataUrl; if ($("heroImg")) $("heroImg").innerHTML = `<img src="${j.dataUrl}" alt="개념 이미지" />`; }
+          if (typeof j.newBalance === "number") { bal.credits = j.newBalance; refreshRefineCost(); }
+        } catch (e) {
+          if ($("heroImg")) $("heroImg").innerHTML = `<div class="ph"><div class="ico">🖼</div>이미지를 못 만들었어요${e.status === 402 ? " (크레딧 부족)" : ""}</div>`;
+        }
+      }
+
+      // ───────── 결과 렌더 (한 공간) ─────────
+      function secHead(t, gloss) { return `<div class="h"><span class="t">${t}</span>${gloss ? `<span class="gloss">${esc(gloss)}</span>` : ""}</div>`; }
+
+      // 결과 = [설계 영역(planArea, 갱신됨)] + [대화 패널(refineChat, 유지)].
+      function renderResult(r) {
+        $("result").innerHTML = `<div id="planArea"></div>
+          <div class="refine" id="refineChat">
+            <div class="refine-head">💬 AI와 더 다듬기 <span class="muted">— 바꾸고 싶은 걸 말하면 설계를 고쳐 줘요</span></div>
+            <div id="chatLog" class="chatlog"></div>
+            <div class="refine-row">
+              <input class="txt" id="chatMsg" placeholder="예: 결제 기능도 넣어줘 / MVP를 더 작게 / 스택을 React로 바꿔줘" autocomplete="off" />
+              <button class="btn" id="chatSend">보내기</button>
+            </div>
+            <div class="muted app-runtime-gap-7" id="refineCost"></div>
+          </div>`;
+        $("result").hidden = false;
+        renderPlan(r);
+        $("chatSend").onclick = refine;
+        $("chatMsg").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); refine(); } });
+        refreshRefineCost();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      function refreshRefineCost() {
+        if (!$("refineCost")) return;
+        const c = modelCredits[state.model];
+        $("refineCost").textContent = bal.isAdmin
+          ? "관리자 — 무제한"
+          : (typeof c === "number" ? `수정 요청 1회당 약 ${c} 크레딧 차감${typeof bal.credits === "number" ? ` · 보유 ${bal.credits}` : ""}` : "");
+      }
+
+      function appendChat(role, text, pending) {
+        const log = $("chatLog");
+        const div = document.createElement("div");
+        div.className = "chatmsg " + (role === "ai" ? "ai" : "me") + (pending ? " pending" : "");
+        div.innerHTML = `<div class="bubble"></div>`;
+        div.querySelector(".bubble").textContent = text;
+        log.appendChild(div);
+        log.scrollTop = log.scrollHeight;
+        return div;
+      }
+
+      async function refine() {
+        const msg = ($("chatMsg").value || "").trim();
+        if (!msg || chatBusy) return;
+        chatBusy = true;
+        $("chatMsg").value = "";
+        appendChat("me", msg);
+        const thinking = appendChat("ai", "…", true);
+        $("chatSend").disabled = true;
+        try {
+          const j = await api("/api/vibe/refine", { method: "POST", body: JSON.stringify({
+            result: lastResult, message: msg, history: refineHistory, model: state.model }) });
+          const out = j.result || {};
+          const reply = out.reply || "반영했어요.";
+          refineHistory.push({ role: "user", content: msg }, { role: "ai", content: reply });
+          if (refineHistory.length > 16) refineHistory = refineHistory.slice(-16);
+          thinking.querySelector(".bubble").textContent = reply;
+          thinking.classList.remove("pending");
+          if (out.plan && out.plan.title) { lastResult = out.plan; renderPlan(out.plan); }
+          if (typeof j.newBalance === "number") { bal.credits = j.newBalance; refreshRefineCost(); }
+        } catch (e) {
+          if (e.status === 401) { location.href = "/login.html?next=%2Fvibe-coding.html"; return; }
+          thinking.querySelector(".bubble").textContent = "⚠ " + e.message;
+          thinking.classList.remove("pending");
+        } finally {
+          chatBusy = false; $("chatSend").disabled = false; $("chatMsg").focus();
+        }
+      }
+
+      function renderPlan(r) {
+        const rd = r.buildReadiness || {};
+        const sections = [];
+        if (r.problem) sections.push(`<div class="sec">${secHead("🎯 어떤 문제를 풀어요", "왜 이걸 만드는지")}<div class="box sub">${esc(r.problem)}</div></div>`);
+        if (r.targetUser) sections.push(`<div class="sec">${secHead("🙋 누가 쓸까요", "주 사용자")}<div class="box sub">${esc(r.targetUser)}</div></div>`);
+        if ((r.mvp || []).length) sections.push(`<div class="sec">${secHead("먼저 만들 핵심 기능", "MVP — 일단 이것만 되면 쓸 만한 최소 기능")}${r.mvp.map((m) => `<div class="box"><b>${esc(m.feature)}</b><div class="sub">${esc(m.why)}</div></div>`).join("")}</div>`);
+        if ((r.screens || []).length) sections.push(`<div class="sec">${secHead("📱 필요한 화면들", "사용자가 보게 될 페이지")}${r.screens.map((s) => `<div class="box"><b>${esc(s.name)}</b><div class="sub">${esc(s.purpose)}</div>${(s.elements || []).length ? `<div class="tags app-runtime-gap-6">${s.elements.map((e) => `<span class="tag2">${esc(e)}</span>`).join("")}</div>` : ""}</div>`).join("")}</div>`);
+        if ((r.modules || []).length) sections.push(`<div class="sec">${secHead("코드 구성", "기능별로 나눈 파일·부품 단위(모듈)")}${r.modules.map((m) => `<div class="box"><b>${esc(m.name)}</b><div class="sub">${esc(m.responsibility)}</div></div>`).join("")}</div>`);
+        if ((r.dataModel || []).length) sections.push(`<div class="sec">${secHead("저장할 데이터", "앱이 기억해야 할 정보의 모양")}${r.dataModel.map((d) => `<div class="box"><b>${esc(d.entity)}</b>${(d.fields || []).length ? `<div class="tags app-runtime-gap-6">${d.fields.map((f) => `<span class="tag2">${esc(f)}</span>`).join("")}</div>` : ""}</div>`).join("")}</div>`);
+        if ((r.firstTasks || []).length) sections.push(`<div class="sec">${secHead("첫 작업 순서대로", "이 순서대로 하나씩 하면 돼요")}<ol class="ol">${r.firstTasks.map((t) => `<li><b>${esc(t.task)}</b><div class="sub">${esc(t.detail)}</div>${t.done ? `<div class="done">완료 기준: ${esc(t.done)}</div>` : ""}</li>`).join("")}</ol></div>`);
+        if (r.stack) sections.push(`<div class="sec">${secHead("🛠 추천 기술 스택", "앱을 만드는 데 쓰는 도구·언어")}<div class="box">${(r.stack.recommended || []).length ? `<div class="tags">${r.stack.recommended.map((s) => `<span class="tag2">${esc(s)}</span>`).join("")}</div>` : ""}${r.stack.rationale ? `<div class="sub app-runtime-gap-7">${esc(r.stack.rationale)}</div>` : ""}</div></div>`);
+        if ((r.validation || []).length) sections.push(`<div class="sec">${secHead("🧪 잘 됐는지 확인하는 법", "검증 루틴 — 만든 게 제대로 도는지 점검")}<ul class="ul">${r.validation.map((v) => `<li>${esc(v)}</li>`).join("")}</ul></div>`);
+        if ((r.risks || []).length) sections.push(`<div class="sec">${secHead("막힐 만한 지점", "미리 알아두면 덜 당황해요")}${r.risks.map((x) => `<div class="box"><b>${esc(x.risk)}</b><div class="sub">→ ${esc(x.mitigation)}</div></div>`).join("")}</div>`);
+        if ((r.variations || []).length) sections.push(`<div class="sec">${secHead("이렇게 비틀어도 좋아요", "다른 방향 아이디어")}${r.variations.map((v) => `<div class="box"><b>${esc(v.angle)}</b><div class="sub">${esc(v.idea)}</div></div>`).join("")}</div>`);
+        if ((r.launchChecklist || []).length) sections.push(`<div class="sec">${secHead("출시 전 체크리스트", "세상에 내놓기 전 확인할 것")}<ul class="ul">${r.launchChecklist.map((v) => `<li>${esc(v)}</li>`).join("")}</ul></div>`);
+        if ((r.guideCards || []).length) sections.push(`<div class="sec">${secHead("📚 바이브 코딩 꿀팁", "이 아이디어에 맞춘 조언")}${r.guideCards.map((g) => `<div class="box"><b>${esc(g.title)}</b><div class="sub">${esc(g.body)}</div></div>`).join("")}</div>`);
+        if (r.aiPrompt) sections.push(`<div class="sec">${secHead("AI에게 그대로 줄 지시문", "Claude Code·Cursor 같은 도구에 붙여넣기")}<pre class="prompt">${esc(r.aiPrompt)}</pre><div class="plainnote">위 내용을 복사해 AI 코딩 도구에 붙여넣으면 바로 만들기 시작할 수 있어요.</div></div>`);
+
+        const heroInner = heroImageUrl
+          ? `<img src="${heroImageUrl}" alt="개념 이미지" />`
+          : ((state.imageOn && imageAvailable && r.imagePrompt)
+              ? `<div class="ph"><div class="ico">🎨</div>개념 이미지 준비 중…</div>`
+              : `<div class="ph"><div class="ico">🧩</div>${esc(r.title || "프로젝트")}</div>`);
+        $("planArea").innerHTML = `
+          <div class="hero">
+            <div class="img" id="heroImg">${heroInner}</div>
+            <div class="body">
+              <h2>${esc(r.title || "프로젝트")}</h2>
+              <p class="tag">${esc(r.tagline || "")}</p>
+              ${rd.score != null ? `<div class="readiness"><div class="ring" data-ring-score="${rd.score}"><span>${rd.score}</span></div><div class="rl"><b>시작 준비도 ${rd.score}점</b><span>${(rd.reasons || []).slice(0, 1).map(esc).join("")}</span></div></div>` : ""}
+            </div>
+          </div>
+          <div class="actions">
+            ${canCreate ? `<button class="btn" id="toStudio">🛠 스튜디오에서 만들기 →</button>` : ""}
+            <button class="btn ghost" id="copyMd">📋 마크다운 복사</button>
+            <button class="btn ghost" id="dlMd">⬇ 다운로드</button>
+            <button class="btn ghost" id="again">↺ 새로 만들기</button>
+          </div>
+          ${sections.join("")}`;
+        $("planArea").querySelectorAll("[data-ring-score]").forEach((ring) => {
+          ring.style.setProperty("--p", ring.dataset.ringScore || "0");
+        });
+        $("copyMd").onclick = () => navigator.clipboard.writeText(toMarkdown(lastResult)).then(() => flash("copyMd", "✓ 복사됨"), () => {});
+        $("dlMd").onclick = () => download((lastResult.title || "project") + ".md", toMarkdown(lastResult));
+        $("again").onclick = () => { heroImageUrl = null; refineHistory = []; $("result").hidden = true; $("intro").hidden = false; $("wizard").hidden = false; showStep(0); window.scrollTo({ top: 0, behavior: "smooth" }); };
+        if ($("toStudio")) $("toStudio").onclick = () => {
+          try { sessionStorage.setItem("quilo_vibe_handoff", JSON.stringify({ prompt: studioPrompt(lastResult), title: lastResult.title || "" })); } catch {}
+          location.href = "/studio.html?from=vibe";
+        };
+      }
+      function flash(id, t) { const b = $(id); const o = b.textContent; b.textContent = t; setTimeout(() => (b.textContent = o), 1400); }
+
+      function studioPrompt(r) {
+        const feats = (r.mvp || []).map((m) => `- ${m.feature}`).join("\n");
+        const screens = (r.screens || []).map((s) => s.name).filter(Boolean).join(", ");
+        const lines = [`"${r.title || "프로젝트"}" — ${r.tagline || ""}`, "", "아래 기능을 갖춘, 작동하는 단일 페이지 웹앱(HTML/CSS/JS 한 파일)으로 만들어줘:"];
+        if (feats) lines.push(feats);
+        if (screens) lines.push("", `주요 화면: ${screens}`);
+        lines.push("", "데이터는 localStorage에 저장하고, 깔끔하고 모바일에서도 보기 좋게 만들어줘.");
+        return lines.join("\n");
+      }
+      function toMarkdown(r) {
+        const L = [`# ${r.title || "프로젝트"}`, "", `> ${r.tagline || ""}`, ""];
+        if (r.problem) L.push(`## 어떤 문제를 풀어요`, r.problem, "");
+        if (r.targetUser) L.push(`## 누가 쓸까요`, r.targetUser, "");
+        if ((r.mvp || []).length) { L.push(`## 먼저 만들 핵심 기능 (MVP)`); r.mvp.forEach((m) => L.push(`- **${m.feature}** — ${m.why}`)); L.push(""); }
+        if ((r.screens || []).length) { L.push(`## 필요한 화면`); r.screens.forEach((s) => L.push(`- **${s.name}** — ${s.purpose}${(s.elements || []).length ? ` (${s.elements.join(", ")})` : ""}`)); L.push(""); }
+        if ((r.modules || []).length) { L.push(`## 코드 구성`); r.modules.forEach((m) => L.push(`- **${m.name}** — ${m.responsibility}`)); L.push(""); }
+        if ((r.dataModel || []).length) { L.push(`## 저장할 데이터`); r.dataModel.forEach((d) => L.push(`- **${d.entity}**: ${(d.fields || []).join(", ")}`)); L.push(""); }
+        if ((r.firstTasks || []).length) { L.push(`## 첫 작업`); r.firstTasks.forEach((t, i) => L.push(`${i + 1}. **${t.task}** — ${t.detail}${t.done ? ` _(완료: ${t.done})_` : ""}`)); L.push(""); }
+        if (r.stack) L.push(`## 추천 스택`, `${(r.stack.recommended || []).join(", ")}`, r.stack.rationale || "", "");
+        if ((r.validation || []).length) { L.push(`## 잘 됐는지 확인하는 법`); r.validation.forEach((v) => L.push(`- ${v}`)); L.push(""); }
+        if ((r.risks || []).length) { L.push(`## 막힐 만한 지점`); r.risks.forEach((x) => L.push(`- **${x.risk}** → ${x.mitigation}`)); L.push(""); }
+        if ((r.variations || []).length) { L.push(`## 다른 방향`); r.variations.forEach((v) => L.push(`- **${v.angle}**: ${v.idea}`)); L.push(""); }
+        if ((r.launchChecklist || []).length) { L.push(`## 출시 체크리스트`); r.launchChecklist.forEach((v) => L.push(`- [ ] ${v}`)); L.push(""); }
+        if ((r.guideCards || []).length) { L.push(`## 바이브 코딩 꿀팁`); r.guideCards.forEach((g) => L.push(`### ${g.title}`, g.body, "")); }
+        if (r.aiPrompt) L.push(`## AI 코딩 도구용 지시문`, "```", r.aiPrompt, "```", "");
+        return L.join("\n");
+      }
+      function download(name, text) {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(new Blob([text], { type: "text/markdown" }));
+        a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+      }
+
+      // ───────── 부트 ─────────
+      async function boot() {
+        const access = await window.QuiloEntitlement.require({
+          feature: "vibe-coding",
+          gate: "#gate",
+          content: "#wizard",
+          forbiddenTitle: "바이브 코딩 생성기는 Pro 권한이 필요합니다",
+          forbiddenMessage: "Pro·Max 또는 별도 기능 권한이 있는 계정에서 사용할 수 있습니다."
+        });
+        if (!access.allowed) return;
+        try { bal = await api("/api/me/balance"); }
+        catch (e) { bal = {}; }
+        modelCredits = (bal && bal.modelCredits) || {};
+        try {
+          const b = access.details || await api("/api/me/beta");
+          canCreate = !!b.admin || String(b.tier || "").toLowerCase() === "max" || (Array.isArray(b.features) && b.features.includes("create"));
+        } catch {}
+        try {
+          const cfg = await api("/api/vibe/config");
+          (cfg.models || []).forEach((m) => { modelLabels[m.id] = m.label; if (typeof m.credits === "number") modelCredits[m.id] = m.credits; });
+          if (cfg.defaultModel && modelLabels[cfg.defaultModel]) state.model = cfg.defaultModel;
+          imageAvailable = !!cfg.imageAvailable;
+          if (typeof cfg.imageCredits === "number") imageCredits = cfg.imageCredits;
+          state.imageOn = imageAvailable;
+        } catch {}
+        if (!Object.keys(modelLabels).length) modelLabels["claude-opus-4-8"] = "Claude Opus 4.8";
+        $("wizard").hidden = false;
+        showStep(0);
+      }
+      boot();
+    </script>
+
+  </body>
+</html>

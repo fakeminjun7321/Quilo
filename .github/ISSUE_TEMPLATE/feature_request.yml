@@ -1,0 +1,31 @@
+name: 기능·설계 제안
+description: 기능, 구조, 문서 또는 커뮤니티 개선을 제안합니다.
+title: "[Proposal] "
+labels: ["proposal", "needs-triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 해결하려는 문제
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 제안
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 고려한 대안과 트레이드오프
+  - type: dropdown
+    id: contribution
+    attributes:
+      label: 직접 기여 가능 여부
+      options:
+        - 구현 또는 문서 PR을 준비할 수 있습니다.
+        - 테스트나 리뷰를 도울 수 있습니다.
+        - 아이디어만 제안합니다.
+    validations:
+      required: true

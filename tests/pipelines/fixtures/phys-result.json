@@ -1,0 +1,145 @@
+{
+  "__meta": {
+    "id": "fixture-phys-result",
+    "type": "phys-result",
+    "synthetic": true,
+    "render": {
+      "studentId": "0000",
+      "studentName": "",
+      "temperature": "",
+      "pressure": "",
+      "date": "2026-01-15"
+    },
+    "expect": {
+      "docxIncludes": [
+        "Atwood Machine 가속도 측정",
+        "질량 차이에 따른 가속도",
+        "Acceleration vs Mass Difference"
+      ],
+      "docxMinMedia": 2,
+      "hwpxIncludes": [
+        "Atwood Machine"
+      ],
+      "hwpxMinBinData": 2
+    },
+    "sidecar": "phys-result.bin"
+  },
+  "content": {
+    "title": "Atwood Machine 가속도 측정",
+    "experiment_setup": {
+      "description": "도르래 양쪽에 질량이 다른 추를 걸고 운동 센서로 가속도를 측정했다. 이론 가속도는 {{EQ:a = (m_1 - m_2)g/(m_1 + m_2)}} 로 계산한다.",
+      "photo_indices": [
+        0
+      ],
+      "photo_captions": [
+        "실험 장치 구성"
+      ]
+    },
+    "experiments": [
+      {
+        "name": "질량 차이에 따른 가속도",
+        "method_summary": "질량 차이를 4 g에서 10 g까지 바꾸며 각 조건에서 가속도를 3회씩 측정했다.",
+        "data_table": {
+          "headers": [
+            "질량 차이 (g)",
+            "측정 가속도 (m/s^2)",
+            "이론 가속도 (m/s^2)"
+          ],
+          "rows": [
+            [
+              "4",
+              "0.36",
+              "0.39"
+            ],
+            [
+              "6",
+              "0.55",
+              "0.58"
+            ],
+            [
+              "8",
+              "0.74",
+              "0.77"
+            ],
+            [
+              "10",
+              "0.93",
+              "0.96"
+            ]
+          ]
+        },
+        "chart": {
+          "title": "Acceleration vs Mass Difference",
+          "type": "scatter",
+          "x_label": "Mass difference (g)",
+          "y_label": "Acceleration (m/s^2)",
+          "series": [
+            {
+              "label": "Measured",
+              "points": [
+                {
+                  "x": 4,
+                  "y": 0.36
+                },
+                {
+                  "x": 6,
+                  "y": 0.55
+                },
+                {
+                  "x": 8,
+                  "y": 0.74
+                },
+                {
+                  "x": 10,
+                  "y": 0.93
+                }
+              ]
+            }
+          ],
+          "trendline": {
+            "slope": 0.095,
+            "intercept": -0.02,
+            "label": "Linear Fit"
+          },
+          "caption": "질량 차이와 가속도의 선형 관계",
+          "$hidden$": {
+            "pngBuffer": {
+              "$bin$": "b0002.bin"
+            }
+          }
+        },
+        "analysis": "가속도는 질량 차이에 대해 뚜렷한 선형 증가를 보였고, 산점도의 최소제곱 기울기는 이론 예측과 5% 이내에서 일치했다. 절편이 약간 음수인 것은 도르래 축 마찰이 만드는 문턱 효과로 해석되며, 질량 차이가 커질수록 상대 오차가 줄어드는 경향도 확인되었다.",
+        "photo_indices": [],
+        "photo_captions": []
+      }
+    ],
+    "conclusion": {
+      "objective_recap": "Atwood 기계에서 질량 차이와 가속도의 관계를 확인하는 것이 목적이었다.",
+      "result_summary": "네 가지 질량 차이 조건 모두에서 가속도는 질량 차이에 선형으로 비례했고, 측정 가속도는 이론값보다 평균 3% 작았다. 기울기 자체는 이론 예측과 잘 일치해 뉴턴 제2법칙에 따른 선형 관계가 유지됨을 확인했다.",
+      "error_analysis": [
+        "도르래 축 마찰이 계에 저항으로 작용해 측정 가속도를 이론값보다 일관되게 줄였다.",
+        "줄의 질량을 무시한 근사가 전체 관성 질량을 과소평가해 작은 계통 오차를 만들었다."
+      ],
+      "problem_solving": "초기 측정에서 속도 그래프의 시작점이 0이 아닌 문제가 있어, 센서 영점을 매 측정 전에 재설정하고 추를 정지 상태에서 놓아 초기 속도 오프셋 문제를 해결했다.",
+      "physical_meaning": "질량 차이가 만드는 알짜힘이 계 전체의 관성 질량을 가속한다는 점에서, 이 실험은 뉴턴 제2법칙을 정량적으로 검증하는 직접적인 사례가 된다."
+    },
+    "additional_investigations": [
+      {
+        "title": "도르래 관성 보정",
+        "body": "도르래의 회전 관성을 포함한 모형으로 다시 계산하면 이론값과의 차이가 1% 수준으로 줄어드는지 확인하고자 한다."
+      }
+    ],
+    "date": "2026-01-15",
+    "$hidden$": {
+      "__photos": [
+        {
+          "buffer": {
+            "$bin$": "b0001.bin"
+          },
+          "name": "setup.png",
+          "mimetype": "image/png"
+        }
+      ]
+    }
+  }
+}

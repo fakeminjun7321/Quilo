@@ -1,0 +1,13 @@
+{
+  "$doc": "양식 메이커(type=form-maker) 콘텐츠 스키마 — 미니 형식은 lib/content-schema.js 상단 주석 참고. generate.js 가 title/blocks 를 기본값으로 채우지만 blocks 가 비면 빈 양식이라 required. 블록 type 은 heading|paragraph|table|figure|summary_box|spacer|pagebreak|columns 등이며 렌더러가 미지 타입을 건너뛰므로 개별 블록 구조는 검사하지 않는다.",
+  "required": [
+    { "path": "title", "type": "string", "minLen": 1 },
+    { "path": "blocks", "type": "array", "minItems": 1 }
+  ],
+  "warn": [
+    { "path": "doc_type", "type": "string", "minLen": 1 },
+    { "path": "meta", "type": "object", "optional": true }
+  ],
+  "forbidMarkers": true,
+  "metrics": ["blocks"]
+}

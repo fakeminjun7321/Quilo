@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="canonical" href="https://quilolab.com/physics-studio.html" />
+    <meta name="description" content="고급 물리 문제 스튜디오 — 주제·난이도를 고르면 AI가 풀이·힌트·검산이 있는 새로운 심화 물리 문제를 만들어 줍니다." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="/ui/foundation.css" />
+    <link rel="stylesheet" href="/ui/shell.css" />
+    <link rel="stylesheet" href="/ui/app-shell.css" />
+    <link rel="stylesheet" href="/ui/app-generator.css" />
+    <script src="/ui/entitlement-gate.js"></script>
+    <script src="/ui/app-assets.js"></script>
+    <meta name="theme-color" content="#2563eb" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <title>고급 물리 문제 스튜디오 — Quilo</title>
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("theme");
+          if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          document.documentElement.setAttribute("data-theme", t);
+        } catch (e) {}
+      })();
+    </script>
+</head>
+  <body id="appShell" class="app-shell app-shell--physics-studio" data-app-shell>
+    <header class="ui-site-header" data-ui-shell data-shell-mode="fixed"></header>
+    <script src="/ui/shell.js"></script>
+<main class="wrap" id="main-content" aria-label="고급 물리 문제 스튜디오">
+      <section class="intro">
+        <h1>고급 물리 문제 스튜디오</h1>
+        <p>주제·난이도·출제 스타일을 고르면 AI가 풀이·힌트·검산이 함께 있는 <b>새로운</b> 심화 물리 문제를 만들어 줍니다. 해석역학, 전자기학, 상대론 등 대학·올림피아드 수준 주제를 지원합니다.</p>
+      </section>
+
+      <div id="gate" class="locked app-inline-physics-studio-1" hidden>
+        🔒 이 기능은 <b>로그인한 사용자</b>가 이용할 수 있어요.
+        <div class="app-inline-physics-studio-2"><a class="btn app-inline-physics-studio-3" href="/login.html?next=%2Fphysics-studio.html">로그인하기</a></div>
+      </div>
+
+      <div class="grid app-inline-physics-studio-1" id="app" hidden>
+        <div class="card" id="formCard">
+          <div class="field">
+            <label for="topic">주제</label>
+            <textarea id="topic" placeholder="예: 라그랑주 역학 — 회전하는 포물선 철사 위의 구슬 / 자기장 속 하전입자 운동 / 특수상대론 운동량-에너지"></textarea>
+          </div>
+          <div class="two">
+            <div class="field">
+              <label for="difficulty">난이도</label>
+              <select id="difficulty"></select>
+            </div>
+            <div class="field">
+              <label for="count">문항 수</label>
+              <select id="count">
+                <option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="style">출제 스타일</label>
+            <select id="style"></select>
+          </div>
+          <div class="field">
+            <label for="notes">추가 요청 (선택)</label>
+            <input type="text" id="notes" placeholder="예: 보존량을 강조, SI 단위로, 그림 상황 묘사 자세히" />
+          </div>
+          <div class="toggles">
+            <label><input type="checkbox" id="sol" checked /> 풀이 포함</label>
+            <label><input type="checkbox" id="hint" checked /> 힌트 포함</label>
+          </div>
+          <div class="field">
+            <label for="model">생성 모델</label>
+            <select id="model"></select>
+          </div>
+          <div class="costline">
+            <span>예상 차감 <span class="pill" id="cost">–</span></span>
+            <span id="bal" class="muted"></span>
+          </div>
+          <button class="btn app-inline-physics-studio-4" id="go">문제 생성</button>
+          <div class="err" id="err"></div>
+        </div>
+
+        <div id="out">
+          <div class="placeholder">왼쪽에서 주제를 적고 <b>문제 생성</b>을 누르면 여기에 문제가 나타납니다.</div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="app-statusbar" aria-label="앱 상태">
+      <span class="app-statusbar__dot" aria-hidden="true"></span>
+      <span>준비됨</span>
+      <span class="app-statusbar__meta">고급 물리 문제 스튜디오 · Quilo</span>
+    </footer>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+      let modelCredits = {}, lastResult = null;
+
+      async function api(path, opts) {
+        const r = await fetch(path, { credentials: "same-origin", headers: { "Content-Type": "application/json" }, ...opts });
+        let j = null; try { j = await r.json(); } catch {}
+        if (!r.ok) { const e = new Error((j && j.error) || ("오류 " + r.status)); e.status = r.status; throw e; }
+        return j;
+      }
+
+      async function boot() {
+        const access = await window.QuiloEntitlement.require({
+          feature: "physics-studio",
+          gate: "#gate",
+          content: "#app",
+          forbiddenTitle: "고급 물리 문제 스튜디오는 Pro 권한이 필요합니다",
+          forbiddenMessage: "Pro·Max 또는 별도 기능 권한이 있는 계정에서 사용할 수 있습니다."
+        });
+        if (!access.allowed) return;
+        let bal;
+        try { bal = await api("/api/me/balance"); }
+        catch (e) { bal = {}; }
+        modelCredits = (bal && bal.modelCredits) || {};
+        if (bal && !bal.isAdmin && typeof bal.credits === "number") $("bal").textContent = "· 보유 크레딧 " + bal.credits;
+        else if (bal && bal.isAdmin) $("bal").textContent = "· 관리자(무제한)";
+        try {
+          const cfg = await api("/api/physics-studio/config");
+          $("model").innerHTML = (cfg.models || []).map((m) => `<option value="${esc(m.id)}"${m.id === cfg.defaultModel ? " selected" : ""}>${esc(m.label)}</option>`).join("") || `<option value="claude-opus-4-8">Claude Opus 4.8</option>`;
+          (cfg.models || []).forEach((m) => { if (typeof m.credits === "number") modelCredits[m.id] = m.credits; });
+          $("difficulty").innerHTML = (cfg.difficulties || ["상위 학부 중상"]).map((d) => `<option${d === "상위 학부 중상" ? " selected" : ""}>${esc(d)}</option>`).join("");
+          $("style").innerHTML = (cfg.styles || []).map((s) => `<option value="${esc(s.id)}"${s.id === "olympiad-deep" ? " selected" : ""}>${esc(shortStyle(s.label))}</option>`).join("");
+        } catch {}
+        updateCost();
+        $("model").onchange = updateCost;
+      }
+      function shortStyle(label) { return String(label || "").split("—")[0].trim(); }
+      function updateCost() {
+        const c = modelCredits[$("model").value];
+        $("cost").textContent = c === 0 ? "무료" : (typeof c === "number" ? c + " 크레딧" : "–");
+      }
+
+      function typeset(el) {
+        window.QuiloAssets.mathjax()
+          .then(() => window.MathJax.typesetPromise([el]))
+          .catch(() => {});
+      }
+
+      async function generate() {
+        const topic = $("topic").value.trim();
+        if (topic.length < 2) { $("err").textContent = "문제 주제를 입력해 주세요."; return; }
+        $("err").textContent = "";
+        $("go").disabled = true; $("go").innerHTML = '<span class="spinner"></span> 생성 중…';
+        $("out").innerHTML = '<div class="placeholder"><span class="spinner app-runtime-spinner-accent"></span> AI가 문제를 출제하고 검산하는 중… (보통 1~3분, 문항이 많으면 더 걸려요)</div>';
+        try {
+          const j = await api("/api/physics-studio/generate", {
+            method: "POST",
+            body: JSON.stringify({
+              topic, difficulty: $("difficulty").value, count: $("count").value, style: $("style").value,
+              notes: $("notes").value, includeSolutions: $("sol").checked, includeHints: $("hint").checked, model: $("model").value,
+            }),
+          });
+          lastResult = j.result;
+          render(j.result);
+          if (typeof j.newBalance === "number") $("bal").textContent = "· 보유 크레딧 " + j.newBalance;
+        } catch (e) {
+          if (e.status === 401) { location.href = "/login.html?next=%2Fphysics-studio.html"; return; }
+          $("out").innerHTML = '<div class="placeholder">생성에 실패했습니다.</div>';
+          $("err").textContent = e.message;
+        } finally {
+          $("go").disabled = false; $("go").textContent = "문제 생성";
+        }
+      }
+
+      function render(r) {
+        const probs = (r.problems || []).map((p, i) => {
+          const hints = (p.hints || []).length ? `<details><summary>힌트 ${p.hints.length}개</summary><div class="inner">${p.hints.map((h) => `<div class="hintitem"><b>${esc(h.title || ("힌트 " + (h.level || "")))}.</b> ${esc(h.body)}</div>`).join("")}</div></details>` : "";
+          const sol = (p.solution && (p.solution.steps || []).length) ? `<details><summary>풀이 보기</summary><div class="inner">${p.solution.steps.map((s) => `<div class="step"><b>${esc(s.label || "")}</b><div class="body">${esc(s.body)}</div></div>`).join("")}${p.solution.finalAnswer ? `<div class="final"><b>답.</b> ${esc(p.solution.finalAnswer)}</div>` : ""}</div></details>` : (p.solution && p.solution.finalAnswer ? `<div class="final"><b>답.</b> ${esc(p.solution.finalAnswer)}</div>` : "");
+          return `<div class="prob">
+            <div class="ptop"><h3>${i + 1}. ${esc(p.title || ("문제 " + (i + 1)))}</h3><span class="meta">${esc(p.subtopic || "")}${p.difficulty ? " · " + esc(p.difficulty) : ""}${p.estimatedMinutes ? " · ~" + esc(p.estimatedMinutes) + "분" : ""}</span></div>
+            <div class="statement">${esc(p.statement || "")}</div>
+            ${(p.tasks || []).length ? `<ol class="tasks">${p.tasks.map((t) => `<li>${esc(t)}</li>`).join("")}</ol>` : ""}
+            ${hints}
+            ${sol}
+            ${(p.concepts || []).length ? `<div class="sectitle">핵심 개념</div><div class="chips">${p.concepts.map((c) => `<span class="chip">${esc(c)}</span>`).join("")}</div>` : ""}
+            ${(p.checks || []).length ? `<div class="sectitle">검산</div><div class="mistakes"><ul class="app-runtime-list">${p.checks.map((c) => `<li>${esc(c)}</li>`).join("")}</ul></div>` : ""}
+            ${(p.commonMistakes || []).length ? `<div class="sectitle">흔한 오답</div><div class="mistakes"><ul class="app-runtime-list">${p.commonMistakes.map((c) => `<li>${esc(c)}</li>`).join("")}</ul></div>` : ""}
+          </div>`;
+        }).join("");
+        $("out").innerHTML = `<div class="card">
+          <div class="toolbar">
+            <button class="btn ghost" id="copyMd">📋 마크다운 복사</button>
+            <button class="btn ghost" id="dlMd">⬇ 다운로드</button>
+            <button class="btn ghost" id="toggleAll">풀이 모두 펼치기</button>
+          </div>
+          <div class="setmeta"><h2>${esc(r.title || "문제 세트")}</h2>${r.overview ? `<p>${esc(r.overview)}</p>` : ""}</div>
+          <div class="disclaimer">⚠ 문제와 풀이는 AI가 생성했습니다. 시험·제출 전에는 직접 검산하세요.</div>
+          ${probs}
+        </div>`;
+        typeset($("out"));
+        $("copyMd").onclick = () => navigator.clipboard.writeText(toMarkdown(lastResult)).then(() => flash("copyMd", "✓ 복사됨"), () => {});
+        $("dlMd").onclick = () => download((lastResult.title || "physics-problems") + ".md", toMarkdown(lastResult));
+        let open = false;
+        $("toggleAll").onclick = () => { open = !open; $("out").querySelectorAll("details").forEach((d) => (d.open = open)); $("toggleAll").textContent = open ? "풀이 모두 접기" : "풀이 모두 펼치기"; };
+      }
+      function flash(id, t) { const b = $(id); const o = b.textContent; b.textContent = t; setTimeout(() => (b.textContent = o), 1400); }
+
+      function toMarkdown(r) {
+        const L = [`# ${r.title || "물리 문제 세트"}`, ""];
+        if (r.overview) L.push(r.overview, "");
+        (r.problems || []).forEach((p, i) => {
+          L.push(`## ${i + 1}. ${p.title || ""}`, "");
+          if (p.subtopic || p.difficulty) L.push(`_${[p.subtopic, p.difficulty].filter(Boolean).join(" · ")}_`, "");
+          if (p.statement) L.push(p.statement, "");
+          (p.tasks || []).forEach((t, k) => L.push(`${k + 1}. ${t}`));
+          if ((p.tasks || []).length) L.push("");
+          if ((p.hints || []).length) { L.push(`**힌트**`); p.hints.forEach((h) => L.push(`- ${h.title ? "**" + h.title + "** " : ""}${h.body}`)); L.push(""); }
+          if (p.solution && (p.solution.steps || []).length) { L.push(`**풀이**`); p.solution.steps.forEach((s) => L.push(`- ${s.label ? "**" + s.label + "** " : ""}${s.body}`)); L.push(""); }
+          if (p.solution && p.solution.finalAnswer) L.push(`**답.** ${p.solution.finalAnswer}`, "");
+          if ((p.concepts || []).length) L.push(`핵심 개념: ${p.concepts.join(", ")}`, "");
+          if ((p.checks || []).length) { L.push(`검산:`); p.checks.forEach((c) => L.push(`- ${c}`)); L.push(""); }
+          if ((p.commonMistakes || []).length) { L.push(`흔한 오답:`); p.commonMistakes.forEach((c) => L.push(`- ${c}`)); L.push(""); }
+          L.push("---", "");
+        });
+        return L.join("\n");
+      }
+      function download(name, text) {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(new Blob([text], { type: "text/markdown" }));
+        a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+      }
+
+      $("go").onclick = generate;
+      boot();
+    </script>
+
+  </body>
+</html>

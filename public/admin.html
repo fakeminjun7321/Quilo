@@ -1,0 +1,3725 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#2563eb" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>관리자 — Quilo</title>
+    <script>
+      // FOUC 방지: CSS 적용 전에 테마를 먼저 설정한다.
+      (function () {
+        try {
+          var t = localStorage.getItem("theme");
+          if (!t)
+            t = window.matchMedia("(prefers-color-scheme: dark)").matches
+              ? "dark"
+              : "light";
+          document.documentElement.setAttribute("data-theme", t);
+        } catch (e) {}
+      })();
+    </script>
+    <link rel="stylesheet" href="/ui/foundation.css" />
+    <link rel="stylesheet" href="/ui/admin.css" />
+    <script src="/ui/isolated-js-runner.js"></script>
+  </head>
+  <body class="operations-shell">
+    <header class="operations-commandbar">
+      <div class="operations-commandbar__inner">
+        <a href="/" class="operations-brand" aria-label="Quilo 홈">
+          <img src="/favicon.png" alt="" width="38" height="38" />
+          <span class="operations-brand__copy"><strong>Quilo</strong><small>Operations</small></span>
+        </a>
+        <strong id="adminPageTitle" class="operations-commandbar__title">운영 개요</strong>
+        <div class="operations-commandbar__actions">
+          <a href="/">메인으로</a>
+          <a href="#" id="logout">로그아웃</a>
+          <button
+            type="button"
+            id="themeToggle"
+            class="context-theme operations-theme"
+            aria-label="다크 모드로 전환"
+            title="다크 모드로 전환"
+          >
+            <span class="context-theme__icon context-theme__icon--moon operations-theme__icon operations-theme__icon--moon" aria-hidden="true">☾</span>
+            <span class="context-theme__icon context-theme__icon--sun operations-theme__icon operations-theme__icon--sun" aria-hidden="true">☀</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <nav id="adminTabs" class="operations-sidebar" aria-label="관리자 섹션" role="tablist">
+      <span class="admin-nav-label">Workspace</span>
+      <button type="button" class="atab" data-go="ai" role="tab" aria-selected="false">AI 관리자 보조</button>
+      <button type="button" class="atab" data-go="users" role="tab" aria-selected="false">사용자</button>
+      <button type="button" class="atab" data-go="subs" role="tab" aria-selected="false">구독·등급</button>
+      <button type="button" class="atab" data-go="grants" role="tab" aria-selected="false">권한·위임</button>
+      <button type="button" class="atab" data-go="beta" role="tab" aria-selected="false">시스템·기능</button>
+      <span class="admin-nav-label">Governance</span>
+      <button type="button" class="atab" data-go="schools" role="tab" aria-selected="false">학교 신청</button>
+      <button type="button" class="atab" data-go="logs" role="tab" aria-selected="false">사용량</button>
+      <button type="button" class="atab" data-go="announce" role="tab" aria-selected="false">공지</button>
+      <button type="button" class="atab" data-go="appeals" role="tab" aria-selected="false">피드백·제재</button>
+      <span class="admin-nav-label">Development</span>
+      <button type="button" class="atab" data-go="editor" role="tab" aria-selected="false">코드 에디터</button>
+    </nav>
+
+    <main class="operations-main">
+      <h1 id="adminMainTitle" class="ui-sr-only">Quilo 관리자 — 운영 개요</h1>
+      <div class="operations-heading">
+        <p id="adminPageDescription">사용자 계정과 서비스 권한, 생성 기록을 안전하게 관리합니다.</p>
+        <p id="rateInfo" class="operations-rate">환율 로딩 중...</p>
+      </div>
+
+    <section class="settings-card operations-panel" id="adminAiSection" data-atab="ai">
+      <h2>AI 관리자 보조</h2>
+      <p class="hint">로그인·사용 로그·통계·Pro 현황을 묻고, 크레딧 충전·rate 해제·Pro 토글·사용자 생성 등 작업을 <b>확인 후 실행</b>할 수 있습니다. (질문 데이터는 외부 AI로 전송 — 관리자 전용)</p>
+      <div class="admin-ai-model-row">
+        <span class="admin-ai-model-label">모델</span>
+        <select id="aaModel" class="admin-ai-model-select" title="개조(무료) / 똑똑한 모델(유료)"></select>
+        <span class="hint admin-ai-model-hint" id="aaModelHint"></span>
+      </div>
+      <div id="aaMsgs" class="admin-ai-messages"></div>
+      <div id="aaChips" class="admin-ai-chips"></div>
+      <div class="admin-ai-compose">
+        <textarea id="aaInput" class="admin-ai-input" rows="1" aria-label="AI 관리자 보조 질문" placeholder="예: 최근 로그인 실패가 많은 IP 있어?"></textarea>
+        <button id="aaSend" class="secondary compact">전송</button>
+      </div>
+    </section>
+
+    <section class="settings-card operations-panel" id="adminAnnSection" data-atab="announce">
+      <div class="card-head"><h2>공지 목록</h2><span id="annStatus" class="inline-status announcement-status"></span></div>
+      <p class="hint">메인 상단 공지 레일에 노출되는 항목을 검색·활성화하고, 오른쪽 편집 인스펙터에서 새 공지를 미리 확인합니다.</p>
+      <div id="annAdminList" class="announcement-list"></div>
+      <aside class="announcement-inspector" aria-label="공지 편집 인스펙터">
+        <h3>공지 편집</h3>
+      <div class="compact-form announcement-form">
+        <label class="announcement-form__title">제목<br><input id="annTitle" class="field-full" maxlength="200" placeholder="예: 1학기 기말 대비 점검 안내"></label>
+        <label class="announcement-form__category">분류<br><input id="annCat" class="field-full" maxlength="40" placeholder="공지"></label>
+        <label class="announcement-form__link">링크(선택)<br><input id="annLink" class="field-full" maxlength="500" placeholder="https://..."></label>
+        <button id="annAddBtn" class="primary compact">공지 게시</button>
+      </div>
+        <div class="announcement-preview" aria-label="공지 미리보기">
+          <span class="announcement-category" id="annPreviewCategory">공지</span>
+          <strong id="annPreviewTitle">공지 제목을 입력하세요</strong>
+          <span class="announcement-preview__action">자세히 ›</span>
+        </div>
+        <p class="hint">실제 공개 화면의 단일 공지 레일 형태로 표시됩니다.</p>
+      </aside>
+    </section>
+
+    <section class="settings-card operations-panel" id="adminUserInspector" data-atab="users">
+      <div class="user-inspector-head">
+        <div>
+          <span class="admin-eyebrow">Selected account</span>
+          <h2>사용자 인스펙터</h2>
+        </div>
+        <button type="button" id="userInspectorClose" class="secondary compact" hidden>선택 해제</button>
+      </div>
+      <div id="userInspectorDetails" class="user-inspector-details">
+        <b>사용자를 선택하세요</b>
+        <span>목록의 행을 누르면 계정·인증·사용 현황을 이 화면에서 확인합니다.</span>
+      </div>
+      <div id="userInspectorActions" class="user-inspector-actions" hidden>
+        <h3>빠른 작업</h3>
+        <div class="user-inspector-action-grid">
+          <button type="button" data-inspector-action="topup">크레딧 조정</button>
+          <button type="button" data-inspector-action="approve">승인 상태</button>
+          <button type="button" data-inspector-action="roles">스탭·개발자 권한</button>
+          <button type="button" data-inspector-action="model">모델 권한</button>
+          <button type="button" data-inspector-action="reports">보고서 권한</button>
+          <button type="button" data-inspector-action="edit">비밀번호 변경</button>
+          <button type="button" data-inspector-action="unlock">사용 잠금 해제</button>
+        </div>
+        <div class="user-danger-zone">
+          <button type="button" data-inspector-action="reset">누적 사용량 초기화</button>
+          <button type="button" data-inspector-action="delete">사용자 삭제</button>
+        </div>
+      </div>
+      <details id="userCreatePanel" class="user-create-disclosure">
+        <summary>새 사용자 추가</summary>
+        <form id="addForm" class="compact-form">
+          <div class="field">
+            <label>
+              <span class="field-label">이름</span>
+              <input id="name" required maxlength="50" autocomplete="off" />
+            </label>
+          </div>
+          <div class="field">
+            <label>
+              <span class="field-label">임시 비밀번호</span>
+              <input id="password" type="password" required minlength="8" autocomplete="new-password" />
+            </label>
+            <small>서버에서 해시되어 저장됩니다. 최소 8자.</small>
+          </div>
+          <label class="check-line"><input id="isAdmin" type="checkbox" /> 관리자 권한</label>
+          <div class="form-actions">
+            <span id="addStatus" class="inline-status" aria-live="polite"></span>
+            <button type="submit">사용자 추가</button>
+          </div>
+        </form>
+      </details>
+    </section>
+
+    <section class="settings-card operations-panel" id="adminUsersSection" data-atab="users">
+      <div class="user-summary-strip" aria-label="사용자 현황">
+        <button type="button" class="user-summary-item is-active" data-user-preset="all" aria-pressed="true"><span>전체 사용자</span><strong id="userMetricTotal">-</strong></button>
+        <button type="button" class="user-summary-item" data-user-preset="pending" aria-pressed="false"><span>승인 대기</span><strong id="userMetricPending">-</strong></button>
+        <button type="button" class="user-summary-item" data-user-preset="unverified" aria-pressed="false"><span>이메일 미인증</span><strong id="userMetricUnverified">-</strong></button>
+        <button type="button" class="user-summary-item" data-user-preset="locked" aria-pressed="false"><span>사용 잠김</span><strong id="userMetricLocked">-</strong></button>
+        <button type="button" class="user-summary-item" data-user-preset="admin" aria-pressed="false"><span>관리자</span><strong id="userMetricAdmin">-</strong></button>
+      </div>
+      <div class="user-console-toolbar">
+        <div class="user-console-search">
+          <label for="adminUserFilter">사용자 검색</label>
+          <input id="adminUserFilter" class="console-search" type="search" placeholder="이름, 아이디, 학번, 이메일" aria-label="사용자 검색" autocomplete="off" />
+        </div>
+        <label class="user-console-control">상태
+          <select id="adminUserStatusFilter">
+            <option value="all">전체</option>
+            <option value="pending">승인 대기</option>
+            <option value="unverified">이메일 미인증</option>
+            <option value="locked">사용 잠김</option>
+            <option value="low-credit">크레딧 부족</option>
+            <option value="admin">관리자</option>
+          </select>
+        </label>
+        <label class="user-console-control">정렬
+          <select id="adminUserSort">
+            <option value="created-desc">최근 가입순</option>
+            <option value="created-asc">오래된 가입순</option>
+            <option value="credits-desc">크레딧 많은순</option>
+            <option value="spent-desc">누적 사용 많은순</option>
+          </select>
+        </label>
+        <div class="user-console-actions">
+          <button type="button" id="adminUserFilterReset" class="secondary compact">필터 초기화</button>
+          <button type="button" id="refresh" class="secondary compact">새로고침</button>
+          <button type="button" id="userCreateButton" class="primary compact">사용자 추가</button>
+        </div>
+      </div>
+      <div class="user-results-meta">
+        <p id="listStatus" aria-live="polite">사용자 목록을 불러오는 중입니다.</p>
+        <span id="userRefreshMeta"></span>
+      </div>
+      <div class="table-wrapper">
+        <table id="userTable" aria-label="사용자 목록">
+          <thead>
+            <tr>
+              <th>사용자</th>
+              <th>계정 상태</th>
+              <th>크레딧</th>
+              <th>이번 시간 사용량</th>
+              <th>가입일</th>
+              <th class="user-row-actions" aria-hidden="true">조작</th>
+            </tr>
+          </thead>
+          <tbody id="userTbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="settings-card operations-panel" id="grantsSection" data-atab="grants">
+      <div class="card-head">
+        <h2>API 키 위임</h2>
+        <button id="refreshGrants" class="secondary compact">새로고침</button>
+      </div>
+      <p class="hint">
+        지정한 사용자에게 일정 기간 동안 <b>관리자 키</b>로 무료 사용할 권한을 줍니다.
+        위임 기간에는 그 사용자의 보고서 생성과 <b>파일 챗봇</b>이 크레딧 차감 없이 서버 키로 실행됩니다.
+        개인 API 키를 저장하지는 않습니다. (DB: <code>api_key_grants</code> — 마이그레이션 필요)
+      </p>
+      <form id="grantAddForm" class="compact-form form-spaced">
+        <div class="field">
+          <label>
+            <span class="field-label">대상 사용자 이름</span>
+            <input id="grantName" maxlength="60" placeholder="사용자 이름" autocomplete="off" />
+          </label>
+        </div>
+        <div class="field">
+          <label>
+            <span class="field-label">기간(일)</span>
+            <input id="grantDays" class="duration-input" type="number" min="0" max="365" value="7" />
+          </label>
+        </div>
+        <div class="field">
+          <label>
+            <span class="field-label">+시간(선택)</span>
+            <input id="grantHours" class="duration-input" type="number" min="0" max="240" value="0" />
+          </label>
+        </div>
+        <div class="field">
+          <label>
+            <span class="field-label">메모(선택)</span>
+            <input id="grantNote" maxlength="200" placeholder="예: 시험기간 무료 사용" />
+          </label>
+        </div>
+        <button type="submit">위임 부여</button>
+        <span id="grantAddStatus" class="inline-status"></span>
+      </form>
+      <div id="grantList"></div>
+      <p id="grantStatus" class="hint"></p>
+    </section>
+
+    <section class="settings-card operations-panel" id="proTierSection" data-atab="subs">
+      <div class="card-head">
+        <h2>Pro 회원</h2>
+        <button id="refreshProMembers" class="secondary compact">새로고침</button>
+      </div>
+      <p class="hint">
+        Pro 회원은 <b>모든 Pro 기능</b>(무료 보고서 6종 · 파일 챗봇 · 창작/바이브/물리 스튜디오 ·
+        Quilo Code · 상대론 공부)을 기능별 일일 한도 안에서 무료로 사용합니다.
+        내부적으로 <code>pro</code> 우산 키 하나로 관리합니다 — 기능별 개별 테스터 지정은 더 이상 쓰지 않습니다.
+      </p>
+      <form id="proAddForm" class="compact-form form-spaced-sm">
+        <div class="field">
+          <label>
+            <span class="field-label">사용자 이름</span>
+            <input id="proName" maxlength="60" placeholder="사용자 이름" autocomplete="off" />
+          </label>
+        </div>
+        <button type="submit">Pro 지정</button>
+        <span id="proAddStatus" class="inline-status"></span>
+      </form>
+      <div id="proList"></div>
+      <p id="proStatus" class="hint"></p>
+    </section>
+
+    <section class="settings-card operations-panel" id="openFeatureSection" data-atab="subs">
+      <div class="card-head">
+        <h2>임시 공개</h2>
+        <button id="refreshOpen" class="secondary compact">새로고침</button>
+      </div>
+      <p class="hint">
+        선택한 기능을 정해진 시간 동안 <b>선택한 대상 등급</b>(모두/Pro/Max)에게 개방합니다(체험 이벤트용).
+        일일 한도는 그대로 적용되고, 시간이 지나면 자동으로 닫힙니다. 0시간 = 즉시 해제.
+      </p>
+      <form id="openForm" class="compact-form form-spaced-sm">
+        <div class="field">
+          <label>
+            <span class="field-label">기능</span>
+            <select id="openKey" class="feature-select"></select>
+          </label>
+        </div>
+        <div class="field">
+          <label>
+            <span class="field-label">대상</span>
+            <select id="openAudience" class="audience-select">
+              <option value="all" selected>모두 (로그인 사용자)</option>
+              <option value="pro">Pro 회원</option>
+              <option value="max">Max 회원</option>
+            </select>
+          </label>
+        </div>
+        <div class="field">
+          <label>
+            <span class="field-label">시간(h)</span>
+            <input id="openHours" class="duration-input" type="number" min="0" max="720" value="24" />
+          </label>
+        </div>
+        <button type="submit">임시 공개 설정</button>
+        <span id="openSetStatus" class="inline-status"></span>
+      </form>
+      <div id="openList"></div>
+      <p id="openStatus" class="hint"></p>
+    </section>
+
+    <section class="settings-card operations-panel" id="bgSubsSection" data-atab="subs">
+      <div class="card-head">
+        <h2>Max 구독 — 백그라운드·PDF 통번역</h2>
+        <button id="refreshSubs" class="secondary compact">새로고침</button>
+      </div>
+      <p class="hint">
+        지정한 사용자에게 일정 기간 <b>Max</b> 권한(백그라운드 실행 + PDF 통번역 월 300쪽)을 줍니다.
+        켜진 사용자는 보고서를 제출하고 <b>탭/창을 닫아도</b> 서버가 끝까지 생성하며,
+        '내 파일'과 <b>완료 이메일</b>로 받을 수 있습니다.
+        (30일 5,000원 · 입금 승인 시 10크레딧 자동 지급 · DB: <code>background_subscriptions</code>)
+      </p>
+      <form id="subAddForm" class="compact-form form-spaced">
+        <div class="field">
+          <label>
+            <span class="field-label">대상 사용자 이름</span>
+            <input id="subName" maxlength="60" placeholder="사용자 이름" autocomplete="off" />
+          </label>
+        </div>
+        <div class="field">
+          <label>
+            <span class="field-label">기간(일)</span>
+            <input id="subDays" class="duration-input" type="number" min="0" max="366" value="30" />
+          </label>
+        </div>
+        <div class="field">
+          <label>
+            <span class="field-label">+시간(선택)</span>
+            <input id="subHours" class="duration-input" type="number" min="0" max="240" value="0" />
+          </label>
+        </div>
+        <div class="field">
+          <label>
+            <span class="field-label">메모(선택)</span>
+            <input id="subNote" maxlength="200" placeholder="예: 6월 구독 / Max" />
+          </label>
+        </div>
+        <div class="field">
+          <label class="permanent-option">
+            <input id="subPermanent" type="checkbox" />
+            <span class="field-label permanent-option__label">무기한(만료 없음)</span>
+          </label>
+        </div>
+        <button type="submit">구독 부여</button>
+        <span id="subAddStatus" class="inline-status"></span>
+      </form>
+      <div class="subrequest-heading">
+        <b class="subrequest-heading__title">입금 신청 대기</b>
+        <button id="refreshSubReqs" class="secondary compact">새로고침</button>
+      </div>
+      <p class="hint hint-flush-top">
+        사용자가 입금 후 'Max 신청'을 하면 여기에 뜹니다. 입금 확인 후 <b>승인</b>하면
+        즉시 Max(백그라운드 실행)이 활성화됩니다. (기본 30일 · 활성이면 만료일에서 연장)
+      </p>
+      <div id="subReqList"></div>
+      <hr class="section-divider" />
+      <div id="subList"></div>
+      <p id="subStatus" class="hint"></p>
+    </section>
+
+    <section class="settings-card operations-panel" id="schoolAppsSection" data-atab="schools">
+      <div class="card-head">
+        <h2>학교 도입 신청</h2>
+        <button id="refreshSchoolApps" class="secondary compact">새로고침</button>
+      </div>
+      <p class="hint">
+        외부 학교가 <a href="/school-apply.html" target="_blank" rel="noopener">/school-apply.html</a> 에서 도입을 신청하면 여기에 뜹니다.
+        학생 이메일 도메인·학번 체계·업로드한 학교 양식으로 그 학교 전용 설정을 준비하세요.
+        상태를 바꿔 진행 상황을 관리할 수 있습니다.
+      </p>
+      <div class="school-filter-row">
+        <label class="school-filter-label">상태 필터
+          <select id="schoolAppFilter" class="school-filter-select">
+            <option value="all">전체</option>
+            <option value="new">신규</option>
+            <option value="reviewing">검토중</option>
+            <option value="contacted">연락함</option>
+            <option value="approved">승인</option>
+            <option value="rejected">거절</option>
+            <option value="archived">보관</option>
+          </select>
+        </label>
+      </div>
+      <div id="schoolAppsList"><p class="hint">불러오는 중…</p></div>
+    </section>
+
+    <section class="settings-card operations-panel" id="betaSection" data-atab="beta">
+      <div class="card-head">
+        <h2>Pro 기능</h2>
+        <button id="refreshBeta" class="secondary compact">새로고침</button>
+      </div>
+      <p class="hint">
+        Pro 기능을 켜고/끄고, 지정한 Pro 회원 계정에게만 노출합니다. 관리자는 항상 사용 가능. 여러 Pro 기능을 동시에 운영할 수 있습니다.
+      </p>
+      <form id="betaAddForm" class="compact-form form-spaced">
+        <div class="field">
+          <label>
+            <span class="field-label">새 기능 key (영문·숫자·-)</span>
+            <input id="betaKey" maxlength="40" placeholder="예: pdf-translate" />
+          </label>
+        </div>
+        <div class="field">
+          <label>
+            <span class="field-label">표시 이름</span>
+            <input id="betaLabel" maxlength="60" placeholder="예: PDF 통번역" />
+          </label>
+        </div>
+        <button type="submit">기능 추가</button>
+        <span id="betaAddStatus" class="inline-status"></span>
+      </form>
+      <div id="betaList"></div>
+      <p id="betaStatus" class="hint"></p>
+    </section>
+
+    <section class="settings-card operations-panel" id="problemsetSection" data-atab="beta">
+      <div class="card-head">
+        <h2>문제집 메이커 한도</h2>
+        <button id="refreshPsLimit" class="secondary compact">새로고침</button>
+      </div>
+      <p class="hint">
+        문제집 메이커가 한 번에 만들 수 있는 <strong>최대 문제 수</strong>입니다. 사용자가 올린 파일에서 이보다 많은 문제가 추출되면 생성이 거부됩니다. <strong>관리자는 이 한도를 받지 않습니다.</strong> 0 = 무제한.
+      </p>
+      <form id="psLimitForm" class="compact-form">
+        <div class="field">
+          <label>
+            <span class="field-label">최대 문제 수</span>
+            <input id="psLimitInput" class="problemset-limit-input" type="number" min="0" max="10000" placeholder="120" />
+          </label>
+        </div>
+        <button type="submit">저장</button>
+        <span id="psLimitStatus" class="inline-status"></span>
+      </form>
+    </section>
+
+    <section class="settings-card operations-panel" data-atab="logs">
+      <div class="card-head">
+        <h2>보고서 생성 로그</h2>
+        <button id="refreshLogs" class="secondary compact">새로고침</button>
+      </div>
+      <p class="hint">최근 30일 서비스 품질 집계와 비용 로그입니다. 분석 화면에는 보고서 제목·본문·업로드 파일명이 포함되지 않습니다.</p>
+      <div class="analytics-summary-grid" id="analyticsSummary" aria-live="polite">
+        <div><span>생성 접수</span><strong id="analyticsAccepted">-</strong></div>
+        <div><span>완료율</span><strong id="analyticsSuccessRate">-</strong></div>
+        <div><span>실패·중단</span><strong id="analyticsFailed">-</strong></div>
+        <div><span>중앙 처리시간</span><strong id="analyticsP50">-</strong></div>
+        <div><span>다운로드</span><strong id="analyticsDownloads">-</strong></div>
+        <div><span>평균 품질평가</span><strong id="analyticsQuality">-</strong></div>
+      </div>
+      <div class="analytics-breakdown" id="analyticsBreakdown"></div>
+      <div class="table-wrapper">
+        <table id="logTable">
+          <thead>
+            <tr>
+              <th>시각</th>
+              <th>사용자</th>
+              <th>종류</th>
+              <th>모델</th>
+              <th>작업 ID</th>
+              <th>비용</th>
+              <th>토큰</th>
+              <th>웹검색</th>
+            </tr>
+          </thead>
+          <tbody id="logTbody"></tbody>
+        </table>
+      </div>
+      <p id="logStatus" class="hint"></p>
+    </section>
+
+    <section class="settings-card operations-panel" id="adminAppealsSection" data-atab="appeals">
+      <div class="card-head">
+        <h2>소명·제재</h2>
+        <button id="appealsRefresh" class="secondary compact">새로고침</button>
+      </div>
+      <p class="hint">제재된 사용자가 보낸 해명입니다. <b>커뮤니티</b>(비속어 오탐)와 <b>🚫 생성 정지</b>(시간당 API 비용이 등급 한도 초과)가 함께 표시됩니다. 정상 이용이었다면 ‘밴 해제’로 풀어주세요.</p>
+      <div id="appealsList"><p class="hint">불러오는 중…</p></div>
+    </section>
+
+    <section class="settings-card operations-panel" id="adminEditorSection" data-atab="editor">
+      <h2>코드 에디터</h2>
+      <p class="hint">브라우저 안에서 동작하는 VS Code 스타일 편집기 — 여러 파일·탭, 자동완성(Ctrl/⌘+Space), 찾기(Ctrl/⌘+F), 주석 토글(Ctrl/⌘+/), 저장(Ctrl/⌘+S), 멀티커서. JS는 ▶ 실행, HTML은 미리보기.</p>
+      <p class="editor-launch-row">
+        <a href="/editor.html" target="_blank" rel="noopener" class="editor-launch-link">⛶ 전체 화면 Quilo Code 열기 (Pro)</a>
+        <span class="hint editor-launch-hint">— 더 큰 화면 · 오른쪽 Agent 패널 · 로컬 폴더 열기. 아래는 미니 임베드입니다.</span>
+      </p>
+      <div id="ide" class="ide">
+        <div class="ide-top">
+          <div class="ide-activity">
+            <button data-act="explorer" class="on" title="탐색기">🗂</button>
+            <button data-act="run" title="실행 (Ctrl/⌘+Enter)">▶</button>
+            <button data-act="ai" title="AI 도우미">✨</button>
+          </div>
+          <div class="ide-side" id="ideSide">
+            <div class="ide-side-head"><span>탐색기</span><span class="ide-side-actions"><button id="ideOpenFile" title="로컬 파일 열기">📂</button><button id="ideOpenFolder" title="로컬 폴더 열기">📁</button><button id="ideNewFile" title="새 파일">＋</button></span></div>
+            <div id="ideFiles"></div>
+          </div>
+          <div class="ide-main">
+            <div class="ide-tabs" id="ideTabs"></div>
+            <div class="ide-editorwrap">
+              <div class="ide-editorhost"><textarea id="ceArea" aria-label="코드 편집기"></textarea></div>
+              <div class="ide-minimap" id="ideMinimap"><pre id="ideMiniCode"></pre><div class="ide-mini-view" id="ideMiniView"></div></div>
+            </div>
+            <input type="file" id="ideFileInput" multiple hidden />
+            <div class="ide-panel" id="idePanel">
+              <div class="ide-panel-tabs">
+                <button data-panel="output" class="on">출력</button>
+                <button data-panel="preview">미리보기</button>
+                <button data-panel="ai">✨ AI 도우미</button>
+                <span class="flex-spacer"></span>
+                <button id="idePanelClose" title="패널 접기">▾</button>
+              </div>
+              <div class="ide-panel-body">
+                <pre id="ceOut" class="ide-pane on">▶ 실행(또는 Ctrl/⌘+Enter)을 누르면 결과가 여기에 표시됩니다.</pre>
+                <iframe id="ceFrame" class="ide-pane" title="미리보기" sandbox="allow-scripts allow-forms allow-popups allow-modals"></iframe>
+                <div id="ceAi" class="ide-pane">
+                  <div class="ide-ai-row">
+                    <select id="caModel" title="AI 모델(무료/유료)"></select>
+                    <span id="caHint" class="editor-ai-hint"></span>
+                  </div>
+                  <div class="ide-ai-row">
+                    <textarea id="caPrompt" rows="2" aria-label="코드 AI 도우미 요청" placeholder="예: 이 코드 버그 고쳐줘 · 함수 짜줘 · 설명해줘   (Ctrl/⌘+Enter)"></textarea>
+                  </div>
+                  <div class="ide-ai-row">
+                    <label><input type="checkbox" id="caUseCode" checked /> 현재 파일 첨부</label>
+                    <button id="caGo">✨ 생성</button>
+                  </div>
+                  <div id="caResult" class="is-hidden">
+                    <div id="caText"></div>
+                    <div id="caActions"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="ide-statusbar">
+          <span id="stRun" title="실행 (Ctrl/⌘+Enter)">▶ 실행</span>
+          <span id="stSave" title="디스크에 저장 (Ctrl/⌘+S)">💾 저장</span>
+          <span id="stDownload" title="현재 파일 다운로드">⬇ 다운로드</span>
+          <span id="stMsg"></span>
+          <span class="flex-spacer"></span>
+          <span id="stPos">Ln 1, Col 1</span>
+          <span>Spaces: 2</span>
+          <select id="ceLang" class="ide-lang" title="언어">
+            <option value="javascript">JavaScript</option>
+            <option value="htmlmixed">HTML</option>
+            <option value="css">CSS</option>
+            <option value="python">Python</option>
+            <option value="markdown">Markdown</option>
+            <option value="application/json">JSON</option>
+          </select>
+          <span id="stMinimap" title="미니맵 토글">🗺</span>
+          <span id="stTheme" title="라이트/다크 전환">🌙</span>
+          <span>UTF-8</span>
+        </div>
+      </div>
+    </section>
+
+    <footer class="operations-footer">
+      <div class="footer-links">
+        <a href="/terms.html">이용약관</a>
+        <a href="/privacy.html">개인정보처리방침</a>
+        <a href="/refund.html">환불정책</a>
+        <a href="/changelog.html">패치노트</a>
+        <a href="/tools/index.html">도구 모음</a>
+        <a href="/guide.html">이용 가이드</a>
+        <a href="https://blog.naver.com/physicjun1905" target="_blank" rel="noopener">블로그</a>
+        <a href="https://github.com/fakeminjun7321/Quilo" target="_blank" rel="noopener">GitHub</a>
+      </div>
+      <div class="footer-copy">
+        © 2026 Quilo · MIT License ·
+        <span class="site-version" data-site-version>버전 확인 중...</span>
+      </div>
+    </footer>
+    </main>
+
+    <script src="/version-footer.js"></script>
+    <script src="/theme.js"></script>
+    <script src="/ui/shell.js"></script>
+    <script>
+      let krwPerUsd = 1400;
+
+      // ── Auth check ────────────────────────────────────────────────────────
+      fetch("/api/me")
+        .then((r) => (r.ok ? r.json() : Promise.reject()))
+        .then((d) => {
+          if (!d.isAdmin) {
+            alert("관리자 권한이 필요합니다");
+            location.href = "/";
+          }
+        })
+        .catch(() => (location.href = "/login.html"));
+
+      document.getElementById("logout").addEventListener("click", async (e) => {
+        e.preventDefault();
+        window.QuiloStoragePrivacy?.signOut?.();
+        await fetch("/api/logout", { method: "POST" });
+        location.href = "/login.html";
+      });
+
+      // ── Helpers ───────────────────────────────────────────────────────────
+      const fmtUSD = (n) => "$" + Number(n || 0).toFixed(3);
+      const fmtKRW = (n) =>
+        Math.round(Number(n || 0) * krwPerUsd).toLocaleString() + "원";
+      const fmtBoth = (usd) => `${fmtUSD(usd)} (${fmtKRW(usd)})`;
+      const STATUS_TONE_CLASSES = ["tone-muted", "tone-success", "tone-danger"];
+      function setStatusTone(element, tone) {
+        element.classList.remove(...STATUS_TONE_CLASSES);
+        if (tone) element.classList.add(`tone-${tone}`);
+      }
+
+      async function loadUsers() {
+        const status = document.getElementById("listStatus");
+        status.textContent = "사용자 목록을 불러오는 중입니다.";
+        document.getElementById("adminUsersSection")?.setAttribute("aria-busy", "true");
+        try {
+          const [res, roleRes] = await Promise.all([
+            fetch("/api/admin/users"),
+            fetch("/api/editorial/admin/roles").catch(() => null),
+          ]);
+          if (!res.ok) {
+            const e = await res.json();
+            throw new Error(e.error || "fetch failed");
+          }
+          const data = await res.json();
+          let roleMap = new Map();
+          if (roleRes && roleRes.ok) {
+            const roleData = await roleRes.json().catch(() => ({}));
+            roleMap = new Map((roleData.users || []).map((user) => [String(user.id), user]));
+          }
+          data.users = (data.users || []).map((user) => {
+            const roles = roleMap.get(String(user.id)) || {};
+            return {
+              ...user,
+              is_staff: !!roles.isStaff,
+              is_developer: !!roles.isDeveloper,
+              avatar_url: roles.avatarUrl || null,
+            };
+          });
+          krwPerUsd = data.krwPerUsd || krwPerUsd;
+          document.getElementById("rateInfo").textContent =
+            `현재 환율: 1 USD = ${krwPerUsd.toFixed(2)} KRW`;
+          renderUsers(data.users);
+          const refreshed = document.getElementById("userRefreshMeta");
+          if (refreshed) refreshed.textContent = `마지막 갱신 ${new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}`;
+        } catch (e) {
+          status.textContent = "오류: " + e.message;
+          status.dataset.tone = "danger";
+        } finally {
+          document.getElementById("adminUsersSection")?.setAttribute("aria-busy", "false");
+        }
+      }
+
+      // 통합 크레딧 포인트제: 모델별 과금(Opus 3 / Sonnet 1).
+      function modelShort(m) {
+        if (!m) return "";
+        if (m.indexOf("opus") >= 0) return "Opus";
+        if (m.indexOf("sonnet") >= 0) return "Sonnet";
+        if (m === "gpt-5.4-mini") return "GPT mini";
+        if (m === "gpt-5.4") return "GPT-5.4";
+        if (m === "gpt-5.5") return "GPT-5.5";
+        if (m.indexOf("gpt") >= 0) return "GPT";
+        return m;
+      }
+      // 허용 모델 목록(쉼표구분 문자열)을 짧은 이름으로. 여러 개면 "Opus·Sonnet".
+      function modelShortList(s) {
+        const list = String(s || "")
+          .split(",")
+          .map((x) => x.trim())
+          .filter(Boolean);
+        return list.map(modelShort).join("·");
+      }
+      function reportAccessLabel(blocked) {
+        if (!Array.isArray(blocked) || !blocked.length) return "전체";
+        return "제한 " + blocked.length;
+      }
+      function creditCell(u) {
+        if (u.unlimited) {
+          return '<span class="tone-muted">무제한</span>';
+        }
+        const c = Math.max(0, Math.trunc(Number(u.credits) || 0));
+        const tone = c === 0 ? "tone-danger" : c <= 3 ? "tone-warning" : "tone-default";
+        return `<span class="${tone}">${c} 크레딧</span>`;
+      }
+
+      let adminUsersCache = [];
+      let selectedAdminUserId = "";
+
+      function userIsLocked(user) {
+        if (user.is_admin) return false;
+        const count = Number(user.recent_gen_count) || 0;
+        const limit = Math.max(1, Number(user.recent_gen_limit) || 5);
+        return count >= limit;
+      }
+
+      function userMatchesStatus(user, status) {
+        if (!status || status === "all") return true;
+        if (status === "pending") return !user.is_admin && !user.approved;
+        if (status === "unverified") return !user.is_admin && !user.email_verified;
+        if (status === "locked") return userIsLocked(user);
+        if (status === "low-credit") return !user.unlimited && Number(user.credits || 0) <= 3;
+        if (status === "admin") return !!user.is_admin;
+        return true;
+      }
+
+      function updateUserMetrics() {
+        const metrics = {
+          userMetricTotal: adminUsersCache.length,
+          userMetricPending: adminUsersCache.filter((user) => !user.is_admin && !user.approved).length,
+          userMetricUnverified: adminUsersCache.filter((user) => !user.is_admin && !user.email_verified).length,
+          userMetricLocked: adminUsersCache.filter(userIsLocked).length,
+          userMetricAdmin: adminUsersCache.filter((user) => user.is_admin).length,
+        };
+        Object.entries(metrics).forEach(([id, value]) => {
+          const element = document.getElementById(id);
+          if (element) element.textContent = Number(value).toLocaleString("ko-KR");
+        });
+      }
+
+      function renderUsers(users) {
+        adminUsersCache = Array.isArray(users) ? users.slice() : [];
+        updateUserMetrics();
+        applyUserFilters();
+      }
+
+      function applyUserFilters() {
+        const query = document.getElementById("adminUserFilter").value.trim().toLowerCase();
+        const status = document.getElementById("adminUserStatusFilter").value;
+        const sort = document.getElementById("adminUserSort").value;
+        const visible = adminUsersCache.filter((user) => {
+          const haystack = [user.name, user.username, user.student_id, user.email, user.id]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+          return (!query || haystack.includes(query)) && userMatchesStatus(user, status);
+        });
+        visible.sort((a, b) => {
+          if (sort === "created-asc") return new Date(a.created_at) - new Date(b.created_at);
+          if (sort === "credits-desc") return Number(b.credits || 0) - Number(a.credits || 0);
+          if (sort === "spent-desc") return Number(b.spent_usd || 0) - Number(a.spent_usd || 0);
+          return new Date(b.created_at) - new Date(a.created_at);
+        });
+        renderUserRows(visible);
+        const statusCopy = document.getElementById("listStatus");
+        statusCopy.removeAttribute("data-tone");
+        statusCopy.textContent = visible.length
+          ? `전체 ${adminUsersCache.length.toLocaleString("ko-KR")}명 · 표시 ${visible.length.toLocaleString("ko-KR")}명`
+          : "조건에 맞는 사용자가 없습니다.";
+        if (!visible.some((user) => String(user.id) === selectedAdminUserId)) {
+          selectedAdminUserId = visible[0] ? String(visible[0].id) : "";
+        }
+        selectAdminUser(selectedAdminUserId);
+      }
+
+      function renderUserRows(users) {
+        const tbody = document.getElementById("userTbody");
+        tbody.innerHTML = "";
+        if (!users.length) {
+          tbody.innerHTML = '<tr class="user-empty-row"><td colspan="5">검색 또는 필터 조건에 맞는 사용자가 없습니다.</td></tr>';
+          return;
+        }
+        for (const u of users) {
+          const count = u.recent_gen_count || 0;
+          const limit = u.recent_gen_limit || 5;
+          const isAdmin = !!u.is_admin;
+          const isLocked = !isAdmin && count >= limit;
+          const rateText = isAdmin
+            ? '<span class="tone-muted">제한 없음</span>'
+            : `<span class="${isLocked ? "tone-danger" : count >= limit - 1 ? "tone-warning" : "tone-default"}">${count}/${limit}${isLocked ? " · 잠김" : ""}</span>`;
+          const unlockBtn = isLocked
+            ? `<button class="tone-accent" data-act="unlock" data-id="${u.id}">잠금 해제</button>`
+            : "";
+          const verifyCell = verifyStatusCell(u);
+          const approveBtn = isAdmin
+            ? ""
+            : u.approved
+              ? `<button class="tone-warning" data-act="approve" data-id="${u.id}" data-approved="1">승인 취소</button>`
+              : `<button class="tone-accent is-semibold" data-act="approve" data-id="${u.id}" data-approved="0">승인</button>`;
+          const identityMeta = [
+            u.username && u.username !== u.name ? `@${u.username}` : "",
+            u.student_id ? `학번 ${u.student_id}` : "",
+          ].filter(Boolean).join(" · ") || `ID ${u.id}`;
+          const tr = document.createElement("tr");
+          tr.className = "admin-user-row";
+          tr.dataset.userId = String(u.id);
+          tr.tabIndex = 0;
+          tr.setAttribute("aria-selected", "false");
+          tr.innerHTML = `
+            <td><div class="user-primary"><strong>${escape(u.name)}</strong><span>${escape(identityMeta)}</span></div></td>
+            <td>${verifyCell}${isAdmin ? '<span class="status-pill status-pill--admin">관리자</span>' : ""}${u.is_developer ? '<span class="status-pill status-pill--accent">개발자</span>' : ""}${u.is_staff ? '<span class="status-pill status-pill--neutral">스탭</span>' : ""}</td>
+            <td class="user-numeric">${creditCell(u)}</td>
+            <td><div class="user-rate-usage">${rateText}<progress max="${limit}" value="${Math.min(limit, count)}" aria-label="${escape(u.name)} 이번 시간 사용량"></progress></div></td>
+            <td class="table-meta">${new Date(u.created_at).toLocaleDateString("ko-KR")}</td>
+            <td class="user-row-actions" aria-hidden="true">
+              <details class="row-action-menu">
+                <summary>관리</summary>
+                <div class="row-action-menu__items">
+                  <button data-act="topup" data-id="${u.id}">크레딧 조정</button>
+                  <button data-act="roles" data-id="${u.id}">스탭·개발자 권한</button>
+                  ${approveBtn}
+                  ${unlockBtn}
+                  <button data-act="edit" data-id="${u.id}">비밀번호</button>
+                  <button data-act="model" data-id="${u.id}">모델: ${u.restricted_model ? modelShortList(u.restricted_model) + "만" : "전체"}</button>
+                  <button data-act="reports" data-id="${u.id}" data-blocked="${(u.blocked_report_types || []).join(",")}">보고서: ${reportAccessLabel(u.blocked_report_types)}</button>
+                  <button data-act="reset" data-id="${u.id}">사용량 초기화</button>
+                  <button data-act="delete" data-id="${u.id}">사용자 삭제</button>
+                </div>
+              </details>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        }
+      }
+
+      function clearAdminUserSelection() {
+        selectedAdminUserId = "";
+        document.querySelectorAll("#userTbody .admin-user-row").forEach((row) => {
+          row.classList.remove("is-selected");
+          row.setAttribute("aria-selected", "false");
+        });
+        const inspector = document.getElementById("userInspectorDetails");
+        inspector.innerHTML = '<b>사용자를 선택하세요</b><span>목록의 행을 누르면 계정·인증·사용 현황을 이 화면에서 확인합니다.</span>';
+        document.getElementById("userInspectorActions").hidden = true;
+        document.getElementById("userInspectorClose").hidden = true;
+      }
+
+      function selectAdminUser(userId, options = {}) {
+        const selected = adminUsersCache.find((user) => String(user.id) === String(userId || ""));
+        if (!selected) {
+          clearAdminUserSelection();
+          return;
+        }
+        selectedAdminUserId = String(selected.id);
+        document.querySelectorAll("#userTbody .admin-user-row").forEach((row) => {
+          const active = row.dataset.userId === selectedAdminUserId;
+          row.classList.toggle("is-selected", active);
+          row.setAttribute("aria-selected", active ? "true" : "false");
+          if (active && options.focus) row.focus();
+        });
+        const count = Number(selected.recent_gen_count) || 0;
+        const limit = Math.max(1, Number(selected.recent_gen_limit) || 5);
+        const identity = selected.username ? `@${selected.username}` : `ID ${selected.id}`;
+        const email = selected.email || "등록되지 않음";
+        const credit = selected.unlimited ? "무제한" : `${Math.max(0, Number(selected.credits) || 0)} 크레딧`;
+        const modelAccess = selected.restricted_model ? `${modelShortList(selected.restricted_model)}만 허용` : "전체 모델";
+        const reportAccess = reportAccessLabel(selected.blocked_report_types);
+        const inspector = document.getElementById("userInspectorDetails");
+        inspector.innerHTML =
+          '<div class="user-inspector-details__title"><div><b>' + escape(selected.name || "(이름 없음)") + '</b><span>' + escape(identity) + '</span></div>' +
+          '<span class="status-pill ' + (selected.is_admin ? 'status-pill--admin' : selected.approved ? 'status-pill--success' : 'status-pill--warning') + '">' +
+          (selected.is_admin ? "관리자" : selected.approved ? "승인됨" : "승인 대기") + '</span></div>' +
+          '<dl><div><dt>학번</dt><dd>' + escape(selected.student_id || "-") + '</dd></div>' +
+          '<div><dt>이메일</dt><dd title="' + escape(email) + '">' + escape(email) + '</dd></div>' +
+          '<div><dt>이메일 인증</dt><dd>' + (selected.email_verified ? "완료" : "미인증") + '</dd></div>' +
+          '<div><dt>운영 역할</dt><dd>' + escape([selected.is_developer ? "Quilo 개발자" : "", selected.is_staff ? "스탭" : ""].filter(Boolean).join(" · ") || "없음") + '</dd></div>' +
+          '<div><dt>크레딧</dt><dd>' + escape(credit) + '</dd></div>' +
+          '<div><dt>누적 사용</dt><dd>' + fmtBoth(selected.spent_usd) + '</dd></div>' +
+          '<div><dt>이번 시간</dt><dd>' + (selected.is_admin ? "제한 없음" : `${count}/${limit}${userIsLocked(selected) ? " · 잠김" : ""}`) + '</dd></div>' +
+          '<div><dt>모델 접근</dt><dd>' + escape(modelAccess) + '</dd></div>' +
+          '<div><dt>보고서 접근</dt><dd>' + escape(reportAccess) + '</dd></div>' +
+          '<div><dt>가입일</dt><dd>' + escape(new Date(selected.created_at).toLocaleDateString("ko-KR")) + '</dd></div></dl>';
+        const selectedRow = document.querySelector(`#userTbody .admin-user-row[data-user-id="${CSS.escape(selectedAdminUserId)}"]`);
+        document.querySelectorAll("#userInspectorActions [data-inspector-action]").forEach((button) => {
+          const target = selectedRow?.querySelector(`[data-act="${button.dataset.inspectorAction}"]`);
+          button.hidden = !target;
+          if (target && button.dataset.inspectorAction === "approve") button.textContent = target.textContent.trim();
+        });
+        document.getElementById("userInspectorActions").hidden = false;
+        document.getElementById("userInspectorClose").hidden = false;
+      }
+
+      function escape(s) {
+        return String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      // 학생 인증(2단계) 상태 셀: 이메일 인증 여부 + 관리자 승인 여부.
+      function verifyStatusCell(u) {
+        if (u.is_admin)
+          return '<span class="status-pill status-pill--neutral">내부 계정</span>';
+        const ev = u.email_verified
+          ? `<span class="status-pill status-pill--success" title="${escape(u.email || "")}">이메일 인증</span>`
+          : '<span class="status-pill status-pill--neutral">이메일 미인증</span>';
+        const ap = u.approved
+          ? '<span class="status-pill status-pill--success">승인됨</span>'
+          : '<span class="status-pill status-pill--warning">승인 대기</span>';
+        return `<div class="verification-state">${ev}${ap}</div>`;
+      }
+
+      document.getElementById("userTbody").addEventListener("click", async (e) => {
+        const row = e.target.closest("tr[data-user-id]");
+        if (row) selectAdminUser(row.dataset.userId);
+        const btn = e.target.closest("button");
+        if (!btn) return;
+        const id = btn.dataset.id;
+        const act = btn.dataset.act;
+        if (act === "approve") {
+          const currentlyApproved = btn.dataset.approved === "1";
+          const next = !currentlyApproved;
+          if (
+            !confirm(
+              next
+                ? "이 학생을 승인할까요? 승인하면 (이메일 인증을 마친 경우) 보고서 생성을 사용할 수 있습니다."
+                : "이 학생의 승인을 취소할까요? 보고서 생성이 다시 차단됩니다.",
+            )
+          )
+            return;
+          const res = await fetch(`/api/admin/users/${id}/approve`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ approved: next }),
+          });
+          if (!res.ok) {
+            const e = await res.json().catch(() => ({}));
+            return alert("실패: " + (e.error || "알 수 없음"));
+          }
+          loadUsers();
+          return;
+        }
+        if (act === "unlock") {
+          if (!confirm("이 사용자의 시간당 사용 잠금을 해제할까요?")) return;
+          const res = await fetch(`/api/admin/users/${id}/unlock-rate`, {
+            method: "POST",
+          });
+          if (!res.ok) {
+            const e = await res.json();
+            return alert("실패: " + (e.error || "알 수 없음"));
+          }
+          loadUsers();
+          return;
+        }
+        if (act === "topup") {
+          const input = prompt(
+            "크레딧 충전/차감\nOpus 1건 = 3크레딧 / Sonnet 1건 = 1크레딧\n\n" +
+              "양수 = 충전, 음수 = 차감 (예: -5)\n잔액은 0 미만으로 내려가지 않습니다.\n\n크레딧 수:",
+            "9",
+          );
+          if (input == null) return;
+          const credits = parseInt(input, 10);
+          if (!Number.isFinite(credits) || credits === 0) {
+            return alert("0이 아닌 정수를 입력하세요. (음수 = 차감)");
+          }
+          const verb = credits > 0 ? `${credits} 크레딧 충전` : `${-credits} 크레딧 차감`;
+          if (!confirm(`${verb}하시겠습니까?`)) return;
+          const res = await fetch(`/api/admin/users/${id}/topup`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ credits }),
+          });
+          if (!res.ok) {
+            const e = await res.json();
+            return alert("실패: " + (e.error || "알 수 없음"));
+          }
+          loadUsers();
+          return;
+        }
+        if (act === "roles") {
+          const user = adminUsersCache.find((item) => String(item.id) === String(id));
+          if (!user) return;
+          const current = [user.is_staff ? "staff" : "", user.is_developer ? "developer" : ""]
+            .filter(Boolean)
+            .join(",");
+          const input = prompt(
+            "운영 역할을 쉼표로 입력하세요.\n\n" +
+              "staff = 자료실 작성·자료 요청 처리\n" +
+              "developer = 개발 노트 작성\n" +
+              "둘 다 부여: staff,developer\n" +
+              "모두 회수: 빈칸",
+            current,
+          );
+          if (input == null) return;
+          const requested = new Set(String(input).toLowerCase().split(",").map((value) => value.trim()).filter(Boolean));
+          if ([...requested].some((value) => !["staff", "developer"].includes(value))) {
+            return alert("staff, developer 중에서 입력하세요.");
+          }
+          const response = await fetch(`/api/editorial/admin/users/${id}/roles`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              isStaff: requested.has("staff"),
+              isDeveloper: requested.has("developer"),
+            }),
+          });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok) return alert("역할 변경 실패: " + (result.error || "알 수 없음"));
+          loadUsers();
+          return;
+        }
+        if (act === "delete") {
+          if (!confirm("정말 삭제할까요?")) return;
+          const res = await fetch(`/api/admin/users/${id}`, { method: "DELETE" });
+          if (!res.ok) {
+            const e = await res.json();
+            return alert("삭제 실패: " + e.error);
+          }
+          loadUsers();
+        } else if (act === "reset") {
+          if (!confirm("이 사용자의 누적 사용량을 0으로 리셋할까요?")) return;
+          const res = await fetch(`/api/admin/users/${id}/reset-spent`, {
+            method: "POST",
+          });
+          if (!res.ok) return alert("실패");
+          loadUsers();
+        } else if (act === "edit") {
+          // 충전은 +충전(쿠폰) 방식만 쓰므로 수정은 비밀번호 변경 1개로 단순화.
+          const password = prompt("새 비밀번호:");
+          if (!password) return;
+          await patchUser(id, { password });
+          loadUsers();
+        } else if (act === "model") {
+          // 사용자별 모델 제한: 여러 모델을 허용 목록으로 지정(중복 선택 가능).
+          // 사용자는 이 목록 안에서 자유롭게 고른다. 1 = 전체 허용.
+          const input = prompt(
+            "이 사용자가 쓸 수 있는 모델을 지정합니다.\n" +
+              "여러 개는 쉼표로 (예: 2,3 = Opus·Sonnet 둘 다 허용)\n\n" +
+              "1 = 전체 허용\n" +
+              "2 = Opus 4.8\n" +
+              "3 = Sonnet 5\n" +
+              "4 = GPT-5.5\n" +
+              "5 = GPT-5.4\n" +
+              "6 = GPT-5.4 mini\n\n" +
+              "번호 입력:",
+            "1",
+          );
+          if (input == null) return;
+          const map = {
+            2: "claude-opus-4-8",
+            3: "claude-sonnet-5",
+            4: "gpt-5.5",
+            5: "gpt-5.4",
+            6: "gpt-5.4-mini",
+          };
+          const parts = String(input)
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean);
+          if (!parts.length || parts.includes("1")) {
+            await patchUser(id, { restrictedModel: "" }); // 전체 허용
+          } else {
+            const ids = [];
+            for (const p of parts) {
+              if (!(p in map)) return alert("1, 2~6 중에서 입력하세요 (여러 개는 쉼표).");
+              ids.push(map[p]);
+            }
+            await patchUser(id, { restrictedModel: [...new Set(ids)].join(",") });
+          }
+          loadUsers();
+        } else if (act === "reports") {
+          // 사용자별 보고서 종류 접근 제한 (차단 목록)
+          const num2type = {
+            1: "chem-pre",
+            2: "chem-result",
+            3: "phys-result",
+          };
+          const type2num = { "chem-pre": "1", "chem-result": "2", "phys-result": "3" };
+          const cur = (btn.dataset.blocked || "").split(",").filter(Boolean);
+          const curNums = cur.map((t) => type2num[t]).filter(Boolean).join(",");
+          const input = prompt(
+            "이 사용자가 만들 수 없게 '차단'할 보고서 종류 번호를 쉼표로 입력하세요.\n\n" +
+              "1 = 화학 사전보고서\n2 = 화학 결과보고서\n3 = 물리 결과보고서\n\n" +
+              "예) 1,3 = 화학사전·물리결과 차단 / 빈칸 = 전체 허용(제한 없음)",
+            curNums,
+          );
+          if (input === null) return;
+          const blocked = [
+            ...new Set(
+              String(input)
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean),
+            ),
+          ]
+            .map((n) => num2type[n])
+            .filter(Boolean);
+          const res = await fetch(`/api/admin/users/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ blockedReportTypes: blocked }),
+          });
+          const data = await res.json();
+          if (!res.ok) return alert("실패: " + (data.error || "알 수 없음"));
+          alert(
+            blocked.length
+              ? `차단됨: ${blocked.length}개 종류`
+              : "전체 허용으로 설정됨",
+          );
+          loadUsers();
+        }
+      });
+
+      async function patchUser(id, patch) {
+        const res = await fetch(`/api/admin/users/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(patch),
+        });
+        if (!res.ok) {
+          const e = await res.json();
+          alert("수정 실패: " + e.error);
+        }
+      }
+
+      document.getElementById("refresh").addEventListener("click", loadUsers);
+      document.getElementById("adminUserFilter").addEventListener("input", applyUserFilters);
+      document.getElementById("adminUserStatusFilter").addEventListener("change", (event) => {
+        document.querySelectorAll("[data-user-preset]").forEach((button) => {
+          const active = button.dataset.userPreset === event.target.value;
+          button.classList.toggle("is-active", active);
+          button.setAttribute("aria-pressed", active ? "true" : "false");
+        });
+        applyUserFilters();
+      });
+      document.getElementById("adminUserSort").addEventListener("change", applyUserFilters);
+      document.getElementById("adminUserFilterReset").addEventListener("click", () => {
+        document.getElementById("adminUserFilter").value = "";
+        document.getElementById("adminUserStatusFilter").value = "all";
+        document.getElementById("adminUserSort").value = "created-desc";
+        document.querySelectorAll("[data-user-preset]").forEach((button) => {
+          const active = button.dataset.userPreset === "all";
+          button.classList.toggle("is-active", active);
+          button.setAttribute("aria-pressed", active ? "true" : "false");
+        });
+        applyUserFilters();
+      });
+      document.querySelectorAll("[data-user-preset]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const preset = button.dataset.userPreset || "all";
+          document.getElementById("adminUserStatusFilter").value = preset;
+          document.querySelectorAll("[data-user-preset]").forEach((item) => {
+            const active = item === button;
+            item.classList.toggle("is-active", active);
+            item.setAttribute("aria-pressed", active ? "true" : "false");
+          });
+          applyUserFilters();
+        });
+      });
+      document.getElementById("userTbody").addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        const row = event.target.closest("tr[data-user-id]");
+        if (!row) return;
+        event.preventDefault();
+        selectAdminUser(row.dataset.userId, { focus: true });
+      });
+      document.getElementById("userInspectorClose").addEventListener("click", clearAdminUserSelection);
+      document.getElementById("userInspectorActions").addEventListener("click", (event) => {
+        const proxy = event.target.closest("[data-inspector-action]");
+        if (!proxy || !selectedAdminUserId) return;
+        const row = document.querySelector(`#userTbody .admin-user-row[data-user-id="${CSS.escape(selectedAdminUserId)}"]`);
+        row?.querySelector(`[data-act="${proxy.dataset.inspectorAction}"]`)?.click();
+      });
+      document.getElementById("userCreateButton").addEventListener("click", () => {
+        const panel = document.getElementById("userCreatePanel");
+        panel.open = true;
+        document.getElementById("name").focus();
+      });
+
+      // ── Add user form ─────────────────────────────────────────────────────
+      // 사용자 추가는 이름·비번·관리자 권한만. 충전은 사용자 목록의 ‘+ 충전’ 버튼.
+      document.getElementById("addForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const status = document.getElementById("addStatus");
+        status.textContent = "처리 중...";
+        setStatusTone(status, "muted");
+        const body = {
+          name: document.getElementById("name").value,
+          password: document.getElementById("password").value,
+          isAdmin: document.getElementById("isAdmin").checked,
+        };
+        try {
+          const res = await fetch("/api/admin/users", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "실패");
+          status.textContent = `✓ ${data.user.name} 추가됨. 잔액은 + 충전으로.`;
+          setStatusTone(status, "success");
+          document.getElementById("addForm").reset();
+          loadUsers();
+        } catch (e) {
+          status.textContent = "오류: " + e.message;
+          setStatusTone(status, "danger");
+        }
+      });
+
+      // ── Usage logs ────────────────────────────────────────────────────────
+      async function loadLogs() {
+        const status = document.getElementById("logStatus");
+        status.textContent = "로딩 중...";
+        try {
+          const [logsRes, analyticsRes] = await Promise.all([
+            fetch("/api/admin/usage-logs?limit=100"),
+            fetch("/api/admin/analytics-summary?days=30"),
+          ]);
+          if (!logsRes.ok) {
+            const e = await logsRes.json();
+            throw new Error(e.error || "fetch failed");
+          }
+          const data = await logsRes.json();
+          renderLogs(data.logs);
+          if (analyticsRes.ok) renderAnalyticsSummary(await analyticsRes.json());
+          status.textContent = `최근 비용 로그 ${data.logs.length}건 로드됨`;
+        } catch (e) {
+          status.textContent = "오류: " + e.message;
+        }
+      }
+
+      function formatMs(value) {
+        const ms = Math.max(0, Number(value) || 0);
+        if (ms < 1000) return `${Math.round(ms)}ms`;
+        if (ms < 60000) return `${(ms / 1000).toFixed(1)}초`;
+        return `${(ms / 60000).toFixed(1)}분`;
+      }
+
+      function renderAnalyticsSummary(summary) {
+        const runs = summary?.runs || {};
+        const quality = summary?.quality || {};
+        const values = {
+          analyticsAccepted: Number(runs.accepted || 0).toLocaleString("ko-KR"),
+          analyticsSuccessRate: `${(Number(runs.successRate || 0) * 100).toFixed(1)}%`,
+          analyticsFailed: Number(runs.failed || 0).toLocaleString("ko-KR"),
+          analyticsP50: formatMs(runs.p50TotalMs),
+          analyticsDownloads: Number(runs.downloads || 0).toLocaleString("ko-KR"),
+          analyticsQuality: quality.count ? `${Number(quality.averageScore || 0).toFixed(2)} / 5` : "평가 없음",
+        };
+        Object.entries(values).forEach(([id, value]) => {
+          const node = document.getElementById(id);
+          if (node) node.textContent = value;
+        });
+        const breakdown = document.getElementById("analyticsBreakdown");
+        const topEntries = (record) => Object.entries(record || {})
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5)
+          .map(([key, count]) => `${escape(key)} ${Number(count).toLocaleString("ko-KR")}`)
+          .join(" · ") || "데이터 없음";
+        const stageLabels = { queue_ms: "대기", generation_ms: "AI", build_ms: "빌드", validation_ms: "검사", storage_ms: "저장" };
+        const stages = Object.entries(runs.stageTimings || {})
+          .map(([key, value]) => `${stageLabels[key] || escape(key)} ${formatMs(value?.p50)} / p95 ${formatMs(value?.p95)}`)
+          .join(" · ") || "데이터 없음";
+        breakdown.innerHTML = `
+          <p><strong>보고서 종류</strong> ${topEntries(runs.byReportType)}</p>
+          <p><strong>모델</strong> ${topEntries(runs.byModel)}</p>
+          <p><strong>실패 단계</strong> ${topEntries(runs.byErrorPhase)}</p>
+          <p><strong>이용 흐름</strong> ${topEntries(summary?.funnel)}</p>
+          <p><strong>품질 태그</strong> ${topEntries(quality.tags)}</p>
+          <p><strong>단계 p50 / p95</strong> ${stages}</p>
+        `;
+      }
+
+      function renderLogs(logs) {
+        const tbody = document.getElementById("logTbody");
+        tbody.innerHTML = "";
+        if (!logs || logs.length === 0) {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `<td colspan="8" class="empty-table-cell">아직 생성된 보고서가 없습니다.</td>`;
+          tbody.appendChild(tr);
+          return;
+        }
+        for (const log of logs) {
+          const meta = log.meta || {};
+          const inputT = meta.inputTokens || 0;
+          const outputT = meta.outputTokens || 0;
+          const tokenStr =
+            inputT || outputT ? `입 ${fmtTok(inputT)} / 출 ${fmtTok(outputT)}` : "—";
+          const webStr = meta.webSearchCount != null ? `${meta.webSearchCount}회` : "—";
+          const modelStr = shortModel(meta.model);
+          const typeStr = shortType(meta.reportType, meta.reportLabel);
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${formatTime(log.created_at)}</td>
+            <td>${escape(log.user_name)}</td>
+            <td class="table-meta">${typeStr}</td>
+            <td class="table-meta tone-muted">${modelStr}</td>
+            <td class="table-meta tone-muted">${escape((log.job_id || "-").slice(0, 12))}</td>
+            <td>${fmtBoth(log.total_usd)}</td>
+            <td class="table-meta tone-muted">${tokenStr}</td>
+            <td class="table-centered">${webStr}</td>
+          `;
+          tbody.appendChild(tr);
+        }
+      }
+
+      function shortType(type, label) {
+        if (!type) return '<span class="tone-faint">사전*</span>'; // legacy 데이터
+        if (type === "chem-pre") return "사전";
+        if (type === "chem-result") return "결과";
+        if (type === "phys-result") return "물리";
+        return escape(label || type);
+      }
+
+      function shortModel(m) {
+        if (!m) return "—";
+        const s = String(m).toLowerCase();
+        if (s.includes("opus")) return "Opus";
+        if (s.includes("sonnet")) return "Sonnet";
+        if (s.includes("haiku")) return "Haiku";
+        return m;
+      }
+
+      function fmtTok(n) {
+        const num = Number(n) || 0;
+        if (num >= 1000) return (num / 1000).toFixed(1) + "K";
+        return String(num);
+      }
+
+      function formatTime(iso) {
+        const d = new Date(iso);
+        const yy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const dd = String(d.getDate()).padStart(2, "0");
+        const hh = String(d.getHours()).padStart(2, "0");
+        const mi = String(d.getMinutes()).padStart(2, "0");
+        return `${yy}-${mm}-${dd} ${hh}:${mi}`;
+      }
+
+      document.getElementById("refreshLogs").addEventListener("click", loadLogs);
+
+      // ── Pro 기능 관리 ──────────────────────────────────────────────────────
+      async function loadBeta() {
+        const list = document.getElementById("betaList");
+        const status = document.getElementById("betaStatus");
+        status.textContent = "불러오는 중...";
+        try {
+          const res = await fetch("/api/admin/beta");
+          const data = await res.json();
+          if (!res.ok) {
+            list.innerHTML = "";
+            status.textContent = data.error || "오류";
+            return;
+          }
+          status.textContent = "";
+          renderBeta(data.features || []);
+        } catch (e) {
+          status.textContent = "오류: " + e.message;
+        }
+      }
+
+      function renderBeta(features) {
+        const list = document.getElementById("betaList");
+        if (!features.length) {
+          list.innerHTML = '<p class="hint">등록된 Pro 기능이 없습니다.</p>';
+          return;
+        }
+        list.innerHTML = features
+          .map(
+            (f) => `
+          <div class="beta-item admin-list-card" data-key="${escape(f.key)}">
+            <div class="admin-list-card__header admin-list-card__header--wide-gap">
+              <b>${escape(f.label || f.key)}</b>
+              <code class="feature-key">${escape(f.key)}</code>
+              <label class="check-line push-right"><input type="checkbox" data-act="toggle" ${f.enabled ? "checked" : ""}/> 활성</label>
+              <button class="table-compact-action" data-act="delfeat">기능 삭제</button>
+            </div>
+            <div class="feature-testers">
+              <span class="hint">테스터:</span>
+              ${
+                f.testers.length
+                  ? f.testers
+                      .map(
+                        (t) =>
+                          `<span class="tester-chip">${escape(t.name)} <a href="#" class="tester-chip__remove" data-act="deltester" data-uid="${t.id}">×</a></span>`,
+                      )
+                      .join("")
+                  : '<span class="hint">없음 (관리자만 사용 가능)</span>'
+              }
+            </div>
+            <div class="feature-control-row">
+              <input class="feature-control-input" data-act="testername" placeholder="테스터 이름 추가" />
+              <button class="feature-control-button" data-act="addtester">추가</button>
+            </div>
+            <div class="feature-limit-row">
+              <span class="hint">테스터 1인당 하루 한도:</span>
+              <input class="feature-limit-input" data-act="limitval" type="number" min="0" value="${Number(f.dailyLimit) || 0}" />
+              <button class="feature-control-button" data-act="savelimit">한도 저장</button>
+              <span class="hint">0 = 무제한 · 서버 재시작 시 기본값으로 초기화</span>
+            </div>
+          </div>`,
+          )
+          .join("");
+      }
+
+      document
+        .getElementById("betaList")
+        .addEventListener("click", async (e) => {
+          const item = e.target.closest(".beta-item");
+          if (!item) return;
+          const key = item.dataset.key;
+          const act = e.target.dataset.act;
+          if (act === "toggle") {
+            await fetch(`/api/admin/beta/${encodeURIComponent(key)}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ enabled: e.target.checked }),
+            });
+            loadBeta();
+          } else if (act === "delfeat") {
+            if (!confirm(`'${key}' 기능을 삭제할까요? (테스터 지정도 함께 삭제)`))
+              return;
+            await fetch(`/api/admin/beta/${encodeURIComponent(key)}`, {
+              method: "DELETE",
+            });
+            loadBeta();
+          } else if (act === "deltester") {
+            e.preventDefault();
+            await fetch(
+              `/api/admin/beta/${encodeURIComponent(key)}/testers/${e.target.dataset.uid}`,
+              { method: "DELETE" },
+            );
+            loadBeta();
+          } else if (act === "addtester") {
+            const input = item.querySelector('[data-act="testername"]');
+            const name = input.value.trim();
+            if (!name) return;
+            const res = await fetch(
+              `/api/admin/beta/${encodeURIComponent(key)}/testers`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name }),
+              },
+            );
+            const data = await res.json();
+            if (!res.ok) {
+              alert(data.error || "추가 실패");
+              return;
+            }
+            loadBeta();
+          } else if (act === "savelimit") {
+            const v = item.querySelector('[data-act="limitval"]').value;
+            const res = await fetch(
+              `/api/admin/beta/${encodeURIComponent(key)}`,
+              {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  dailyLimit: Math.max(0, parseInt(v, 10) || 0),
+                }),
+              },
+            );
+            const data = await res.json();
+            if (!res.ok) {
+              alert(data.error || "저장 실패");
+              return;
+            }
+            alert(
+              `'${key}' 하루 한도: ` +
+                (data.dailyLimit === 0 ? "무제한" : data.dailyLimit + "회/일"),
+            );
+            loadBeta();
+          }
+        });
+
+      document
+        .getElementById("betaAddForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const key = document.getElementById("betaKey").value.trim();
+          const label = document.getElementById("betaLabel").value.trim();
+          const st = document.getElementById("betaAddStatus");
+          if (!key) {
+            st.textContent = "key 필수";
+            return;
+          }
+          st.textContent = "추가 중...";
+          const res = await fetch("/api/admin/beta", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ key, label }),
+          });
+          const data = await res.json();
+          st.textContent = res.ok ? "추가됨" : data.error || "실패";
+          if (res.ok) {
+            document.getElementById("betaKey").value = "";
+            document.getElementById("betaLabel").value = "";
+            loadBeta();
+          }
+        });
+
+      document.getElementById("refreshBeta").addEventListener("click", loadBeta);
+
+      // ── 문제집 메이커 최대 문제 수 ────────────────────────────────────
+      async function loadPsLimit() {
+        try {
+          const r = await fetch("/api/admin/problemset-limit");
+          if (!r.ok) return;
+          const d = await r.json();
+          const inp = document.getElementById("psLimitInput");
+          if (inp) inp.value = d.max;
+          const st = document.getElementById("psLimitStatus");
+          if (st)
+            st.textContent = `현재 ${d.max === 0 ? "무제한" : d.max + "문제"} · 기본 ${d.default}`;
+        } catch (_) {
+          /* ignore */
+        }
+      }
+      document
+        .getElementById("psLimitForm")
+        ?.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const inp = document.getElementById("psLimitInput");
+          const max = Math.max(0, Math.trunc(Number(inp.value) || 0));
+          const st = document.getElementById("psLimitStatus");
+          st.textContent = "저장 중...";
+          try {
+            const r = await fetch("/api/admin/problemset-limit", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ max }),
+            });
+            const d = await r.json();
+            if (!r.ok) throw new Error(d.error || "저장 실패");
+            st.textContent = `저장됨: ${d.max === 0 ? "무제한" : d.max + "문제"}`;
+          } catch (err) {
+            st.textContent = "오류: " + err.message;
+          }
+        });
+      document
+        .getElementById("refreshPsLimit")
+        ?.addEventListener("click", loadPsLimit);
+      loadPsLimit();
+
+      // ── 공지사항(상단 티커) 관리 ──────────────────────────────────────
+      async function loadAnn() {
+        const box = document.getElementById("annAdminList");
+        if (!box) return;
+        box.innerHTML = '<span class="hint">불러오는 중…</span>';
+        try {
+          const r = await fetch("/api/announcements/all");
+          const d = await r.json();
+          if (!r.ok) throw new Error(d.error || "오류");
+          const list = d.announcements || [];
+          const note = d.store === "memory" ? ' <span class="hint">· 임시 저장(재시작 시 초기화 — announcements 테이블 SQL 적용 시 영구 저장)</span>' : "";
+          if (!list.length) { box.innerHTML = '<span class="hint">등록된 공지가 없습니다.' + note + "</span>"; return; }
+          box.innerHTML =
+            "<div class='announcement-summary'>총 " + list.length + "개" + note + "</div>" +
+            list.map((a) =>
+              "<div class='announcement-item'>" +
+                "<span class='announcement-category'>" + escape(a.category || "공지") + "</span>" +
+                "<span class='announcement-title" + (a.active ? "" : " is-inactive") + "'>" + escape(a.title) + "</span>" +
+                (a.link ? "<a class='announcement-link' href='" + escape(a.link) + "' target='_blank'>링크</a>" : "") +
+                "<button class='secondary compact ann-toggle' data-id='" + escape(String(a.id)) + "' data-active='" + (a.active ? "1" : "0") + "'>" + (a.active ? "비활성화" : "활성화") + "</button>" +
+                "<button class='secondary compact ann-del' data-id='" + escape(String(a.id)) + "'>삭제</button>" +
+              "</div>"
+            ).join("");
+          box.querySelectorAll(".ann-toggle").forEach((b) => b.addEventListener("click", async () => {
+            await fetch("/api/announcements/" + encodeURIComponent(b.dataset.id), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ active: b.dataset.active !== "1" }) });
+            loadAnn();
+          }));
+          box.querySelectorAll(".ann-del").forEach((b) => b.addEventListener("click", async () => {
+            if (!confirm("이 공지를 삭제할까요?")) return;
+            await fetch("/api/announcements/" + encodeURIComponent(b.dataset.id), { method: "DELETE" });
+            loadAnn();
+          }));
+        } catch (e) {
+          box.innerHTML = "<span class='hint tone-danger'>" + escape(e.message) + "</span>";
+        }
+      }
+      (function () {
+        const btn = document.getElementById("annAddBtn");
+        if (!btn) return;
+        const titleInput = document.getElementById("annTitle");
+        const categoryInput = document.getElementById("annCat");
+        const previewTitle = document.getElementById("annPreviewTitle");
+        const previewCategory = document.getElementById("annPreviewCategory");
+        const syncPreview = () => {
+          previewTitle.textContent = titleInput.value.trim() || "공지 제목을 입력하세요";
+          previewCategory.textContent = categoryInput.value.trim() || "공지";
+        };
+        titleInput.addEventListener("input", syncPreview);
+        categoryInput.addEventListener("input", syncPreview);
+        btn.addEventListener("click", async () => {
+          const title = document.getElementById("annTitle").value.trim();
+          const category = document.getElementById("annCat").value.trim();
+          const link = document.getElementById("annLink").value.trim();
+          const st = document.getElementById("annStatus");
+          if (!title) { setStatusTone(st, "danger"); st.textContent = "제목을 입력하세요."; return; }
+          btn.disabled = true; setStatusTone(st, "muted"); st.textContent = "등록 중…";
+          try {
+            const r = await fetch("/api/announcements", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, category, link }) });
+            const d = await r.json();
+            if (!r.ok) throw new Error(d.error || "오류");
+            document.getElementById("annTitle").value = "";
+            document.getElementById("annLink").value = "";
+            syncPreview();
+            setStatusTone(st, "success"); st.textContent = "등록 완료" + (d.store === "memory" ? " (임시 저장)" : "");
+            loadAnn();
+          } catch (e) { setStatusTone(st, "danger"); st.textContent = e.message; }
+          btn.disabled = false;
+        });
+      })();
+
+      // 초기 로드
+      loadUsers();
+      loadLogs();
+      loadBeta();
+      loadAnn();
+    </script>
+    <script>
+      (function () {
+        var msgs = [],
+          busy = false;
+        var box = document.getElementById("aaMsgs"),
+          input = document.getElementById("aaInput"),
+          send = document.getElementById("aaSend");
+        if (!box || !send || !input) return;
+        var modelSel = document.getElementById("aaModel");
+        var modelHint = document.getElementById("aaModelHint");
+        if (modelSel) {
+          fetch("/api/admin/chat/models")
+            .then(function (r) {
+              return r.json();
+            })
+            .then(function (d) {
+              var ms = (d && d.models) || [];
+              modelSel.innerHTML = "";
+              ms.forEach(function (m) {
+                var o = document.createElement("option");
+                o.value = m.id;
+                o.textContent = m.label + (m.available ? "" : " (키 없음)");
+                if (!m.available) o.disabled = true;
+                modelSel.appendChild(o);
+              });
+              try {
+                var sm = localStorage.getItem("adminAiModel");
+                if (
+                  sm &&
+                  ms.some(function (m) {
+                    return m.id === sm && m.available;
+                  })
+                )
+                  modelSel.value = sm;
+              } catch (e) {}
+              var cur = ms.filter(function (m) {
+                return m.id === modelSel.value;
+              })[0];
+              if (!cur || !cur.available) {
+                var first = ms.filter(function (m) {
+                  return m.available;
+                })[0];
+                if (first) modelSel.value = first.id;
+              }
+            })
+            .catch(function () {
+              if (modelHint) modelHint.textContent = "모델 목록 로드 실패";
+            });
+          modelSel.addEventListener("change", function () {
+            try {
+              localStorage.setItem("adminAiModel", modelSel.value);
+            } catch (e) {}
+          });
+        }
+        function bubble(role, text) {
+          var d = document.createElement("div");
+          d.className = "admin-ai-bubble admin-ai-bubble--" + role;
+          d.textContent = text;
+          box.appendChild(d);
+          box.scrollTop = box.scrollHeight;
+          return d;
+        }
+        function actBtn(b, tone) {
+          b.className = "admin-action-button admin-action-button--" + tone;
+        }
+        // AI가 제안한 쓰기 작업을 '확인 후 실행' 카드로 렌더링
+        function renderActions(actions) {
+          actions.forEach(function (a) {
+            var card = document.createElement("div");
+            card.className = "admin-action-card";
+            var title = document.createElement("div");
+            title.className = "admin-action-card__title";
+            title.textContent = "⚙ 확인 필요 — " + (a.summary || a.action);
+            card.appendChild(title);
+            var pw = null;
+            if (a.needsPassword) {
+              pw = document.createElement("input");
+              pw.type = "password";
+              pw.placeholder = "새 계정 비밀번호 (8자 이상)";
+              pw.autocomplete = "new-password";
+              pw.className = "admin-action-card__password";
+              card.appendChild(pw);
+            }
+            var row = document.createElement("div");
+            row.className = "admin-action-card__controls";
+            var ok = document.createElement("button");
+            ok.textContent = "확인 실행";
+            actBtn(ok, "confirm");
+            var no = document.createElement("button");
+            no.textContent = "취소";
+            actBtn(no, "cancel");
+            var st = document.createElement("span");
+            st.className = "admin-action-card__status tone-muted";
+            row.appendChild(ok);
+            row.appendChild(no);
+            row.appendChild(st);
+            card.appendChild(row);
+            box.appendChild(card);
+            box.scrollTop = box.scrollHeight;
+
+            no.addEventListener("click", function () {
+              ok.disabled = no.disabled = true;
+              card.classList.add("is-cancelled");
+              st.textContent = "취소됨";
+            });
+            ok.addEventListener("click", function () {
+              if (a.needsPassword && (!pw.value || pw.value.length < 8)) {
+                st.className = "admin-action-card__status tone-danger";
+                st.textContent = "비밀번호 8자 이상";
+                pw.focus();
+                return;
+              }
+              ok.disabled = no.disabled = true;
+              st.className = "admin-action-card__status tone-muted";
+              st.textContent = "실행 중…";
+              var body = { action: a.action, params: a.params };
+              if (a.needsPassword) body.password = pw.value;
+              fetch("/api/admin/action/execute", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body),
+              })
+                .then(function (r) {
+                  return r.json().then(function (j) {
+                    return { ok: r.ok, j: j };
+                  });
+                })
+                .then(function (o2) {
+                  if (!o2.ok) throw new Error((o2.j && o2.j.error) || "실행 실패");
+                  st.className = "admin-action-card__status tone-success";
+                  st.textContent = "✓ " + ((o2.j && o2.j.message) || "완료");
+                  if (pw) pw.value = "";
+                  card.classList.add("is-complete");
+                })
+                .catch(function (e) {
+                  st.className = "admin-action-card__status tone-danger";
+                  st.textContent = "⚠ " + (e.message || "실패");
+                  ok.disabled = no.disabled = false;
+                });
+            });
+          });
+        }
+        function ask(text) {
+          text = (text || "").trim();
+          if (!text || busy) return;
+          bubble("user", text);
+          msgs.push({ role: "user", content: text });
+          input.value = "";
+          busy = true;
+          send.disabled = true;
+          var b = bubble("ai", "분석 중…");
+          fetch("/api/admin/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              messages: msgs.slice(-8),
+              model: modelSel ? modelSel.value : undefined,
+            }),
+          })
+            .then(function (r) {
+              return r.json().then(function (j) {
+                return { ok: r.ok, j: j };
+              });
+            })
+            .then(function (o) {
+              if (!o.ok)
+                throw new Error((o.j && o.j.error) || "오류가 발생했어요.");
+              var ans = (o.j && o.j.answer) || "(응답이 없습니다.)";
+              b.textContent = ans;
+              box.scrollTop = box.scrollHeight;
+              msgs.push({ role: "assistant", content: ans });
+              var acts = (o.j && o.j.actions) || [];
+              if (acts.length) renderActions(acts);
+            })
+            .catch(function (e) {
+              b.classList.add("is-error");
+              b.textContent = e.message || "오류가 발생했어요.";
+            })
+            .then(function () {
+              busy = false;
+              send.disabled = false;
+              input.focus();
+            });
+        }
+        send.addEventListener("click", function () {
+          ask(input.value);
+        });
+        input.addEventListener("keydown", function (e) {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            ask(input.value);
+          }
+        });
+        var chips = document.getElementById("aaChips");
+        [
+          "최근 로그인 실패가 몰린 IP나 계정 있어?",
+          "최근 7일 사용량 통계 집계해줘",
+          "Pro 기능 현황 보여줘",
+          "지금 rate-limit에 걸린 사용자 있어?",
+          "크레딧 0인데 최근 로그인한 사용자 있어?",
+          "최근 AI 도우미 피드백 요약해줘",
+        ].forEach(function (q) {
+          if (!chips) return;
+          var btn = document.createElement("button");
+          btn.className = "secondary compact admin-ai-chip";
+          btn.textContent = q;
+          btn.addEventListener("click", function () {
+            ask(q);
+          });
+          chips.appendChild(btn);
+        });
+      })();
+    </script>
+    <script>
+      (function () {
+        // ── 섹션 탭(한 번에 하나씩) ──
+        var TABMAP = {
+          "공지사항": "announce",
+          "AI 관리자 보조": "ai",
+          "사용자 추가": "users",
+          "사용자 목록": "users",
+          "Pro 기능": "beta",
+          "API 키 위임": "grants",
+          "Pro 회원": "subs",
+          "임시 공개": "subs",
+          "Max 구독": "subs",
+          "백그라운드 구독": "subs",
+          "보고서 생성 로그": "logs",
+          "소명": "appeals",
+          "코드 에디터": "editor",
+          "학교 도입 신청": "schools",
+        };
+        var sections = Array.prototype.slice.call(
+          document.querySelectorAll("section.settings-card")
+        );
+        sections.forEach(function (s) {
+          var h2 = s.querySelector("h2");
+          if (!h2) return;
+          Object.keys(TABMAP).forEach(function (k) {
+            if (h2.textContent.indexOf(k) >= 0)
+              s.setAttribute("data-atab", TABMAP[k]);
+          });
+        });
+        var tabBtns = Array.prototype.slice.call(
+          document.querySelectorAll("#adminTabs .atab")
+        );
+        var codeMirrorAssetsPromise = null;
+        function loadAdminEditorAssets() {
+          if (window.CodeMirror) return Promise.resolve();
+          if (codeMirrorAssetsPromise) return codeMirrorAssetsPromise;
+          var base = "https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/";
+          [
+            "codemirror.min.css",
+            "theme/material-darker.min.css",
+            "theme/eclipse.min.css",
+            "addon/fold/foldgutter.min.css",
+            "addon/dialog/dialog.min.css",
+            "addon/hint/show-hint.min.css",
+          ].forEach(function (path) {
+            if (document.querySelector('link[data-admin-editor-asset="' + path + '"]')) return;
+            var link = document.createElement("link");
+            link.rel = "stylesheet";
+            link.href = base + path;
+            link.setAttribute("data-admin-editor-asset", path);
+            document.head.appendChild(link);
+          });
+          var scripts = [
+            "codemirror.min.js",
+            "mode/javascript/javascript.min.js",
+            "mode/xml/xml.min.js",
+            "mode/css/css.min.js",
+            "mode/htmlmixed/htmlmixed.min.js",
+            "mode/python/python.min.js",
+            "mode/markdown/markdown.min.js",
+            "addon/edit/matchbrackets.min.js",
+            "addon/edit/closebrackets.min.js",
+            "addon/edit/closetag.min.js",
+            "addon/fold/foldcode.min.js",
+            "addon/fold/foldgutter.min.js",
+            "addon/fold/brace-fold.min.js",
+            "addon/fold/xml-fold.min.js",
+            "addon/fold/indent-fold.min.js",
+            "addon/fold/comment-fold.min.js",
+            "addon/selection/active-line.min.js",
+            "addon/search/searchcursor.min.js",
+            "addon/search/search.min.js",
+            "addon/search/jump-to-line.min.js",
+            "addon/dialog/dialog.min.js",
+            "addon/comment/comment.min.js",
+            "addon/hint/show-hint.min.js",
+            "addon/hint/anyword-hint.min.js",
+            "keymap/sublime.min.js",
+          ];
+          codeMirrorAssetsPromise = scripts.reduce(function (promise, path) {
+            return promise.then(function () {
+              return new Promise(function (resolve, reject) {
+                var script = document.createElement("script");
+                script.src = base + path;
+                script.async = false;
+                script.setAttribute("data-admin-editor-asset", path);
+                script.addEventListener("load", resolve, { once: true });
+                script.addEventListener("error", function () { reject(new Error("에디터 리소스를 불러오지 못했습니다.")); }, { once: true });
+                document.head.appendChild(script);
+              });
+            });
+          }, Promise.resolve());
+          return codeMirrorAssetsPromise;
+        }
+        function showTab(tab) {
+          var titles = {
+            ai: "운영 개요",
+            users: "사용자 관리",
+            subs: "등급 관리",
+            grants: "권한·위임",
+            beta: "기능 운영",
+            schools: "학교 도입 신청",
+            logs: "생성 로그",
+            announce: "공지 관리",
+            appeals: "소명·제재",
+            editor: "코드 에디터",
+          };
+          sections.forEach(function (s) {
+            s.classList.toggle("is-hidden", s.getAttribute("data-atab") !== tab);
+          });
+          tabBtns.forEach(function (b) {
+            var on = b.getAttribute("data-go") === tab;
+            b.classList.toggle("on", on);
+            b.setAttribute("aria-selected", on ? "true" : "false");
+          });
+          var pageTitle = document.getElementById("adminPageTitle");
+          if (pageTitle) pageTitle.textContent = titles[tab] || "운영 개요";
+          var mainTitle = document.getElementById("adminMainTitle");
+          if (mainTitle) mainTitle.textContent = "Quilo 관리자 — " + (titles[tab] || "운영 개요");
+          var descriptions = {
+            ai: "운영 지표를 조회하고 승인이 필요한 작업을 검토합니다.",
+            users: "사용자 목록과 계정 인스펙터를 한 화면에서 관리합니다.",
+            subs: "Pro·Max 등급과 임시 공개, 구독 승인을 관리합니다.",
+            grants: "서버 API 키 위임 기간과 대상을 관리합니다.",
+            beta: "Pro 기능과 시스템 한도를 조정합니다.",
+            schools: "학교 도입 신청을 검토하고 처리 상태를 기록합니다.",
+            logs: "생성 요청별 비용·토큰·웹 검색 사용량을 추적합니다.",
+            announce: "공지 목록과 편집 인스펙터를 함께 확인합니다.",
+            appeals: "사용자 피드백과 소명, 제재 해제 요청을 검토합니다.",
+            editor: "관리자용 코드 편집·실행·미리보기 도구입니다.",
+          };
+          var description = document.getElementById("adminPageDescription");
+          if (description) description.textContent = descriptions[tab] || descriptions.ai;
+          try {
+            localStorage.setItem("adminTab", tab);
+          } catch (e) {}
+          if (tab === "appeals") loadAppeals();
+          if (tab === "schools" && window.loadSchoolApps) window.loadSchoolApps();
+          if (tab === "editor") {
+            var ideEl = document.getElementById("ide");
+            if (!window.CodeMirror && ideEl) ideEl.setAttribute("aria-busy", "true");
+            loadAdminEditorAssets()
+              .then(function () {
+                if (ideEl) ideEl.setAttribute("aria-busy", "false");
+                initEditor();
+                if (window.__ceCM)
+                  setTimeout(function () {
+                    window.__ceCM.refresh();
+                  }, 30);
+              })
+              .catch(function () {
+                codeMirrorAssetsPromise = null;
+                if (ideEl) {
+                  ideEl.setAttribute("aria-busy", "false");
+                  ideEl.innerHTML = '<div class="editor-load-error">에디터 로드 실패 — 다시 시도해 주세요.</div>';
+                }
+              });
+          }
+        }
+        tabBtns.forEach(function (b) {
+          b.addEventListener("click", function () {
+            showTab(b.getAttribute("data-go"));
+          });
+        });
+
+        // ── 커뮤니티 소명·제재 ──
+        function escA(s) {
+          return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
+            return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+          });
+        }
+        async function loadAppeals() {
+          var el = document.getElementById("appealsList");
+          if (!el) return;
+          el.innerHTML = '<p class="hint">불러오는 중…</p>';
+          try {
+            var r = await fetch("/api/community/appeals");
+            var d = await r.json();
+            if (!r.ok) throw new Error(d.error || "오류");
+            var ap = d.appeals || [];
+            if (!ap.length) {
+              el.innerHTML = '<p class="hint">접수된 해명이 없습니다.</p>';
+              return;
+            }
+            el.innerHTML = "";
+            ap.forEach(function (a) {
+              var card = document.createElement("div");
+              card.className = "appeal-card" + (a.status === "resolved" ? " is-resolved" : "");
+              var banned = a.banned_until
+                ? '<span class="tone-warning">제재중 (~' +
+                  new Date(a.banned_until).toLocaleString("ko-KR") +
+                  ")</span>"
+                : '<span class="tone-success">제재 없음</span>';
+              card.innerHTML =
+                '<div class="appeal-card__meta">' +
+                escA(a.author_name || "익명") +
+                " · " +
+                (a.kind === "generation"
+                  ? '<b class="tone-danger">🚫 생성 정지</b>'
+                  : a.kind === "comment"
+                    ? "댓글"
+                    : "글") +
+                " · " +
+                new Date(a.created_at).toLocaleString("ko-KR") +
+                " · " +
+                (a.status === "resolved" ? "✅ 처리됨" : "⏳ 대기") +
+                " · " +
+                banned +
+                "</div>" +
+                '<div class="appeal-card__reason"><b>해명:</b> ' +
+                escA(a.reason) +
+                "</div>" +
+                (a.blocked_text
+                  ? '<details class="appeal-card__details"><summary>차단된 원문 보기</summary><div class="appeal-card__blocked-text">' +
+                    escA(a.blocked_text) +
+                    "</div></details>"
+                  : "") +
+                (a.status === "resolved"
+                  ? ""
+                  : '<div class="appeal-card__actions"><button class="secondary compact unban-resolve" data-id="' +
+                    a.id +
+                    '">밴 해제 + 처리완료</button><button class="secondary compact just-resolve" data-id="' +
+                    a.id +
+                    '">처리완료(밴 유지)</button></div>');
+              el.appendChild(card);
+            });
+            el.querySelectorAll(".unban-resolve").forEach(function (b) {
+              b.addEventListener("click", function () {
+                resolveAppeal(b.getAttribute("data-id"), true);
+              });
+            });
+            el.querySelectorAll(".just-resolve").forEach(function (b) {
+              b.addEventListener("click", function () {
+                resolveAppeal(b.getAttribute("data-id"), false);
+              });
+            });
+          } catch (e) {
+            el.innerHTML =
+              '<p class="hint tone-danger">' + escA(e.message) + "</p>";
+          }
+        }
+        async function resolveAppeal(id, unban) {
+          if (!confirm(unban ? "밴을 해제하고 처리 완료할까요?" : "처리 완료로 표시할까요? (밴 유지)")) return;
+          var r = await fetch("/api/community/appeals/" + id + "/resolve", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ unban: unban }),
+          });
+          if (r.ok) loadAppeals();
+          else {
+            var d = await r.json().catch(function () { return {}; });
+            alert(d.error || "처리 실패");
+          }
+        }
+        var appealsRefreshBtn = document.getElementById("appealsRefresh");
+        if (appealsRefreshBtn) appealsRefreshBtn.addEventListener("click", loadAppeals);
+        var start = "ai";
+        try {
+          var st = localStorage.getItem("adminTab");
+          if (st) start = st;
+        } catch (e) {}
+        if (!document.querySelector('#adminTabs .atab[data-go="' + start + '"]'))
+          start = "ai";
+        showTab(start);
+
+        // ── 코드 에디터(CodeMirror) ──
+        var cmReady = false;
+        function initEditor() {
+          if (cmReady) return;
+          if (typeof CodeMirror === "undefined") {
+            var ideEl = document.getElementById("ide");
+            if (ideEl)
+              ideEl.innerHTML =
+                '<div class="editor-load-error">에디터 로드 실패(네트워크 확인)</div>';
+            return;
+          }
+          cmReady = true;
+
+          var LANGS = {
+            javascript: { label: "JavaScript", mode: "javascript", ext: "js" },
+            htmlmixed: { label: "HTML", mode: "htmlmixed", ext: "html" },
+            css: { label: "CSS", mode: "css", ext: "css" },
+            python: { label: "Python", mode: "python", ext: "py" },
+            markdown: { label: "Markdown", mode: "markdown", ext: "md" },
+            "application/json": { label: "JSON", mode: "application/json", ext: "json" },
+          };
+          function modeOf(l) {
+            return LANGS[l] ? LANGS[l].mode : "javascript";
+          }
+          function langOfName(name) {
+            var ext = (String(name).split(".").pop() || "").toLowerCase();
+            for (var k in LANGS) if (LANGS[k].ext === ext) return k;
+            return "javascript";
+          }
+          function iconFor(l) {
+            return (
+              {
+                javascript: "🟨",
+                htmlmixed: "🟧",
+                css: "🟦",
+                python: "🐍",
+                markdown: "📝",
+                "application/json": "🔧",
+              }[l] || "📄"
+            );
+          }
+
+          var langSel = document.getElementById("ceLang");
+          var out = document.getElementById("ceOut");
+          var frame = document.getElementById("ceFrame");
+          var tabsEl = document.getElementById("ideTabs");
+          var filesEl = document.getElementById("ideFiles");
+          var statusPos = document.getElementById("stPos");
+          var stMsg = document.getElementById("stMsg");
+          var panel = document.getElementById("idePanel");
+
+          // ── 파일 모델(localStorage 영속) ──
+          var files, active;
+          try {
+            files = JSON.parse(localStorage.getItem("ceFiles") || "null");
+          } catch (e) {
+            files = null;
+          }
+          if (!files || !files.length) {
+            var legacy = "";
+            try {
+              legacy = localStorage.getItem("ceCode") || "";
+            } catch (e) {}
+            files = [
+              {
+                name: "scratch.js",
+                content:
+                  legacy ||
+                  '// VS Code 스타일 에디터 — 여러 파일·탭·자동완성(Ctrl/⌘+Space)\nconsole.log("안녕, Quilo!");\n',
+              },
+            ];
+          }
+          try {
+            active = parseInt(localStorage.getItem("ceActive"), 10) || 0;
+          } catch (e) {
+            active = 0;
+          }
+          if (active < 0 || active >= files.length) active = 0;
+          files.forEach(function (f) {
+            f.lang = f.lang || langOfName(f.name);
+            f.doc = CodeMirror.Doc(f.content || "", modeOf(f.lang));
+          });
+
+          var sourceArea = document.getElementById("ceArea");
+          var cm = CodeMirror.fromTextArea(sourceArea, {
+            lineNumbers: true,
+            theme: "material-darker",
+            indentUnit: 2,
+            tabSize: 2,
+            lineWrapping: false,
+            matchBrackets: true,
+            autoCloseBrackets: true,
+            autoCloseTags: true,
+            styleActiveLine: true,
+            foldGutter: true,
+            gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"],
+            keyMap: "sublime",
+            extraKeys: {
+              "Ctrl-Space": "autocomplete",
+              "Cmd-Space": "autocomplete",
+              "Ctrl-/": "toggleComment",
+              "Cmd-/": "toggleComment",
+              "Ctrl-S": function () {
+                if (files[active] && files[active].handle) saveActiveToDisk();
+                else {
+                  persist();
+                  flash("로컬 저장됨");
+                }
+              },
+              "Cmd-S": function () {
+                if (files[active] && files[active].handle) saveActiveToDisk();
+                else {
+                  persist();
+                  flash("로컬 저장됨");
+                }
+              },
+              "Ctrl-Enter": function () {
+                runCurrent();
+              },
+              "Cmd-Enter": function () {
+                runCurrent();
+              },
+            },
+          });
+          // CodeMirror hides the source textarea with an inline display rule.
+          // Preserve the same behavior with the shared state class instead.
+          sourceArea.removeAttribute("style");
+          sourceArea.classList.add("is-hidden");
+          window.__ceCM = cm;
+
+          function currentLang() {
+            return files[active] ? files[active].lang : "javascript";
+          }
+          function persist() {
+            try {
+              localStorage.setItem(
+                "ceFiles",
+                JSON.stringify(
+                  files.map(function (f) {
+                    return {
+                      name: f.name,
+                      lang: f.lang,
+                      content: f.doc.getValue(),
+                    };
+                  })
+                )
+              );
+              localStorage.setItem("ceActive", String(active));
+            } catch (e) {}
+          }
+          var flashT;
+          function flash(msg) {
+            if (!stMsg) return;
+            stMsg.textContent = msg;
+            clearTimeout(flashT);
+            flashT = setTimeout(function () {
+              stMsg.textContent = "";
+            }, 1500);
+          }
+          function updateStatus() {
+            var c = cm.getCursor();
+            statusPos.textContent = "Ln " + (c.line + 1) + ", Col " + (c.ch + 1);
+          }
+
+          function renderTabs() {
+            tabsEl.innerHTML = "";
+            files.forEach(function (f, i) {
+              var t = document.createElement("div");
+              t.className = "ide-tab" + (i === active ? " on" : "");
+              var ic = document.createElement("span");
+              ic.className = "ide-tab-ic";
+              ic.textContent = iconFor(f.lang);
+              var nm = document.createElement("span");
+              nm.className = "ide-tab-name";
+              nm.textContent = f.name;
+              var x = document.createElement("span");
+              x.className = "ide-tab-x";
+              x.textContent = f.dirty ? "●" : "×";
+              x.title = f.dirty ? "저장 안 됨 (Ctrl/⌘+S)" : "닫기";
+              x.addEventListener("mouseenter", function () {
+                if (f.dirty) x.textContent = "×";
+              });
+              x.addEventListener("mouseleave", function () {
+                if (f.dirty) x.textContent = "●";
+              });
+              x.addEventListener("click", function (e) {
+                e.stopPropagation();
+                closeFile(i);
+              });
+              t.appendChild(ic);
+              t.appendChild(nm);
+              t.appendChild(x);
+              t.addEventListener("click", function () {
+                openFile(i);
+              });
+              t.addEventListener("dblclick", function () {
+                renameFile(i);
+              });
+              tabsEl.appendChild(t);
+            });
+          }
+          var folderEntries = [];
+          var folderName = "";
+          function renderExplorer() {
+            if (folderEntries.length) renderFolderList();
+            else renderFiles();
+          }
+          function renderFiles() {
+            filesEl.innerHTML = "";
+            files.forEach(function (f, i) {
+              var d = document.createElement("div");
+              d.className = "ide-file" + (i === active ? " on" : "");
+              d.textContent = iconFor(f.lang) + " " + f.name;
+              d.addEventListener("click", function () {
+                openFile(i);
+              });
+              d.addEventListener("dblclick", function () {
+                renameFile(i);
+              });
+              filesEl.appendChild(d);
+            });
+          }
+          function renderFolderList() {
+            filesEl.innerHTML = "";
+            var head = document.createElement("div");
+            head.className = "ide-folder-name";
+            head.textContent = "📁 " + folderName + "  (닫기 ✕)";
+            head.title = "폴더 목록 닫기";
+            head.addEventListener("click", function () {
+              folderEntries = [];
+              folderName = "";
+              renderExplorer();
+            });
+            filesEl.appendChild(head);
+            folderEntries.forEach(function (en, idx) {
+              var d = document.createElement("div");
+              var paths = files.map(function (f) {
+                return f.path;
+              });
+              var openIdx = paths.indexOf(en.name);
+              d.className =
+                "ide-file" + (openIdx >= 0 && openIdx === active ? " on" : "");
+              d.textContent = iconFor(langOfName(en.name)) + " " + en.name;
+              d.title = en.name;
+              d.addEventListener("click", function () {
+                openFolderEntry(idx);
+              });
+              filesEl.appendChild(d);
+            });
+          }
+          function openFolderEntry(idx) {
+            var en = folderEntries[idx];
+            var existing = files
+              .map(function (f) {
+                return f.path;
+              })
+              .indexOf(en.name);
+            if (existing >= 0) {
+              openFile(existing);
+              return;
+            }
+            if (en.handle && en.handle.getFile) {
+              en.handle
+                .getFile()
+                .then(function (file) {
+                  return file.text();
+                })
+                .then(function (text) {
+                  var lang = langOfName(en.name);
+                  files.push({
+                    name: en.name.split("/").pop(),
+                    path: en.name,
+                    lang: lang,
+                    doc: CodeMirror.Doc(text, modeOf(lang)),
+                    handle: en.handle,
+                    dirty: false,
+                  });
+                  openFile(files.length - 1);
+                })
+                .catch(function (e) {
+                  flash("열기 실패: " + e.message);
+                });
+            }
+          }
+          function openFile(i) {
+            if (i < 0 || i >= files.length) return;
+            active = i;
+            cm.swapDoc(files[i].doc);
+            cm.setOption("mode", modeOf(files[i].lang));
+            if (langSel) langSel.value = files[i].lang;
+            renderTabs();
+            renderExplorer();
+            updateStatus();
+            persist();
+            renderMinimap();
+            cm.focus();
+          }
+          function addFile() {
+            var n = 1,
+              base;
+            do {
+              base = "untitled-" + n + ".js";
+              n++;
+            } while (
+              files.some(function (f) {
+                return f.name === base;
+              })
+            );
+            files.push({
+              name: base,
+              lang: "javascript",
+              doc: CodeMirror.Doc("", modeOf("javascript")),
+              handle: null,
+              dirty: false,
+            });
+            active = files.length - 1;
+            cm.swapDoc(files[active].doc);
+            cm.setOption("mode", modeOf("javascript"));
+            if (langSel) langSel.value = "javascript";
+            renderTabs();
+            renderExplorer();
+            updateStatus();
+            persist();
+            renameFile(active);
+          }
+          function closeFile(i) {
+            if (files.length <= 1) {
+              flash("마지막 파일은 닫을 수 없어요");
+              return;
+            }
+            files.splice(i, 1);
+            if (active >= files.length) active = files.length - 1;
+            else if (i < active) active--;
+            openFile(active);
+          }
+          function renameFile(i) {
+            var tab = tabsEl.children[i];
+            var nameSpan = tab ? tab.querySelector(".ide-tab-name") : null;
+            if (!nameSpan) return;
+            var input = document.createElement("input");
+            input.className = "ide-rename";
+            input.value = files[i].name;
+            var done = false;
+            function commit(save) {
+              if (done) return;
+              done = true;
+              if (save) {
+                var nm = (input.value || "").trim();
+                if (nm) {
+                  files[i].name = nm;
+                  files[i].lang = langOfName(nm);
+                  if (files[i].path) files[i].path = nm;
+                  if (i === active) {
+                    cm.setOption("mode", modeOf(files[i].lang));
+                    if (langSel) langSel.value = files[i].lang;
+                  }
+                }
+              }
+              renderTabs();
+              renderExplorer();
+              persist();
+              cm.focus();
+            }
+            input.addEventListener("keydown", function (e) {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                commit(true);
+              } else if (e.key === "Escape") {
+                e.preventDefault();
+                commit(false);
+              }
+            });
+            input.addEventListener("blur", function () {
+              commit(true);
+            });
+            input.addEventListener("click", function (e) {
+              e.stopPropagation();
+            });
+            nameSpan.replaceWith(input);
+            input.focus();
+            input.select();
+          }
+
+          cm.on("cursorActivity", updateStatus);
+          cm.on("change", function () {
+            var f = files[active];
+            if (f && f.handle && !f.dirty) {
+              f.dirty = true;
+              renderTabs();
+            }
+            persist();
+            scheduleMinimap();
+          });
+
+          if (langSel)
+            langSel.addEventListener("change", function () {
+              files[active].lang = langSel.value;
+              cm.setOption("mode", modeOf(langSel.value));
+              renderTabs();
+              renderExplorer();
+              persist();
+            });
+          var newBtn = document.getElementById("ideNewFile");
+          if (newBtn) newBtn.addEventListener("click", addFile);
+
+          // ── 통합 패널(출력/미리보기/AI) ──
+          function showPanel(which) {
+            if (panel) panel.classList.remove("is-hidden");
+            ["output", "preview", "ai"].forEach(function (p) {
+              var btn = panel
+                ? panel.querySelector('[data-panel="' + p + '"]')
+                : null;
+              var pane = document.getElementById(
+                p === "output" ? "ceOut" : p === "preview" ? "ceFrame" : "ceAi"
+              );
+              if (btn) btn.classList.toggle("on", p === which);
+              if (pane) pane.classList.toggle("on", p === which);
+            });
+            cm.refresh();
+          }
+          if (panel) {
+            Array.prototype.forEach.call(
+              panel.querySelectorAll(".ide-panel-tabs [data-panel]"),
+              function (b) {
+                b.addEventListener("click", function () {
+                  showPanel(b.getAttribute("data-panel"));
+                });
+              }
+            );
+            var pClose = document.getElementById("idePanelClose");
+            if (pClose)
+              pClose.addEventListener("click", function () {
+                panel.classList.add("is-hidden");
+                cm.refresh();
+              });
+          }
+
+          function runCurrent() {
+            var code = cm.getValue();
+            var l = currentLang();
+            if (l === "javascript") {
+              out.textContent = "실행 중…";
+              showPanel("output");
+              window.QuiloIsolatedJsRunner.run(code).then(function (execution) {
+                out.textContent = window.QuiloIsolatedJsRunner.formatOutput(execution);
+              }).catch(function (error) {
+                out.textContent = "⚠ " + (error && error.message ? error.message : error);
+              });
+            } else if (l === "htmlmixed") {
+              frame.srcdoc = code;
+              showPanel("preview");
+            } else {
+              out.textContent =
+                "이 언어(" +
+                (LANGS[l] ? LANGS[l].label : l) +
+                ")는 브라우저에서 실행할 수 없어요. JavaScript나 HTML로 해보세요.";
+              showPanel("output");
+            }
+          }
+          var stRun = document.getElementById("stRun");
+          if (stRun) stRun.addEventListener("click", runCurrent);
+
+          // ── 액티비티 바 ──
+          Array.prototype.forEach.call(
+            document.querySelectorAll(".ide-activity [data-act]"),
+            function (b) {
+              b.addEventListener("click", function () {
+                var a = b.getAttribute("data-act");
+                if (a === "explorer") {
+                  var side = document.getElementById("ideSide");
+                  var show = side.classList.contains("is-hidden");
+                  side.classList.toggle("is-hidden", !show);
+                  b.classList.toggle("on", show);
+                  cm.refresh();
+                } else if (a === "run") {
+                  runCurrent();
+                } else if (a === "ai") {
+                  showPanel("ai");
+                  var pe = document.getElementById("caPrompt");
+                  if (pe) pe.focus();
+                }
+              });
+            }
+          );
+
+          // ── 미니맵 ──
+          var ide = document.getElementById("ide");
+          var minimap = document.getElementById("ideMinimap");
+          var miniCode = document.getElementById("ideMiniCode");
+          var miniView = document.getElementById("ideMiniView");
+          var miniContentH = 0;
+          function renderMinimap() {
+            if (!miniCode || !ide || ide.classList.contains("nominimap")) return;
+            miniCode.style.setProperty("--minimap-scale", "1");
+            miniCode.textContent = cm.getValue();
+            var natural = miniCode.scrollHeight || 1;
+            var ch = minimap.clientHeight || 1;
+            var scale = natural > ch ? ch / natural : 1;
+            miniCode.style.setProperty("--minimap-scale", String(scale));
+            miniContentH = natural * scale;
+            updateMiniView();
+          }
+          function updateMiniView() {
+            if (!miniView || !ide || ide.classList.contains("nominimap")) return;
+            var si = cm.getScrollInfo();
+            var h = si.height || 1;
+            miniView.style.setProperty("--minimap-top", (si.top / h) * miniContentH + "px");
+            miniView.style.setProperty(
+              "--minimap-height",
+              Math.max(14, (si.clientHeight / h) * miniContentH) + "px",
+            );
+          }
+          var miniT;
+          function scheduleMinimap() {
+            clearTimeout(miniT);
+            miniT = setTimeout(renderMinimap, 180);
+          }
+          if (minimap)
+            minimap.addEventListener("click", function (e) {
+              var si = cm.getScrollInfo();
+              var target =
+                (e.offsetY / (miniContentH || 1)) * si.height -
+                si.clientHeight / 2;
+              cm.scrollTo(null, Math.max(0, target));
+            });
+          cm.on("scroll", updateMiniView);
+          function applyMinimap(on) {
+            if (!ide) return;
+            ide.classList.toggle("nominimap", !on);
+            try {
+              localStorage.setItem("ceMinimap", on ? "1" : "0");
+            } catch (e) {}
+            cm.refresh();
+            if (on) renderMinimap();
+          }
+
+          // ── 라이트/다크 테마 ──
+          function applyTheme(light) {
+            if (!ide) return;
+            ide.classList.toggle("light", light);
+            cm.setOption("theme", light ? "eclipse" : "material-darker");
+            var tb = document.getElementById("stTheme");
+            if (tb) tb.textContent = light ? "☀" : "🌙";
+            try {
+              localStorage.setItem("ceTheme", light ? "light" : "dark");
+            } catch (e) {}
+            renderMinimap();
+          }
+
+          // ── 로컬 파일 (File System Access API; 미지원 시 업로드/다운로드 폴백) ──
+          var fileInput = document.getElementById("ideFileInput");
+          var hasFSA = !!window.showOpenFilePicker;
+          function addDiskFile(name, text, handle) {
+            var lang = langOfName(name);
+            files.push({
+              name: name,
+              lang: lang,
+              doc: CodeMirror.Doc(text, modeOf(lang)),
+              handle: handle || null,
+              dirty: false,
+            });
+            openFile(files.length - 1);
+            flash("열기: " + name);
+          }
+          function openLocalFiles() {
+            if (hasFSA) {
+              window
+                .showOpenFilePicker({ multiple: true })
+                .then(function (handles) {
+                  handles.forEach(function (h) {
+                    h.getFile().then(function (file) {
+                      file.text().then(function (text) {
+                        addDiskFile(file.name, text, h);
+                      });
+                    });
+                  });
+                })
+                .catch(function () {});
+            } else if (fileInput) {
+              fileInput.value = "";
+              fileInput.click();
+            }
+          }
+          if (fileInput)
+            fileInput.addEventListener("change", function () {
+              Array.prototype.forEach.call(fileInput.files, function (file) {
+                var r = new FileReader();
+                r.addEventListener("load", function () {
+                  addDiskFile(file.name, String(r.result || ""), null);
+                });
+                r.readAsText(file);
+              });
+            });
+          function openLocalFolder() {
+            if (!window.showDirectoryPicker) {
+              flash("이 브라우저는 폴더 열기를 지원하지 않아요. '파일 열기'를 쓰세요.");
+              return;
+            }
+            window
+              .showDirectoryPicker()
+              .then(function (dir) {
+                var collected = [];
+                var SKIP = {
+                  node_modules: 1,
+                  ".git": 1,
+                  dist: 1,
+                  build: 1,
+                  ".next": 1,
+                  vendor: 1,
+                };
+                function walk(handle, prefix, depth) {
+                  if (collected.length >= 300 || depth > 6)
+                    return Promise.resolve();
+                  var it = handle.values();
+                  function next() {
+                    return it.next().then(function (res) {
+                      if (res.done || collected.length >= 300) return;
+                      var entry = res.value;
+                      var p = Promise.resolve();
+                      if (entry.kind === "directory") {
+                        if (!SKIP[entry.name] && entry.name.charAt(0) !== ".")
+                          p = walk(entry, prefix + entry.name + "/", depth + 1);
+                      } else {
+                        collected.push({ name: prefix + entry.name, handle: entry });
+                      }
+                      return p.then(next);
+                    });
+                  }
+                  return next();
+                }
+                flash("폴더 읽는 중…");
+                walk(dir, "", 0)
+                  .then(function () {
+                    folderEntries = collected;
+                    folderName = dir.name;
+                    renderExplorer();
+                    flash("폴더 열림: " + dir.name + " (" + collected.length + "개)");
+                  })
+                  .catch(function (e) {
+                    flash("폴더 읽기 실패: " + e.message);
+                  });
+              })
+              .catch(function () {});
+          }
+          function saveActiveToDisk() {
+            var f = files[active];
+            if (f.handle && f.handle.createWritable) {
+              f.handle
+                .createWritable()
+                .then(function (w) {
+                  return w.write(f.doc.getValue()).then(function () {
+                    return w.close();
+                  });
+                })
+                .then(function () {
+                  f.dirty = false;
+                  renderTabs();
+                  flash("저장됨 → " + f.name);
+                  persist();
+                })
+                .catch(function (e) {
+                  flash("저장 실패: " + e.message);
+                });
+            } else if (window.showSaveFilePicker) {
+              window
+                .showSaveFilePicker({ suggestedName: f.name })
+                .then(function (h) {
+                  return h
+                    .createWritable()
+                    .then(function (w) {
+                      return w.write(f.doc.getValue()).then(function () {
+                        return w.close();
+                      });
+                    })
+                    .then(function () {
+                      f.handle = h;
+                      f.name = h.name || f.name;
+                      f.lang = langOfName(f.name);
+                      f.dirty = false;
+                      cm.setOption("mode", modeOf(f.lang));
+                      if (langSel) langSel.value = f.lang;
+                      renderTabs();
+                      renderExplorer();
+                      flash("저장됨 → " + f.name);
+                      persist();
+                    });
+                })
+                .catch(function () {});
+            } else {
+              downloadActive();
+            }
+          }
+          function downloadActive() {
+            var f = files[active];
+            var blob = new Blob([f.doc.getValue()], {
+              type: "text/plain;charset=utf-8",
+            });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement("a");
+            a.href = url;
+            a.download = f.name;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(function () {
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            }, 100);
+            flash("다운로드: " + f.name);
+          }
+
+          // ── 버튼 배선 + 초기 테마/미니맵 ──
+          var bOpen = document.getElementById("ideOpenFile");
+          if (bOpen) bOpen.addEventListener("click", openLocalFiles);
+          var bFolder = document.getElementById("ideOpenFolder");
+          if (bFolder) bFolder.addEventListener("click", openLocalFolder);
+          var bSave = document.getElementById("stSave");
+          if (bSave) bSave.addEventListener("click", saveActiveToDisk);
+          var bDl = document.getElementById("stDownload");
+          if (bDl) bDl.addEventListener("click", downloadActive);
+          var bTheme = document.getElementById("stTheme");
+          if (bTheme)
+            bTheme.addEventListener("click", function () {
+              applyTheme(!ide.classList.contains("light"));
+            });
+          var bMini = document.getElementById("stMinimap");
+          if (bMini)
+            bMini.addEventListener("click", function () {
+              applyMinimap(ide.classList.contains("nominimap"));
+            });
+          var savedTheme, savedMini;
+          try {
+            savedTheme = localStorage.getItem("ceTheme");
+            savedMini = localStorage.getItem("ceMinimap");
+          } catch (e) {}
+          applyMinimap(savedMini !== "0");
+          applyTheme(savedTheme === "light");
+
+          openFile(active);
+
+          // ── AI 코딩 도우미 (하이브리드 멀티모델) ──
+          (function setupAssist() {
+            var modelSel = document.getElementById("caModel");
+            var promptEl = document.getElementById("caPrompt");
+            var goBtn = document.getElementById("caGo");
+            var useCode = document.getElementById("caUseCode");
+            var resBox = document.getElementById("caResult");
+            var resText = document.getElementById("caText");
+            var resActions = document.getElementById("caActions");
+            var caHint = document.getElementById("caHint");
+            if (!modelSel || !goBtn) return;
+
+            fetch("/api/admin/code-assist/models")
+              .then(function (r) {
+                return r.json();
+              })
+              .then(function (d) {
+                var ms = (d && d.models) || [];
+                modelSel.innerHTML = "";
+                ms.forEach(function (m) {
+                  var o = document.createElement("option");
+                  o.value = m.id;
+                  o.textContent = m.label + (m.available ? "" : " (키 없음)");
+                  if (!m.available) o.disabled = true;
+                  modelSel.appendChild(o);
+                });
+                try {
+                  var sm = localStorage.getItem("caModel");
+                  if (
+                    sm &&
+                    ms.some(function (m) {
+                      return m.id === sm && m.available;
+                    })
+                  )
+                    modelSel.value = sm;
+                } catch (e) {}
+                var cur = ms.filter(function (m) {
+                  return m.id === modelSel.value;
+                })[0];
+                if (!cur || !cur.available) {
+                  var first = ms.filter(function (m) {
+                    return m.available;
+                  })[0];
+                  if (first) modelSel.value = first.id;
+                }
+                if (!ms.length) caHint.textContent = "사용 가능한 모델 없음";
+              })
+              .catch(function () {
+                caHint.textContent = "모델 목록 로드 실패";
+              });
+
+            modelSel.addEventListener("change", function () {
+              try {
+                localStorage.setItem("caModel", modelSel.value);
+              } catch (e) {}
+            });
+
+            function extractCode(t) {
+              var m = t.match(/```[a-zA-Z0-9_+\-/.]*\n([\s\S]*?)```/);
+              return m ? m[1].replace(/\n$/, "") : null;
+            }
+
+            function mkBtn(label, fn) {
+              var b = document.createElement("button");
+              b.textContent = label;
+              b.className = "secondary compact";
+              b.addEventListener("click", fn);
+              resActions.appendChild(b);
+              return b;
+            }
+            function setActions(code, fullText) {
+              resActions.innerHTML = "";
+              if (code != null) {
+                mkBtn("커서에 삽입", function () {
+                  cm.replaceSelection(code);
+                  cm.focus();
+                });
+                mkBtn("전체 교체", function () {
+                  cm.setValue(code);
+                  cm.focus();
+                });
+              }
+              mkBtn("복사", function (e) {
+                try {
+                  navigator.clipboard.writeText(code != null ? code : fullText);
+                  var t = e.target;
+                  t.textContent = "복사됨!";
+                  setTimeout(function () {
+                    t.textContent = "복사";
+                  }, 1200);
+                } catch (x) {}
+              });
+            }
+
+            goBtn.addEventListener("click", function () {
+              var prompt = (promptEl.value || "").trim();
+              if (!prompt) {
+                promptEl.focus();
+                return;
+              }
+              goBtn.disabled = true;
+              var origLabel = goBtn.textContent;
+              goBtn.textContent = "생성 중…";
+              caHint.textContent = "";
+              resBox.classList.remove("is-hidden");
+              resText.textContent = "AI가 생각하는 중…";
+              resActions.innerHTML = "";
+              fetch("/api/admin/code-assist", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  prompt: prompt,
+                  code: useCode.checked ? cm.getValue() : "",
+                  lang: currentLang(),
+                  model: modelSel.value,
+                }),
+              })
+                .then(function (r) {
+                  return r.json().then(function (j) {
+                    return { ok: r.ok, j: j };
+                  });
+                })
+                .then(function (x) {
+                  if (!x.ok) {
+                    resText.textContent =
+                      "⚠ " + ((x.j && x.j.error) || "오류가 발생했습니다.");
+                    return;
+                  }
+                  var ans = (x.j && x.j.answer) || "(빈 응답)";
+                  resText.textContent = ans;
+                  caHint.textContent =
+                    x.j && x.j.model ? "모델: " + x.j.model : "";
+                  setActions(extractCode(ans), ans);
+                })
+                .catch(function (e) {
+                  resText.textContent =
+                    "⚠ 요청 실패: " + (e && e.message ? e.message : e);
+                })
+                .finally(function () {
+                  goBtn.disabled = false;
+                  goBtn.textContent = origLabel;
+                });
+            });
+
+            promptEl.addEventListener("keydown", function (e) {
+              if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+                e.preventDefault();
+                goBtn.click();
+              }
+            });
+          })();
+        }
+      })();
+    </script>
+    <script>
+      // ── API 키 위임(grant) 패널 ──
+      (function () {
+        function esc(s) {
+          return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
+            return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+          });
+        }
+        var listEl = document.getElementById("grantList");
+        var statusEl = document.getElementById("grantStatus");
+        if (!listEl) return;
+        function fmt(ts) {
+          try {
+            return new Date(ts).toLocaleString("ko-KR", {
+              dateStyle: "short",
+              timeStyle: "short",
+            });
+          } catch (e) {
+            return ts;
+          }
+        }
+        function loadGrants() {
+          statusEl.textContent = "불러오는 중...";
+          fetch("/api/grants")
+            .then(function (r) {
+              return r.json();
+            })
+            .then(function (d) {
+              if (d.error) {
+                statusEl.textContent = "오류: " + d.error;
+                listEl.innerHTML = "";
+                return;
+              }
+              renderGrants(d.grants || []);
+              statusEl.textContent = "";
+            })
+            .catch(function () {
+              statusEl.textContent = "목록을 불러오지 못했습니다.";
+            });
+        }
+        window.loadGrants = loadGrants;
+        function renderGrants(grants) {
+          if (!grants.length) {
+            listEl.innerHTML = '<p class="hint">아직 위임이 없습니다.</p>';
+            return;
+          }
+          listEl.innerHTML = grants
+            .map(function (g) {
+              var badge = g.active
+                ? '<span class="tone-success is-semibold">활성</span>'
+                : '<span class="is-dimmed">만료/회수</span>';
+              var revokeBtn = g.active
+                ? '<button class="list-revoke-button" data-act="revoke" data-id="' +
+                  esc(g.id) +
+                  '">회수</button>'
+                : "";
+              return (
+                '<div class="admin-list-card">' +
+                '<div class="admin-list-card__header">' +
+                "<b>" +
+                esc(g.userName || g.userId) +
+                "</b> " +
+                badge +
+                '<span class="admin-list-card__expiry">만료: ' +
+                esc(fmt(g.expiresAt)) +
+                "</span>" +
+                revokeBtn +
+                "</div>" +
+                (g.note
+                  ? '<div class="admin-list-card__note">메모: ' +
+                    esc(g.note) +
+                    "</div>"
+                  : "") +
+                '<div class="admin-list-card__meta">부여: ' +
+                esc(g.grantedByName || "관리자") +
+                " · " +
+                esc(fmt(g.createdAt)) +
+                "</div>" +
+                "</div>"
+              );
+            })
+            .join("");
+        }
+        listEl.addEventListener("click", function (e) {
+          var btn = e.target.closest("[data-act='revoke']");
+          if (!btn) return;
+          if (!confirm("이 위임을 회수할까요? 즉시 무료 사용이 중단됩니다.")) return;
+          fetch(
+            "/api/grants/" +
+              encodeURIComponent(btn.getAttribute("data-id")) +
+              "/revoke",
+            { method: "POST" }
+          )
+            .then(function (r) {
+              return r.json();
+            })
+            .then(function (d) {
+              if (d.error) alert(d.error);
+              loadGrants();
+            })
+            .catch(function () {
+              alert("회수 실패");
+            });
+        });
+        var form = document.getElementById("grantAddForm");
+        form &&
+          form.addEventListener("submit", function (e) {
+            e.preventDefault();
+            var st = document.getElementById("grantAddStatus");
+            var name = document.getElementById("grantName").value.trim();
+            if (!name) {
+              st.textContent = "사용자 이름을 입력하세요.";
+              return;
+            }
+            var days = parseInt(document.getElementById("grantDays").value, 10) || 0;
+            var hours = parseInt(document.getElementById("grantHours").value, 10) || 0;
+            if (days <= 0 && hours <= 0) {
+              st.textContent = "기간을 1 이상으로 지정하세요.";
+              return;
+            }
+            st.textContent = "부여 중...";
+            fetch("/api/grants", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                name: name,
+                days: days,
+                hours: hours,
+                note: document.getElementById("grantNote").value.trim(),
+              }),
+            })
+              .then(function (r) {
+                return r.json();
+              })
+              .then(function (d) {
+                if (d.error) {
+                  st.textContent = "오류: " + d.error;
+                  return;
+                }
+                st.textContent = "완료";
+                document.getElementById("grantName").value = "";
+                document.getElementById("grantNote").value = "";
+                loadGrants();
+              })
+              .catch(function () {
+                st.textContent = "부여 실패";
+              });
+          });
+        var refreshBtn = document.getElementById("refreshGrants");
+        refreshBtn && refreshBtn.addEventListener("click", loadGrants);
+        var tabBtn = document.querySelector(
+          '#adminTabs .atab[data-go="grants"]'
+        );
+        tabBtn && tabBtn.addEventListener("click", loadGrants);
+        loadGrants();
+      })();
+    </script>
+    <script>
+      // ── 백그라운드 구독(background_subscriptions) 패널 ──
+      (function () {
+        function esc(s) {
+          return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
+            return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+          });
+        }
+        var listEl = document.getElementById("subList");
+        var statusEl = document.getElementById("subStatus");
+        if (!listEl) return;
+        function fmt(ts) {
+          try {
+            return new Date(ts).toLocaleString("ko-KR", {
+              dateStyle: "short",
+              timeStyle: "short",
+            });
+          } catch (e) {
+            return ts;
+          }
+        }
+        function loadSubs() {
+          statusEl.textContent = "불러오는 중...";
+          fetch("/api/subscriptions")
+            .then(function (r) {
+              return r.json();
+            })
+            .then(function (d) {
+              if (d.error) {
+                statusEl.textContent = "오류: " + d.error;
+                listEl.innerHTML = "";
+                return;
+              }
+              renderSubs(d.subs || []);
+              statusEl.textContent = "";
+            })
+            .catch(function () {
+              statusEl.textContent = "목록을 불러오지 못했습니다.";
+            });
+        }
+        window.loadSubs = loadSubs;
+        function renderSubs(subs) {
+          if (!subs.length) {
+            listEl.innerHTML = '<p class="hint">아직 백그라운드 구독이 없습니다.</p>';
+            return;
+          }
+          listEl.innerHTML = subs
+            .map(function (g) {
+              var badge = g.active
+                ? '<span class="tone-success is-semibold">활성</span>'
+                : '<span class="is-dimmed">만료/회수</span>';
+              var revokeBtn = g.active
+                ? '<button class="list-revoke-button" data-act="revoke" data-id="' +
+                  esc(g.id) +
+                  '">회수</button>'
+                : "";
+              return (
+                '<div class="admin-list-card">' +
+                '<div class="admin-list-card__header">' +
+                "<b>" +
+                esc(g.userName || g.userId) +
+                "</b> " +
+                badge +
+                '<span class="admin-list-card__expiry">만료: ' +
+                esc(fmt(g.expiresAt)) +
+                "</span>" +
+                revokeBtn +
+                "</div>" +
+                (g.note
+                  ? '<div class="admin-list-card__note">메모: ' +
+                    esc(g.note) +
+                    "</div>"
+                  : "") +
+                '<div class="admin-list-card__meta">부여: ' +
+                esc(g.grantedByName || "관리자") +
+                " · " +
+                esc(fmt(g.createdAt)) +
+                "</div>" +
+                "</div>"
+              );
+            })
+            .join("");
+        }
+        listEl.addEventListener("click", function (e) {
+          var btn = e.target.closest("[data-act='revoke']");
+          if (!btn) return;
+          if (!confirm("이 구독을 회수할까요? 즉시 백그라운드 실행이 중단됩니다.")) return;
+          fetch(
+            "/api/subscriptions/" +
+              encodeURIComponent(btn.getAttribute("data-id")) +
+              "/revoke",
+            { method: "POST" }
+          )
+            .then(function (r) {
+              return r.json();
+            })
+            .then(function (d) {
+              if (d.error) alert(d.error);
+              loadSubs();
+            })
+            .catch(function () {
+              alert("회수 실패");
+            });
+        });
+        var form = document.getElementById("subAddForm");
+        form &&
+          form.addEventListener("submit", function (e) {
+            e.preventDefault();
+            var st = document.getElementById("subAddStatus");
+            var name = document.getElementById("subName").value.trim();
+            if (!name) {
+              st.textContent = "사용자 이름을 입력하세요.";
+              return;
+            }
+            var permanent = !!(
+              document.getElementById("subPermanent") &&
+              document.getElementById("subPermanent").checked
+            );
+            var days = parseInt(document.getElementById("subDays").value, 10) || 0;
+            var hours = parseInt(document.getElementById("subHours").value, 10) || 0;
+            if (!permanent && days <= 0 && hours <= 0) {
+              st.textContent = "기간을 1 이상으로 지정하거나 '무기한'을 선택하세요.";
+              return;
+            }
+            st.textContent = "부여 중...";
+            fetch("/api/subscriptions", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                name: name,
+                days: days,
+                hours: hours,
+                permanent: permanent,
+                note: document.getElementById("subNote").value.trim(),
+              }),
+            })
+              .then(function (r) {
+                return r.json();
+              })
+              .then(function (d) {
+                if (d.error) {
+                  st.textContent = "오류: " + d.error;
+                  return;
+                }
+                st.textContent = "완료";
+                document.getElementById("subName").value = "";
+                document.getElementById("subNote").value = "";
+                loadSubs();
+              })
+              .catch(function () {
+                st.textContent = "부여 실패";
+              });
+          });
+        var refreshBtn = document.getElementById("refreshSubs");
+        refreshBtn && refreshBtn.addEventListener("click", loadSubs);
+
+        // ── 입금 신청 대기 큐 ──
+        var reqListEl = document.getElementById("subReqList");
+        function loadSubReqs() {
+          if (!reqListEl) return;
+          reqListEl.innerHTML = '<p class="hint">불러오는 중...</p>';
+          fetch("/api/subscriptions/requests")
+            .then(function (r) {
+              return r.json();
+            })
+            .then(function (d) {
+              if (d.error) {
+                reqListEl.innerHTML =
+                  '<p class="hint">오류: ' + esc(d.error) + "</p>";
+                return;
+              }
+              renderSubReqs(d.requests || []);
+            })
+            .catch(function () {
+              reqListEl.innerHTML = '<p class="hint">목록을 불러오지 못했습니다.</p>';
+            });
+        }
+        window.loadSubReqs = loadSubReqs;
+        function renderSubReqs(reqs) {
+          if (!reqs.length) {
+            reqListEl.innerHTML = '<p class="hint">대기 중인 입금 신청이 없습니다.</p>';
+            return;
+          }
+          reqListEl.innerHTML = reqs
+            .map(function (q) {
+              return (
+                '<div class="admin-list-card">' +
+                '<div class="admin-list-card__header">' +
+                "<b>" +
+                esc(q.userName || q.userId) +
+                "</b>" +
+                '<span class="subrequest-depositor">입금자명: ' +
+                esc(q.depositorName || "(미입력)") +
+                "</span>" +
+                '<span class="admin-list-card__expiry">' +
+                esc(fmt(q.createdAt)) +
+                "</span>" +
+                '<button class="subrequest-approve" data-act="approve" data-id="' +
+                  esc(q.id) +
+                '">승인</button>' +
+                '<button class="subrequest-reject" data-act="reject" data-id="' +
+                  esc(q.id) +
+                '">거절</button>' +
+                "</div>" +
+                '<div class="subrequest-result">승인 시 ' +
+                esc(String(q.periodDays || 30)) +
+                "일 부여(활성이면 연장)</div>" +
+                "</div>"
+              );
+            })
+            .join("");
+        }
+        reqListEl &&
+          reqListEl.addEventListener("click", function (e) {
+            var btn = e.target.closest("[data-act]");
+            if (!btn) return;
+            var act = btn.getAttribute("data-act");
+            var id = btn.getAttribute("data-id");
+            if (act === "reject" && !confirm("이 신청을 거절할까요?")) return;
+            if (act === "approve" && !confirm("입금을 확인했나요? 승인하면 즉시 Max가 활성화됩니다.")) return;
+            btn.disabled = true;
+            fetch("/api/subscriptions/requests/" + encodeURIComponent(id) + "/" + act, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: "{}",
+            })
+              .then(function (r) {
+                return r.json();
+              })
+              .then(function (d) {
+                if (d.error) alert(d.error);
+                loadSubReqs();
+                loadSubs();
+              })
+              .catch(function () {
+                alert("처리 실패");
+                btn.disabled = false;
+              });
+          });
+        var refreshReqBtn = document.getElementById("refreshSubReqs");
+        refreshReqBtn && refreshReqBtn.addEventListener("click", loadSubReqs);
+
+        function loadSubsTab() {
+          loadSubs();
+          loadSubReqs();
+        }
+        var tabBtn = document.querySelector('#adminTabs .atab[data-go="subs"]');
+        tabBtn && tabBtn.addEventListener("click", loadSubsTab);
+        loadSubsTab();
+      })();
+    </script>
+    <script>
+      // ── 등급 탭 · Pro 회원 관리('pro' 우산 키) + 임시 전체 공개 ──────────────
+      // Pro 해제(✕)는 우산·기능별 지정을 전부 제거(DELETE /api/admin/pro-member/:id)
+      // → 기간 개념 없이 즉시 효력. 임시 공개는 POST /api/admin/beta/:key/open {hours}.
+      (function () {
+        var listEl = document.getElementById("proList");
+        if (!listEl) return;
+        var statusEl = document.getElementById("proStatus");
+        var addStatus = document.getElementById("proAddStatus");
+        var openSel = document.getElementById("openKey");
+        var openHours = document.getElementById("openHours");
+        var openListEl = document.getElementById("openList");
+        var openStatus = document.getElementById("openStatus");
+        var openSetStatus = document.getElementById("openSetStatus");
+        var featuresCache = [];
+        function esc(s) {
+          return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+            return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+          });
+        }
+        async function fetchFeatures() {
+          var r = await fetch("/api/admin/beta");
+          var d = await r.json().catch(function () { return {}; });
+          if (!r.ok) throw new Error(d.error || "목록 조회 실패");
+          featuresCache = Array.isArray(d.features) ? d.features : [];
+          // 관리자 페이지 진입은 읽기 전용이어야 한다. 서버 seed가 아직 없는 경우에도
+          // UI에만 빈 Pro 우산을 합성하고, 실제 생성은 관리자의 명시적 조작에 맡긴다.
+          if (!featuresCache.some(function (x) { return x.key === "pro"; })) {
+            featuresCache = [{
+              key: "pro",
+              label: "Pro 회원",
+              enabled: true,
+              testers: [],
+              dailyLimit: 0,
+            }].concat(featuresCache);
+          }
+          return featuresCache;
+        }
+        // Pro 목록 = 전 기능 테스터의 합집합(우산 'pro' + 과거 기능별 지정 모두 표시·해제 가능).
+        function renderPro() {
+          var byUser = {};
+          featuresCache.forEach(function (f) {
+            (f.testers || []).forEach(function (t) {
+              var uid = (t.user && t.user.id) || t.user_id || t.id || "";
+              var name = (t.user && t.user.name) || t.name || uid || "?";
+              if (!uid) return;
+              if (!byUser[uid]) byUser[uid] = { name: name, keys: [] };
+              byUser[uid].keys.push(f.key);
+            });
+          });
+          var uids = Object.keys(byUser);
+          if (!uids.length) {
+            listEl.innerHTML = '<p class="hint">아직 Pro 회원이 없습니다. 위에서 이름으로 지정하세요.</p>';
+          } else {
+            listEl.innerHTML = uids
+              .map(function (uid) {
+                var u = byUser[uid];
+                var full = u.keys.indexOf("pro") >= 0;
+                var sub = full ? "" :
+                  ' <span class="hint pro-member__scope">(' + esc(u.keys.join(", ")) + ")</span>";
+                return (
+                  '<span class="pro-member">' +
+                  esc(u.name) + sub +
+                  ' <button type="button" class="pro-member__remove" data-uid="' + esc(uid) + '" title="Pro 완전 해제(즉시)">✕</button></span>'
+                );
+              })
+              .join("");
+            listEl.querySelectorAll("button[data-uid]").forEach(function (b) {
+              b.addEventListener("click", async function () {
+                if (!confirm("이 사용자의 Pro 권한을 즉시·완전히 해제할까요? (우산 + 기능별 지정 모두 제거)")) return;
+                await fetch("/api/admin/pro-member/" + encodeURIComponent(b.getAttribute("data-uid")), {
+                  method: "DELETE",
+                }).catch(function () {});
+                reload();
+              });
+            });
+          }
+          statusEl.textContent = "총 " + uids.length + "명 (해제는 즉시 효력)";
+        }
+        function fmtRemain(ms) {
+          var m = Math.max(0, Math.round(ms / 60000));
+          return m >= 60 ? Math.floor(m / 60) + "시간 " + (m % 60) + "분" : m + "분";
+        }
+        function renderOpen() {
+          if (openSel) {
+            openSel.innerHTML = featuresCache
+              .filter(function (f) { return f.key !== "pro"; })
+              .map(function (f) {
+                return '<option value="' + esc(f.key) + '">' + esc(f.label || f.key) + " (" + esc(f.key) + ")</option>";
+              })
+              .join("");
+          }
+          var AUD_LABEL = { all: "모두", pro: "Pro 회원", max: "Max 회원" };
+          var open = featuresCache.filter(function (f) { return (f.openUntil || 0) > Date.now(); });
+          if (!openListEl) return;
+          if (!open.length) {
+            openListEl.innerHTML = '<p class="hint">현재 임시 공개 중인 기능이 없습니다.</p>';
+          } else {
+            openListEl.innerHTML = open
+              .map(function (f) {
+                return (
+                  '<div class="temporary-open-item">🟢 <b>' +
+                  esc(f.label || f.key) + "</b> <span class=\"hint\">(대상: " +
+                  esc(AUD_LABEL[f.openAudience] || "모두") + ")</span> — " +
+                  fmtRemain(f.openUntil - Date.now()) + " 남음" +
+                  ' <button type="button" class="secondary compact" data-close="' + esc(f.key) + '">지금 닫기</button></div>'
+                );
+              })
+              .join("");
+            openListEl.querySelectorAll("button[data-close]").forEach(function (b) {
+              b.addEventListener("click", async function () {
+                await fetch("/api/admin/beta/" + encodeURIComponent(b.getAttribute("data-close")) + "/open", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ hours: 0 }),
+                }).catch(function () {});
+                reload();
+              });
+            });
+          }
+          if (openStatus) openStatus.textContent = open.length ? "임시 공개 " + open.length + "건" : "";
+        }
+        async function reload() {
+          statusEl.textContent = "불러오는 중...";
+          try {
+            await fetchFeatures();
+            renderPro();
+            renderOpen();
+          } catch (e) {
+            statusEl.textContent = e.message || "불러오기 실패";
+            if (openListEl) openListEl.innerHTML = "";
+          }
+        }
+        var form = document.getElementById("proAddForm");
+        form &&
+          form.addEventListener("submit", async function (ev) {
+            ev.preventDefault();
+            var input = document.getElementById("proName");
+            var name = ((input && input.value) || "").trim();
+            if (!name) return;
+            addStatus.textContent = "지정 중...";
+            try {
+              var r = await fetch("/api/admin/beta/pro/testers", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name: name }),
+              });
+              var d = await r.json().catch(function () { return {}; });
+              if (!r.ok) throw new Error(d.error || "지정 실패");
+              addStatus.textContent = "✓ 지정됨";
+              if (input) input.value = "";
+              reload();
+            } catch (e) {
+              addStatus.textContent = e.message;
+            }
+          });
+        var openForm = document.getElementById("openForm");
+        openForm &&
+          openForm.addEventListener("submit", async function (ev) {
+            ev.preventDefault();
+            if (!openSel || !openSel.value) return;
+            var hours = Math.max(0, Number((openHours && openHours.value) || 0));
+            var audSel = document.getElementById("openAudience");
+            var audience = (audSel && audSel.value) || "all";
+            openSetStatus.textContent = "설정 중...";
+            try {
+              var r = await fetch("/api/admin/beta/" + encodeURIComponent(openSel.value) + "/open", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ hours: hours, audience: audience }),
+              });
+              var d = await r.json().catch(function () { return {}; });
+              if (!r.ok) throw new Error(d.error || "설정 실패");
+              openSetStatus.textContent =
+                hours > 0
+                  ? "✓ " + hours + "시간 공개 (" + ({ all: "모두", pro: "Pro", max: "Max" }[audience] || "모두") + ")"
+                  : "✓ 해제됨";
+              reload();
+            } catch (e) {
+              openSetStatus.textContent = e.message;
+            }
+          });
+        var rf = document.getElementById("refreshProMembers");
+        rf && rf.addEventListener("click", reload);
+        var rfo = document.getElementById("refreshOpen");
+        rfo && rfo.addEventListener("click", reload);
+        var tabBtn = document.querySelector('#adminTabs .atab[data-go="subs"]');
+        tabBtn && tabBtn.addEventListener("click", reload);
+        reload();
+      })();
+    </script>
+    <script>
+      // ── 학교 도입 신청 관리 ──
+      (function () {
+        var listEl = document.getElementById("schoolAppsList");
+        var filterEl = document.getElementById("schoolAppFilter");
+        var refreshEl = document.getElementById("refreshSchoolApps");
+        if (!listEl) return;
+        var STATUS = {
+          new: "신규",
+          reviewing: "검토중",
+          contacted: "연락함",
+          approved: "승인",
+          rejected: "거절",
+          archived: "보관",
+        };
+        function e(s) {
+          return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+            return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+          });
+        }
+        function d(iso) {
+          if (!iso) return "";
+          try { return new Date(iso).toLocaleString("ko-KR"); } catch (x) { return String(iso); }
+        }
+        function row(label, val) {
+          if (val == null || val === "") return "";
+          return '<div class="school-application-row"><span class="school-application-row__label">' + e(label) + "</span><span class=\"school-application-row__value\">" + e(val) + "</span></div>";
+        }
+        function statusSelect(id, cur) {
+          var opts = Object.keys(STATUS).map(function (k) {
+            return '<option value="' + k + '"' + (k === cur ? " selected" : "") + ">" + e(STATUS[k]) + "</option>";
+          }).join("");
+          return '<select class="school-application-status" data-status-for="' + e(id) + '">' + opts + "</select>";
+        }
+        function card(a) {
+          return (
+            '<div class="school-application-card" data-app="' + e(a.id) + '">' +
+            '<div class="school-application-card__header">' +
+            '<b class="school-application-card__name">' + e(a.school_name || "(학교명 미기재)") + "</b>" +
+            '<span class="school-application-card__type">' + e(a.school_type || "") + "</span>" +
+            '<span class="school-application-card__date">' + e(d(a.created_at)) + "</span>" +
+            '<span class="school-application-card__badge">' + e(STATUS[a.status] || a.status) + "</span>" +
+            "</div>" +
+            row("담당자", a.contact_name) +
+            row("이메일", a.contact_email) +
+            row("연락처", a.contact_phone) +
+            row("학생 도메인", a.student_email_domain) +
+            row("학번 체계", a.student_id_scheme) +
+            row("추가 보고서", a.desired_reports) +
+            row("도입 시기", a.desired_start) +
+            row("예산/유료", a.budget_note) +
+            row("문의", a.message) +
+            row("첨부 파일", (a.file_count || 0) + "개") +
+            '<div class="school-application-files" data-files-for="' + e(a.id) + '"></div>' +
+            (a.file_count ? '<button data-load-files="' + e(a.id) + '" class="secondary compact">첨부 양식 ' + a.file_count + "개 보기</button>" : "") +
+            '<div class="school-application-card__controls">' +
+            statusSelect(a.id, a.status) +
+            '<input class="school-application-note" data-note-for="' + e(a.id) + '" placeholder="관리자 메모" value="' + e(a.admin_note || "") + '" />' +
+            '<button data-save-for="' + e(a.id) + '" class="secondary compact">저장</button>' +
+            '<span class="school-application-save-status" data-save-status="' + e(a.id) + '"></span>' +
+            "</div>" +
+            "</div>"
+          );
+        }
+        function load() {
+          var status = filterEl ? filterEl.value : "all";
+          listEl.innerHTML = '<p class="hint">불러오는 중…</p>';
+          fetch("/api/school-apply/admin/list?status=" + encodeURIComponent(status))
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+              if (res.error) { listEl.innerHTML = '<p class="hint">오류: ' + e(res.error) + "</p>"; return; }
+              var apps = res.applications || [];
+              if (!apps.length) { listEl.innerHTML = '<p class="hint">해당 상태의 신청이 없습니다.</p>'; return; }
+              listEl.innerHTML = apps.map(card).join("");
+            })
+            .catch(function () { listEl.innerHTML = '<p class="hint">목록을 불러오지 못했습니다.</p>'; });
+        }
+        window.loadSchoolApps = load;
+        filterEl && filterEl.addEventListener("change", load);
+        refreshEl && refreshEl.addEventListener("click", load);
+        listEl.addEventListener("click", function (ev) {
+          var lf = ev.target.closest("[data-load-files]");
+          if (lf) {
+            var id = lf.getAttribute("data-load-files");
+            var box = listEl.querySelector('[data-files-for="' + id + '"]');
+            lf.disabled = true; lf.textContent = "불러오는 중…";
+            fetch("/api/school-apply/admin/" + encodeURIComponent(id))
+              .then(function (r) { return r.json(); })
+              .then(function (res) {
+                var files = (res.application && res.application.files) || [];
+                box.innerHTML = files.map(function (f) {
+                  var kb = Math.max(1, Math.round((f.size_bytes || 0) / 1024));
+                  return '<a class="school-application-file" href="/api/school-apply/admin/' + encodeURIComponent(id) + "/file/" + encodeURIComponent(f.id) + '">📎 ' + e(f.filename) + " (" + kb + "KB)</a>";
+                }).join("") || '<span class="hint">파일 없음</span>';
+                lf.remove();
+              })
+              .catch(function () { lf.disabled = false; lf.textContent = "다시 시도"; });
+            return;
+          }
+          var sv = ev.target.closest("[data-save-for]");
+          if (sv) {
+            var sid = sv.getAttribute("data-save-for");
+            var sel = listEl.querySelector('[data-status-for="' + sid + '"]');
+            var note = listEl.querySelector('[data-note-for="' + sid + '"]');
+            var st = listEl.querySelector('[data-save-status="' + sid + '"]');
+            sv.disabled = true; if (st) st.textContent = "저장 중…";
+            fetch("/api/school-apply/admin/" + encodeURIComponent(sid) + "/status", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ status: sel ? sel.value : undefined, note: note ? note.value : undefined }),
+            })
+              .then(function (r) { return r.json(); })
+              .then(function (res) {
+                sv.disabled = false;
+                if (res.error) { if (st) st.textContent = "오류: " + res.error; return; }
+                if (st) st.textContent = "저장됨 ✓";
+                setTimeout(load, 400);
+              })
+              .catch(function () { sv.disabled = false; if (st) st.textContent = "저장 실패"; });
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>

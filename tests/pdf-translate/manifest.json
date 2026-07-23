@@ -1,0 +1,321 @@
+{
+  "schema_version": 1,
+  "content_license": "CC0-1.0",
+  "font_license_note": "Embedded repository fonts retain their upstream open-font licenses documented in THIRD_PARTY_NOTICES.md and lib/fonts/Pretendard-LICENSE.txt.",
+  "description": "Deterministic synthetic regression corpus for the Quilo PDF translation pipeline.",
+  "generation": {
+    "script": "tests/pdf-translate/generate_fixtures.py",
+    "default_output": "tmp/pdfs/fixtures",
+    "binary_files_committed": false
+  },
+  "routing_policy": {
+    "math_density_threshold": 12.0,
+    "inplace": "extractable text and math density below the threshold",
+    "retypeset": "scan, hidden OCR layer, garbled text, or math density at/above the threshold",
+    "reject": "not a PDF, malformed PDF, or password required"
+  },
+  "fixtures": [
+    {
+      "id": "text-links-001",
+      "filename": "01_text_numbers_links.pdf",
+      "description": "Single-column born-digital English text with exact numeric tokens, two external links, one internal link, and an outline.",
+      "input_class": "pdf",
+      "language_hint": "en",
+      "render": true,
+      "expected": {
+        "valid_pdf": true,
+        "encrypted": false,
+        "page_count": 1,
+        "page_boxes": [
+          { "width_pt": 595.28, "height_pt": 841.89, "rotation": 0 }
+        ],
+        "text_tokens": [
+          "FIXTURE-TEXT-001",
+          "12.50 g",
+          "298.15 K",
+          "3.00 m/s",
+          "0.250 mol/L",
+          "6.022e23 mol^-1",
+          "+/- 0.03 g",
+          "A-17",
+          "https://example.com/quilo/pdf-fixture?case=text-001",
+          "https://doi.org/10.0000/quilo.fixture.001"
+        ],
+        "external_links": [
+          "https://example.com/quilo/pdf-fixture?case=text-001",
+          "https://doi.org/10.0000/quilo.fixture.001"
+        ],
+        "min_internal_links": 1,
+        "min_outline_items": 1,
+        "min_images": 0,
+        "routing": {
+          "mode": "inplace",
+          "analysis": {
+            "scanned": false,
+            "garbled": false,
+            "ocr_layer": false,
+            "two_column": false
+          },
+          "math_density": { "max": 11.99 }
+        }
+      }
+    },
+    {
+      "id": "two-column-table-vector-002",
+      "filename": "02_two_column_table_vector.pdf",
+      "description": "Two born-digital two-column pages containing a ruled data table and vector-only chart/diagram primitives.",
+      "input_class": "pdf",
+      "language_hint": "en",
+      "render": true,
+      "expected": {
+        "valid_pdf": true,
+        "encrypted": false,
+        "page_count": 2,
+        "page_boxes": [
+          { "width_pt": 595.28, "height_pt": 841.89, "rotation": 0 },
+          { "width_pt": 595.28, "height_pt": 841.89, "rotation": 0 }
+        ],
+        "text_tokens": [
+          "FIXTURE-COLUMNS-002",
+          "COLUMN-L-P1-01",
+          "COLUMN-R-P1-01",
+          "COLUMN-L-P2-01",
+          "COLUMN-R-P2-01",
+          "Trial",
+          "Time s",
+          "Distance m",
+          "0.125",
+          "VECTOR-CURVE-V1"
+        ],
+        "tables": [
+          { "page": 1, "rows": 4, "columns": 3 }
+        ],
+        "min_vector_objects": 20,
+        "min_images": 0,
+        "routing": {
+          "mode": "inplace",
+          "analysis": {
+            "scanned": false,
+            "garbled": false,
+            "ocr_layer": false,
+            "two_column": true
+          },
+          "math_density": { "max": 11.99 }
+        }
+      }
+    },
+    {
+      "id": "math-chem-003",
+      "filename": "03_math_chem_subscripts.pdf",
+      "description": "Born-digital equations, Greek/math operators, chemical formulae, visual subscripts, and visual superscripts.",
+      "input_class": "pdf",
+      "language_hint": "en",
+      "render": true,
+      "expected": {
+        "valid_pdf": true,
+        "encrypted": false,
+        "page_count": 1,
+        "page_boxes": [
+          { "width_pt": 595.28, "height_pt": 841.89, "rotation": 0 }
+        ],
+        "text_tokens": [
+          "FIXTURE-MATH-CHEM-003",
+          "MATH-CHEM-LEDGER",
+          "H2SO4",
+          "CO2",
+          "6.022e23",
+          "E = mc2"
+        ],
+        "layout_features": ["subscript", "superscript", "display-equation"],
+        "min_distinct_font_sizes": 4,
+        "min_images": 0,
+        "routing": {
+          "mode": "retypeset",
+          "analysis": {
+            "scanned": false,
+            "garbled": false,
+            "ocr_layer": false,
+            "two_column": false
+          },
+          "math_density": { "min": 12.0 }
+        }
+      }
+    },
+    {
+      "id": "mixed-geometry-004",
+      "filename": "04_mixed_page_geometry.pdf",
+      "description": "Three pages mixing A4 portrait, A4 landscape, and a Letter page with explicit 90-degree rotation metadata.",
+      "input_class": "pdf",
+      "language_hint": "en",
+      "render": true,
+      "expected": {
+        "valid_pdf": true,
+        "encrypted": false,
+        "page_count": 3,
+        "page_boxes": [
+          { "width_pt": 595.28, "height_pt": 841.89, "rotation": 0 },
+          { "width_pt": 841.89, "height_pt": 595.28, "rotation": 0 },
+          { "width_pt": 612.0, "height_pt": 792.0, "rotation": 90 }
+        ],
+        "text_tokens": [
+          "FIXTURE-GEOMETRY-004-P1",
+          "FIXTURE-GEOMETRY-004-P2",
+          "FIXTURE-GEOMETRY-004-P3",
+          "A4 portrait",
+          "A4 landscape",
+          "Letter rotated 90 degrees"
+        ],
+        "min_images": 0,
+        "routing": {
+          "mode": "inplace",
+          "analysis": {
+            "scanned": false,
+            "garbled": false,
+            "ocr_layer": false,
+            "two_column": false
+          },
+          "math_density": { "max": 11.99 }
+        }
+      }
+    },
+    {
+      "id": "scan-only-005",
+      "filename": "05_scan_only.pdf",
+      "description": "Image-only page with no PDF text objects; the visible English text must require OCR/vision.",
+      "input_class": "pdf",
+      "language_hint": "en",
+      "render": true,
+      "expected": {
+        "valid_pdf": true,
+        "encrypted": false,
+        "page_count": 1,
+        "page_boxes": [
+          { "width_pt": 595.28, "height_pt": 841.89, "rotation": 0 }
+        ],
+        "visible_tokens": ["FIXTURE-SCAN-ONLY-005", "84.20 mL", "101.3 kPa"],
+        "max_extractable_text_chars": 0,
+        "min_images": 1,
+        "routing": {
+          "mode": "retypeset",
+          "analysis": {
+            "scanned": true,
+            "garbled": false,
+            "ocr_layer": false,
+            "two_column": false
+          }
+        }
+      }
+    },
+    {
+      "id": "hidden-ocr-006",
+      "filename": "06_hidden_ocr_layer.pdf",
+      "description": "Full-page scan image with matching invisible render-mode-3 OCR text.",
+      "input_class": "pdf",
+      "language_hint": "en",
+      "render": true,
+      "expected": {
+        "valid_pdf": true,
+        "encrypted": false,
+        "page_count": 1,
+        "page_boxes": [
+          { "width_pt": 595.28, "height_pt": 841.89, "rotation": 0 }
+        ],
+        "text_tokens": [
+          "FIXTURE-HIDDEN-OCR-006",
+          "Calibration record",
+          "101.3 kPa",
+          "HIDDEN-OCR-602"
+        ],
+        "visible_tokens": ["FIXTURE-HIDDEN-OCR-006", "HIDDEN-OCR-602"],
+        "min_images": 1,
+        "min_invisible_text_ratio": 0.95,
+        "routing": {
+          "mode": "retypeset",
+          "analysis": {
+            "scanned": true,
+            "garbled": false,
+            "ocr_layer": true,
+            "two_column": false
+          }
+        }
+      }
+    },
+    {
+      "id": "already-korean-007",
+      "filename": "07_already_korean.pdf",
+      "description": "Born-digital Korean document that should remain unchanged by the translation stage.",
+      "input_class": "pdf",
+      "language_hint": "ko",
+      "render": true,
+      "expected": {
+        "valid_pdf": true,
+        "encrypted": false,
+        "page_count": 1,
+        "page_boxes": [
+          { "width_pt": 595.28, "height_pt": 841.89, "rotation": 0 }
+        ],
+        "text_tokens": [
+          "FIXTURE-KOREAN-007",
+          "이미 한국어로 작성된 문서입니다.",
+          "질량 15.20 g",
+          "온도 298.15 K",
+          "시료 번호 KO-77"
+        ],
+        "min_images": 0,
+        "routing": {
+          "mode": "inplace",
+          "analysis": {
+            "scanned": false,
+            "garbled": false,
+            "ocr_layer": false,
+            "two_column": false
+          },
+          "math_density": { "max": 11.99 }
+        }
+      }
+    },
+    {
+      "id": "password-protected-008",
+      "filename": "08_password_protected.pdf",
+      "description": "AES-encrypted one-page PDF. It must be rejected before translation when no password is supplied.",
+      "input_class": "pdf",
+      "language_hint": "en",
+      "render": true,
+      "expected": {
+        "valid_pdf": true,
+        "encrypted": true,
+        "password": "fixture-password",
+        "page_count": 1,
+        "rejection": "password_required",
+        "text_tokens_after_unlock": ["FIXTURE-ENCRYPTED-008"],
+        "page_boxes": [
+          { "width_pt": 595.28, "height_pt": 841.89, "rotation": 0 }
+        ]
+      }
+    },
+    {
+      "id": "truncated-pdf-009",
+      "filename": "09_truncated.pdf",
+      "description": "A PDF-signature-prefixed but structurally truncated input.",
+      "input_class": "pdf",
+      "render": false,
+      "expected": {
+        "valid_pdf": false,
+        "classification": "malformed_pdf",
+        "rejection": "malformed_pdf"
+      }
+    },
+    {
+      "id": "not-pdf-010",
+      "filename": "10_not_a_pdf.txt",
+      "description": "Plain UTF-8 text uploaded under the corpus as a non-PDF negative case.",
+      "input_class": "non_pdf",
+      "render": false,
+      "expected": {
+        "valid_pdf": false,
+        "classification": "not_pdf",
+        "rejection": "invalid_file_type"
+      }
+    }
+  ]
+}

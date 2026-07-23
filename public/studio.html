@@ -1,0 +1,1071 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <link rel="stylesheet" href="/ui/foundation.css" />
+    <link rel="stylesheet" href="/ui/shell.css" />
+    <link rel="stylesheet" href="/ui/app-shell.css" />
+    <link rel="stylesheet" href="/ui/app-workbench.css" />
+    <script src="/ui/entitlement-gate.js"></script>
+    <script src="/ui/app-assets.js"></script>
+    <title>스튜디오 — Quilo 창작</title>
+    <link rel="icon" href="/favicon.ico" />
+</head>
+  <body id="appShell" class="app-shell app-shell--studio" data-app-shell>
+    <header class="ui-site-header" data-ui-shell data-shell-mode="fixed"></header>
+    <script src="/ui/shell.js"></script>
+<main id="main-content" aria-label="Quilo Studio">
+    <div id="gate" class="gate">권한 확인 중…</div>
+
+    <div id="app" class="app" hidden>
+      <div class="top">
+        <a class="brand" href="/"><span class="q">Q</span> Studio <span class="beta">Pro</span></a>
+        <button class="tbtn app-inline-studio-1" id="toStage" hidden>미리보기 ▸</button>
+        <span class="sp"></span>
+        <span id="balChip" class="balchip app-inline-studio-1" title="보유 크레딧" hidden></span>
+        <select id="model" title="AI 모델"></select>
+        <button class="btn" id="openPublish" disabled>게시</button>
+        <a class="nav" href="/create.html">갤러리</a>
+      </div>
+
+      <div id="restoreBar" class="restorebar app-inline-studio-1" role="region" aria-label="이전 작업 복구" hidden>
+        <span class="rb-main">💾 저장된 작업이 있어요. <b id="restoreMeta"></b> 이어서 작업할까요?</span>
+        <button id="restoreYes">이어서 작업</button>
+        <button id="restoreNo" class="rb-dismiss">새로 시작</button>
+      </div>
+
+      <div class="body">
+        <div class="chat">
+          <div class="msgs" id="msgs" aria-live="polite"></div>
+          <div class="chips" id="chips"></div>
+          <div class="inwrap">
+            <div class="modeseg" id="modeseg" role="tablist" aria-label="생성 모드">
+              <button data-mode="auto" class="on" role="tab" aria-selected="true">🤖 자동</button>
+              <button data-mode="app" role="tab" aria-selected="false">🧩 앱</button>
+              <button data-mode="design" role="tab" aria-selected="false">🎨 디자인</button>
+              <button data-mode="image" role="tab" aria-selected="false">🖼 이미지</button>
+            </div>
+            <div class="thumbs" id="thumbs"></div>
+            <div class="inrow">
+              <button class="iconbtn" id="imgBtn" title="파일 첨부 (PDF·이미지·데이터·.cap 등)" aria-label="파일 첨부 (PDF·이미지·데이터·.cap 등)">📎</button>
+              <textarea id="prompt" rows="1" aria-label="스튜디오 AI 요청" placeholder="파일 올리고 무엇이든 말하세요 — 분석·문서 생성·앱·이미지 (Enter 전송)"></textarea>
+              <button class="iconbtn app-inline-studio-2" id="sendBtn" title="보내기" aria-label="보내기">↑</button>
+            </div>
+            <div class="instatus" id="instatus" aria-live="polite"></div>
+          </div>
+        </div>
+
+        <div class="stage" id="stage">
+          <div class="toolbar">
+            <div class="seg" id="tabs" role="tablist" aria-label="스테이지 보기">
+              <button data-tab="preview" class="on" role="tab" aria-selected="true">미리보기</button>
+              <button data-tab="code" role="tab" aria-selected="false">코드</button>
+            </div>
+            <div class="seg" id="devseg" role="group" aria-label="미리보기 화면 크기">
+              <button data-dev="desktop" class="on" title="데스크탑" aria-label="데스크탑 보기" aria-pressed="true">💻</button>
+              <button data-dev="mobile" title="모바일" aria-label="모바일 보기" aria-pressed="false">📱</button>
+            </div>
+            <button class="tbtn" id="refresh" title="미리보기 새로고침" aria-label="미리보기 새로고침" disabled>↻</button>
+            <span class="sp"></span>
+            <button class="tbtn" id="dlZip" title="프로젝트 ZIP 다운로드" disabled>⬇ 프로젝트</button>
+            <button class="tbtn" id="undoBtn" title="이전 버전으로" aria-label="이전 버전으로 되돌리기" disabled>↶ 되돌리기</button>
+            <button class="tbtn" id="popout" title="새 탭에서 열기" aria-label="새 탭에서 열기" disabled>⤢ 새 탭</button>
+          </div>
+          <div id="fileTree" class="filetree" hidden></div>
+          <div class="stageview">
+            <div class="pvhost" id="pvhost">
+              <iframe id="preview" sandbox="allow-scripts allow-forms allow-popups allow-modals"></iframe>
+            </div>
+          </div>
+          <div id="monacoHost"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 게시 모달 -->
+    <div class="modal" id="pubModal" role="dialog" aria-modal="true" aria-labelledby="pubModalTitle">
+      <div class="sheet">
+        <h3 id="pubModalTitle">게시하기</h3>
+        <label for="pTitle">제목</label>
+        <input type="text" id="pTitle" placeholder="예: 실험 일정 위젯" />
+        <label for="pSlug">주소(slug) — 비우면 자동</label>
+        <input type="text" id="pSlug" placeholder="exp-schedule" />
+        <label for="pCat">분류</label>
+        <select id="pCat"></select>
+        <div class="rowb">
+          <label class="tog"><input type="checkbox" id="pPublic" checked /> 갤러리에 공개</label>
+          <div>
+            <button class="btn ghost" id="pCancel">취소</button>
+            <button class="btn" id="pDo">게시</button>
+          </div>
+        </div>
+        <div class="pubstatus" id="pubStatus" aria-live="polite"></div>
+      </div>
+    </div>
+
+    <input type="file" id="imgFile" multiple hidden />
+    </main>
+
+    <footer class="app-statusbar" aria-label="앱 상태">
+      <span class="app-statusbar__dot" aria-hidden="true"></span>
+      <span>준비됨</span>
+      <span class="app-statusbar__meta">Quilo Studio · Quilo</span>
+    </footer>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+      const CATS = ["학습도구", "게임", "위젯", "계산기", "데이터/차트", "이미지", "기타"];
+      const CHIPS = ["🌙 다크모드로", "✨ 더 예쁘게", "🎞 애니메이션 추가", "📱 모바일 최적화", "🎨 색 바꿔줘", "🔡 글씨 키워줘", "🧩 기능 하나 더"];
+      const TEMPLATES = [
+        { t: "📊 투표·설문 위젯", p: "방문자들이 참여하는 실시간 투표 위젯을 만들어줘. 선택지에 투표하면 막대그래프로 비율이 보이고, 결과는 모두에게 공유돼." },
+        { t: "⏰ D-day 카드", p: "여러 일정을 입력하면 마감까지 남은 일수를 카드로 보여주는 위젯. 임박한 건 빨강으로 강조하고 정렬해줘." },
+        { t: "🎮 미니 게임", p: "키보드로 하는 간단한 반응속도 게임을 만들어줘. 점수와 최고기록을 보여주고 다시하기 버튼도." },
+        { t: "🧮 계산기", p: "예쁜 공학용 계산기를 만들어줘. 다크모드, 키보드 입력 지원, 계산 기록도 보여줘." },
+        { t: "📝 방명록", p: "방문자가 이름과 메시지를 남기는 방명록을 만들어줘. 남긴 글은 모두에게 공유되고 최신순으로 보여." },
+        { t: "🎨 그림판", p: "마우스로 그리는 간단한 그림판. 색·굵기 선택, 지우개, PNG로 저장 버튼." },
+      ];
+
+      const MAX_ATTACH = 8;
+      let me = null, canCreate = false, busy = false, mode = "auto";
+      let currentHtml = "", project = { files: {}, entry: "index.html", active: "index.html" }, versions = [], curVer = -1, chatTurns = [], attached = [];
+      let lastSlug = "", forkedFrom = null, defaultTitle = "";
+      let appModels = { models: ["auto"], default: "auto" };
+      let imageModels = { models: ["auto"], default: "auto", std: "gpt-image-1", high: "gpt-image-2" };
+      function modelLabel(x, forImage) {
+        if (x === "auto") return forImage ? "⚡ 자동(작업 보고 선택)" : "⚡ 자동(비용 최소)";
+        if (forImage) {
+          if (x === imageModels.high) return x + " · 고화질";
+          if (x === imageModels.std) return x + " · 표준";
+        }
+        return x;
+      }
+      function populateModels(forImage) {
+        const src = forImage ? imageModels : appModels;
+        const list = (src.models && src.models.length) ? src.models : ["auto"];
+        $("model").innerHTML = list.map((x) => `<option value="${x}"${x === src.default ? " selected" : ""}>${modelLabel(x, forImage)}</option>`).join("");
+      }
+
+      // ── 크레딧/보유 잔액 칩(자매 도구와 통일: /api/me/balance) ──
+      // 관리자=무제한, 일반=보유 크레딧 표시. 잔액 API 없거나 실패하면 칩을 조용히 숨긴다(보류).
+      function renderBalChip(bal) {
+        const chip = $("balChip"); if (!chip) return;
+        try {
+          if (bal && bal.isAdmin) { chip.textContent = "관리자 · 무제한"; chip.hidden = false; return; }
+          if (bal && typeof bal.credits === "number") {
+            chip.textContent = (bal.unlimited ? "무제한" : "보유 크레딧 " + bal.credits);
+            chip.hidden = false;
+            return;
+          }
+        } catch (_) {}
+        chip.hidden = true;
+      }
+      // 빌드 응답에 newBalance 가 있으면 그것으로(추가 호출 없이) 갱신, 없으면 잔액 API 재조회.
+      async function refreshBalance(newBalance) {
+        if (typeof newBalance === "number") { renderBalChip({ credits: newBalance }); return; }
+        try { renderBalChip(await api("/api/me/balance")); } catch (_) {}
+      }
+
+      // 생성/업로드한 이미지를 그대로 게시할 수 있도록 한 장짜리 HTML 로 감싼다.
+      function imageWrapper(url, title) {
+        const t = esc(title || "이미지");
+        return '<!doctype html><html lang="ko"><head><meta charset="utf-8">' +
+          '<meta name="viewport" content="width=device-width,initial-scale=1"><title>' + t + '</title>' +
+          '<style>html,body{margin:0;height:100%;background:#0b0d12}.w{height:100%;display:flex;align-items:center;justify-content:center;padding:10px;box-sizing:border-box}' +
+          'img{max-width:100%;max-height:100vh;object-fit:contain;border-radius:10px}</style>' +
+          '</head><body><div class="w"><img src="' + url + '" alt="' + t + '"></div></body></html>';
+      }
+      function setMode(m) {
+        mode = m;
+        $("modeseg").querySelectorAll("[data-mode]").forEach((b) => { const on = b.dataset.mode === m; b.classList.toggle("on", on); b.setAttribute("aria-selected", on ? "true" : "false"); });
+        $("prompt").placeholder = m === "image"
+          ? "만들 이미지를 설명하세요 (예: 비커 아이콘, 플랫 · Enter 전송)"
+          : m === "app"
+            ? "만들 웹앱·위젯·도구를 설명하세요 (Enter 전송)"
+            : m === "design"
+              ? "만들 디자인을 설명하세요 — 슬라이드 덱·프로토타입·시안 비교·모바일 목업 (Enter 전송)"
+              : "파일 올리고 무엇이든 말하세요 — 분석·문서 생성·앱·이미지 (Enter 전송)";
+        $("chips").hidden = m === "image" || m === "design";
+        populateModels(m === "image");
+      }
+      function imagePostBubble(bubble, url, verIdx, kind, info) {
+        bubble.dataset.thinking = "";
+        bubble.innerHTML = '<img src="' + esc(url) + '"/>' + (kind || "이미지를 만들었어요!") +
+          ' 오른쪽에서 확인하고 <b>게시</b>하세요.<div class="meta"><span class="ck cur" data-ver="' + verIdx + '">✓ 버전 ' + (verIdx + 1) + "</span>" +
+          (info ? '<span class="mdl">' + esc(info) + "</span>" : "") + "</div>";
+        bindCheckpoints(); markCurrentCheckpoint(); $("msgs").scrollTop = $("msgs").scrollHeight;
+      }
+      async function genImagePost(prompt, skipUser) {
+        if (!prompt) return;
+        if (!skipUser) { addUserMsg(prompt); $("prompt").value = ""; autoGrow(); }
+        busy = true; updateSendUI();
+        const thinking = addMsg("ai", `<span class="spin"></span> 이미지 만드는 중… (고화질은 조금 더 걸려요)`, true);
+        try {
+          const j = await api("/api/artifacts/image", { method: "POST", body: JSON.stringify({ prompt, model: $("model").value }) });
+          const html = imageWrapper(j.url, prompt);
+          setHtml(html); const vi = pushVersion("이미지", prompt);
+          if (!defaultTitle) defaultTitle = prompt.slice(0, 30);
+          const info = (j.model || "") + (j.tier === "high" ? " · 고화질" : " · 표준") + (j.auto ? " · 자동" : "") + (j.fallback ? " · 폴백" : "");
+          imagePostBubble(thinking, j.url, vi, "이미지를 만들었어요!", info);
+          refreshBalance(j.newBalance);
+        } catch (e) {
+          busy = false; updateSendUI();
+          showErrorBubble(thinking, e, "이미지 생성 실패", () => genImagePost(prompt, true));
+        } finally { busy = false; updateSendUI(); }
+      }
+
+      async function api(path, opts) {
+        const r = await fetch(path, { credentials: "same-origin", headers: { "Content-Type": "application/json" }, ...opts });
+        let j = null; try { j = await r.json(); } catch {}
+        if (!r.ok) { const e = new Error((j && j.error) || r.status); e.status = r.status; throw e; }
+        return j;
+      }
+      function showGate(html) { $("gate").innerHTML = `<div class="gate-message">${html}</div>`; $("gate").hidden = false; $("app").hidden = true; }
+
+      // ── 친절한 에러 메시지 + 다시 시도 동선 ──
+      // 상태코드/메시지를 한국어 안내로 매핑. 서버 응답 형식은 가정하지 않고 status·message 만 본다.
+      function friendlyError(e, fallback) {
+        const st = e && e.status;
+        const raw = (e && e.message) ? String(e.message) : "";
+        if (st === 429) return "요청이 많아요. 잠시 후 다시 시도해 주세요.";
+        if (st === 402) return "크레딧이 부족해요. 모델을 더 저렴한 것으로 바꾸거나 크레딧을 충전한 뒤 다시 시도해 주세요.";
+        if (st === 401 || st === 403) return "로그인이 만료됐거나 권한이 없어요. 새로고침 후 다시 로그인해 주세요.";
+        if (st === 413) return "첨부 파일이 너무 커요. 더 작은 파일로 다시 시도해 주세요.";
+        if (st === 400 && /파일|file|첨부|업로드|누락|required|missing/i.test(raw)) return "필요한 파일이 빠졌어요. 📎 로 파일을 올린 뒤 다시 시도해 주세요.";
+        if (st === 504 || st === 408 || /timeout|시간 초과/i.test(raw)) return "시간이 초과됐어요. 잠시 후 다시 시도해 주세요.";
+        if (st >= 500) return "서버에 문제가 생겼어요. 잠시 후 다시 시도해 주세요.";
+        return raw || fallback || "문제가 발생했어요. 다시 시도해 주세요.";
+      }
+      // 에러 말풍선에 메시지 + (선택) 다시 시도 버튼을 채운다. retry 가 함수면 버튼을 단다.
+      function showErrorBubble(bubble, e, fallback, retry) {
+        if (!bubble) return;
+        bubble.dataset.thinking = "";
+        bubble.innerHTML = "⚠ " + esc(friendlyError(e, fallback));
+        if (typeof retry === "function" && !busy) {
+          const bar = document.createElement("div");
+          bar.style.cssText = "margin-top:9px";
+          const btn = document.createElement("button");
+          btn.textContent = "↻ 다시 시도";
+          btn.style.cssText = "background:var(--acc);color:#fff;border:0;border-radius:8px;padding:5px 11px;font:inherit;font-size:12px;cursor:pointer";
+          btn.onclick = () => { if (busy) return; bubble.remove(); retry(); };
+          bar.appendChild(btn);
+          bubble.appendChild(bar);
+        }
+      }
+
+      // ── 채팅 렌더 ──
+      function renderEmpty() {
+        const tpls = TEMPLATES.map((x, i) => `<button data-tpl="${i}"><b>${esc(x.t)}</b><span>${esc(x.p.slice(0, 38))}…</span></button>`).join("");
+        $("msgs").innerHTML =
+          `<div class="empty"><h3>파일을 올리고 무엇이든 요청하세요</h3>` +
+          `<div>📎 로 PDF·이미지·데이터·.cap 을 올리고 말하면 AI가 알아서 처리해요 — <b>분석·대화</b>, <b>웹앱·위젯</b>, <b>이미지</b>. 아래는 앱 만들기 예시예요:</div>` +
+          `<div class="tpl">${tpls}</div></div>`;
+        $("msgs").querySelectorAll("[data-tpl]").forEach((b) => b.onclick = () => { const x = TEMPLATES[+b.dataset.tpl]; $("prompt").value = x.p; send(); });
+      }
+      function addMsg(role, html, thinking) {
+        const empty = $("msgs").querySelector(".empty"); if (empty) empty.remove();
+        const d = document.createElement("div");
+        d.className = "msg " + role; d.innerHTML = html;
+        if (thinking) d.dataset.thinking = "1";
+        $("msgs").appendChild(d); $("msgs").scrollTop = $("msgs").scrollHeight;
+        return d;
+      }
+      function aiSuccess(bubble, summary, verIdx, model, auto) {
+        bubble.dataset.thinking = "";
+        bubble.innerHTML =
+          esc(summary || "완성했어요!") +
+          `<div class="meta"><span class="ck cur" data-ver="${verIdx}">✓ 버전 ${verIdx + 1}</span>` +
+          `<span class="mdl">${esc(model || "")}${auto ? " · 자동" : ""}</span></div>`;
+        bindCheckpoints();
+        markCurrentCheckpoint();
+      }
+      function bindCheckpoints() {
+        $("msgs").querySelectorAll(".ck[data-ver]").forEach((c) => c.onclick = () => gotoVersion(+c.dataset.ver));
+      }
+      function markCurrentCheckpoint() {
+        $("msgs").querySelectorAll(".ck[data-ver]").forEach((c) => c.classList.toggle("cur", +c.dataset.ver === curVer));
+      }
+
+      // ── 프로젝트(멀티파일·멀티언어) 상태 ──
+      function normFiles(f) {
+        if (Array.isArray(f)) { const o = {}; f.forEach((x) => { if (x && x.path) o[x.path] = String(x.content || ""); }); return o; }
+        return f && typeof f === "object" ? Object.assign({}, f) : {};
+      }
+      function clone(o) { try { return structuredClone(o); } catch (_) { return JSON.parse(JSON.stringify(o)); } }
+      function projectHasFiles() { return Object.keys(project.files || {}).length > 0; }
+
+      // 프로젝트 파일들을 미리보기/게시용 단일 HTML 로 번들.
+      //  - 로컬 CSS/JS 인라인, .py 엔트리는 Pyodide 러너, CDN/외부 URL 은 그대로.
+      //  - JSX/TS(ES모듈 import 포함)는 sandbox iframe(불투명 origin) 안에서 직접 컴파일·블롭번들해야
+      //    하므로(부모가 만든 blob: 은 iframe 에서 cross-origin) iframe 내부 부트스트랩을 주입한다.
+      function bundleProject() {
+        const files = project.files || {}; const names = Object.keys(files);
+        if (!names.length) return "";
+        let entry = project.entry && files[project.entry] != null ? project.entry : (names.find((n) => /\.html$/i.test(n)) || names[0]);
+        const htmlNames = names.filter((n) => /\.html$/i.test(n));
+        if (/\.py$/i.test(entry) || (!htmlNames.length && names.some((n) => /\.py$/i.test(n)))) {
+          const pe = /\.py$/i.test(entry) ? entry : (names.find((n) => /(^|\/)main\.py$/i.test(n)) || names.find((n) => /\.py$/i.test(n)));
+          return pyodideRunnerHtml(files[pe] || "", pe);
+        }
+        const baseDir = entry.includes("/") ? entry.slice(0, entry.lastIndexOf("/") + 1) : "";
+        const resolve = (ref) => { let r = String(ref || "").replace(/^\.\//, "").split(/[?#]/)[0]; for (const c of [r, baseDir + r, r.replace(/^\//, "")]) if (files[c] != null) return c; return null; };
+        const isModuleSrc = (code) => /(^|[\n;])\s*import[\s'"({*]/.test(code) || /(^|[\n;])\s*export[\s{*]/.test(code);
+        let doc; try { doc = new DOMParser().parseFromString(files[entry] || "", "text/html"); } catch (_) { return files[entry] || ""; }
+        const moduleEntries = []; // 부트스트랩(iframe 내부)이 컴파일·로드할 엔트리 스크립트들
+        const synth = {}; let inlineN = 0;
+        doc.querySelectorAll('link[rel="stylesheet"][href]').forEach((ln) => {
+          const h = ln.getAttribute("href"); if (/^(https?:)?\/\//.test(h) || h.startsWith("data:")) return;
+          const p = resolve(h); if (p == null) return; const st = doc.createElement("style"); st.textContent = files[p]; ln.replaceWith(st);
+        });
+        // 로컬 <script src>: JSX/TS·ES모듈은 부트스트랩으로(브라우저 Babel 자동변환의 로딩 경합을 피해
+        //  명시적으로 컴파일). 순수 classic JS 만 인라인.
+        Array.from(doc.querySelectorAll("script[src]")).forEach((sc) => {
+          const src = sc.getAttribute("src"); if (/^(https?:)?\/\//.test(src) || src.startsWith("data:")) return;
+          const p = resolve(src); if (p == null) return;
+          const type = (sc.getAttribute("type") || "").toLowerCase();
+          const code = files[p] || "";
+          const needsCompile = /\.(jsx|tsx|ts)$/i.test(p) || type === "module" || isModuleSrc(code);
+          if (needsCompile) { moduleEntries.push(p); sc.remove(); return; }
+          const ns = doc.createElement("script");
+          for (const at of Array.from(sc.attributes)) if (at.name !== "src") ns.setAttribute(at.name, at.value);
+          ns.textContent = code; sc.replaceWith(ns);
+        });
+        // 인라인 <script type="text/babel"> → 합성 파일로 추출해 부트스트랩이 컴파일(자동변환 의존 X).
+        Array.from(doc.querySelectorAll('script[type="text/babel"]')).forEach((sc) => {
+          const name = "__inline" + inlineN++ + ".jsx";
+          synth[name] = sc.textContent || ""; moduleEntries.push(name); sc.remove();
+        });
+        let out = "<!doctype html>\n" + doc.documentElement.outerHTML;
+        if (moduleEntries.length) {
+          // 모듈 후보 = 모든 로컬 js/jsx/ts + 추출한 인라인 합성 파일. 부트스트랩이 Babel 컴파일+blob+importmap.
+          const modFiles = {};
+          names.filter((n) => /\.(jsx?|mjs|tsx?)$/i.test(n)).forEach((n) => { modFiles[n] = files[n]; });
+          Object.keys(synth).forEach((n) => { modFiles[n] = synth[n]; });
+          out = out.replace(/<\/body>/i, moduleBootstrap(modFiles, moduleEntries) + "</body>");
+        }
+        return out;
+      }
+      // iframe 안에서 도는 부트스트랩(클래식 스크립트): 모듈 파일들을 Babel 로 컴파일 →
+      //  상대 import 는 blob, bare import(react 등)는 esm.sh 로 매핑한 importmap 주입 → 엔트리 로드.
+      function moduleBootstrap(modFiles, entries) {
+        const data = JSON.stringify({ FILES: modFiles, ENTRIES: entries });
+        return '<script>(' + (function (DATA) {
+          var FILES = DATA.FILES, ENTRIES = DATA.ENTRIES, KEY = "https://m.local/";
+          function norm(p) { var a = []; p.split("/").forEach(function (s) { if (s === "..") a.pop(); else if (s !== "." && s !== "") a.push(s); }); return a.join("/"); }
+          function dirOf(p) { return p.indexOf("/") >= 0 ? p.slice(0, p.lastIndexOf("/") + 1) : ""; }
+          function presets(p) { if (/\.tsx$/i.test(p)) return ["react", ["typescript", { isTSX: true, allExtensions: true }]]; if (/\.ts$/i.test(p)) return [["typescript", { allExtensions: true }]]; if (/\.jsx$/i.test(p)) return ["react"]; return null; }
+          var needB = Object.keys(FILES).some(function (p) { return /\.(jsx|tsx|ts)$/i.test(p); });
+          function go() {
+            var compiled = {};
+            Object.keys(FILES).forEach(function (p) {
+              var code = FILES[p], pr = presets(p);
+              if (pr && window.Babel) { try { code = window.Babel.transform(FILES[p], { presets: pr, filename: p }).code; } catch (e) { document.body.insertAdjacentHTML("afterbegin", "<pre class='app-runtime-compile-error'>compile " + p + ": " + (e && e.message || e) + "</pre>"); } }
+              code = code.replace(/((?:import|export)[^'"]*?from\s*|import\s*)(['"])(\.\.?\/[^'"]+)\2/g, function (m, a, q, spec) {
+                var t = norm(dirOf(p) + spec);
+                if (FILES[t] == null) { var ex = [".js", ".jsx", ".ts", ".tsx", "/index.js", "/index.jsx"]; for (var i = 0; i < ex.length; i++) { if (FILES[t + ex[i]] != null) { t = t + ex[i]; break; } } }
+                return a + q + KEY + t + q;
+              });
+              compiled[p] = code;
+            });
+            var im = { imports: { "react": "https://esm.sh/react@18", "react-dom": "https://esm.sh/react-dom@18", "react-dom/client": "https://esm.sh/react-dom@18/client", "react/jsx-runtime": "https://esm.sh/react@18/jsx-runtime", "vue": "https://esm.sh/vue@3" } };
+            var urls = {};
+            Object.keys(compiled).forEach(function (p) { var u = URL.createObjectURL(new Blob([compiled[p]], { type: "text/javascript" })); urls[p] = u; im.imports[KEY + p] = u; });
+            var imEl = document.createElement("script"); imEl.type = "importmap"; imEl.textContent = JSON.stringify(im); document.head.appendChild(imEl);
+            ENTRIES.forEach(function (e) { if (!urls[e]) return; var s = document.createElement("script"); s.type = "module"; s.src = urls[e]; document.body.appendChild(s); });
+          }
+          if (needB && !window.Babel) { var b = document.createElement("script"); b.src = "https://cdn.jsdelivr.net/npm/@babel/standalone@7/babel.min.js"; b.onload = go; b.onerror = go; document.head.appendChild(b); } else { go(); }
+        }).toString() + ')(' + data + ');<\/script>';
+      }
+      function pyodideRunnerHtml(code, name) {
+        const safe = JSON.stringify(String(code || ""));
+        return '<!doctype html><html><head><meta charset="utf-8">' +
+          '<script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"><\/script>' +
+          '<style>body{margin:0;background:#0b0d12;color:#e7e9ef;font:13px ui-monospace,Menlo,monospace;padding:14px}h4{color:#9aa1b4;font:600 12px sans-serif;margin:0 0 10px}#o{white-space:pre-wrap;word-break:break-word}</style></head>' +
+          '<body><h4>' + esc(name) + ' — Pyodide 실행</h4><div id="o">로딩 중…</div>' +
+          '<script>(async()=>{const o=document.getElementById("o");try{const py=await loadPyodide();let b="";const w=t=>{b+=t+"\\n";o.textContent=b;};py.setStdout({batched:w});py.setStderr({batched:w});o.textContent="";await py.runPythonAsync(' + safe + ');if(!b)o.textContent="(출력 없음)";}catch(e){o.textContent="⚠ "+e;}})();<\/script></body></html>';
+      }
+
+      // 빌드/이미지/불러오기 결과를 프로젝트로 반영.
+      function applyProject(p) {
+        project.files = normFiles(p.files);
+        const names = Object.keys(project.files);
+        project.entry = (p.entry && project.files[p.entry] != null) ? p.entry : (names.find((n) => /\.html$/i.test(n)) || names[0] || "index.html");
+        project.active = project.files[project.active] != null ? project.active : project.entry;
+        renderProjectUI();
+      }
+      function setHtml(html) { applyProject({ files: { "index.html": html || "" }, entry: "index.html" }); }
+      function renderProjectUI() {
+        currentHtml = bundleProject();
+        renderPreview(); renderFileTree(); syncMonaco();
+        const has = projectHasFiles();
+        $("openPublish").disabled = !has; $("refresh").disabled = !has; $("popout").disabled = !has; $("dlZip").disabled = !has;
+        $("toStage").hidden = !has;
+      }
+      function renderPreview() {
+        $("preview").srcdoc = currentHtml ||
+          "<!doctype html><meta charset=utf-8><style>body{font-family:sans-serif;color:#9aa1b2;display:grid;place-items:center;height:90vh;margin:0}</style><body>왼쪽 채팅에서 만들고 싶은 걸 적어보세요.</body>";
+      }
+
+      // ── 버전(체크포인트) ──
+      function pushVersion(summary, prompt) {
+        versions.push({ project: clone(project), summary, prompt }); if (versions.length > 40) versions.shift();
+        curVer = versions.length - 1; updateUndo(); ssMark(); return curVer;
+      }
+      function gotoVersion(i) {
+        if (i < 0 || i >= versions.length) return;
+        curVer = i; const snap = versions[i].project;
+        project.files = clone(snap.files); project.entry = snap.entry; project.active = snap.active || snap.entry;
+        renderProjectUI(); markCurrentCheckpoint(); updateUndo(); ssMark();
+      }
+      function updateUndo() { $("undoBtn").disabled = curVer <= 0; }
+
+      // ── 작업 상태 자동 저장 / 복구 (studio 자체, localStorage) ──
+      // 게시 흐름·생성 흐름은 건드리지 않고, 화면을 떠났다 와도 작업을 이어가게 한다.
+      const SS_KEY = "quilo_studio_session_v1";
+      const SS_VERSION_CAP = 12; // 저장 용량 보호: 마지막 버전만 보관
+      let ssDirty = false;        // 마지막 게시 이후 미저장(미게시) 변경 여부
+      let ssRestoring = false;    // 복구 적용 중에는 저장/표시 갱신 억제
+      let ssSaveT = null;
+      let ssDisabled = false;     // 로드 시 끊긴 작업 복구 배너를 띄울 때, 즉시 덮어쓰기 방지
+
+      function ssSnapshot() {
+        const vers = Array.isArray(versions) ? versions.slice(-SS_VERSION_CAP) : [];
+        const drop = Math.max(0, (versions ? versions.length : 0) - vers.length);
+        return {
+          ts: Date.now(),
+          title: defaultTitle || "",
+          mode,
+          project: { files: project.files || {}, entry: project.entry, active: project.active },
+          versions: vers,
+          curVer: Math.max(-1, curVer - drop),
+          chatTurns: Array.isArray(chatTurns) ? chatTurns.slice(-16) : [],
+          defaultTitle, lastSlug, forkedFrom,
+          dirty: ssDirty,
+        };
+      }
+      function ssWrite() {
+        if (ssRestoring || ssDisabled) return;
+        // 빈 작업(파일·대화 모두 없음)은 저장하지 않는다 — 떠날 때 빈 스냅샷이
+        // 아직 복구 안 한 기존 저장본을 덮어쓰는 사고를 막는다.
+        if (!projectHasFiles() && !(chatTurns && chatTurns.length)) return;
+        try { localStorage.setItem(SS_KEY, JSON.stringify(ssSnapshot())); } catch (_) { /* 용량 초과 등 무시 */ }
+      }
+      // 디바운스 저장: 빈번한 편집/대화 중에도 과도한 쓰기를 막는다.
+      function ssSave() { clearTimeout(ssSaveT); ssSaveT = setTimeout(ssWrite, 800); }
+      function ssClear() { try { localStorage.removeItem(SS_KEY); } catch (_) {} }
+      function ssRead() { try { return JSON.parse(localStorage.getItem(SS_KEY) || "null"); } catch (_) { return null; } }
+      function ssHasWork(s) { return !!(s && ((s.project && s.project.files && Object.keys(s.project.files).length) || (s.chatTurns && s.chatTurns.length))); }
+      // 변경 발생 표시(미게시 dirty + 디바운스 저장). 생성·편집·복구 등 상태가 바뀔 때 호출.
+      function ssMark() { if (ssRestoring) return; if (projectHasFiles()) ssDirty = true; ssSave(); }
+
+      function ssApply(s) {
+        ssRestoring = true;
+        try {
+          project.files = normFiles(s.project && s.project.files);
+          const names = Object.keys(project.files);
+          project.entry = (s.project && s.project.entry && project.files[s.project.entry] != null) ? s.project.entry : (names.find((n) => /\.html$/i.test(n)) || names[0] || "index.html");
+          project.active = (s.project && project.files[s.project.active] != null) ? s.project.active : project.entry;
+          versions = Array.isArray(s.versions) ? s.versions : [];
+          curVer = (typeof s.curVer === "number" && s.curVer < versions.length) ? s.curVer : versions.length - 1;
+          chatTurns = Array.isArray(s.chatTurns) ? s.chatTurns : [];
+          defaultTitle = s.defaultTitle || s.title || "";
+          lastSlug = s.lastSlug || ""; forkedFrom = s.forkedFrom || null;
+          ssDirty = !!s.dirty;
+          if (defaultTitle) { try { $("pTitle").value = defaultTitle; } catch (_) {} }
+          if (lastSlug) { try { $("pSlug").value = lastSlug; } catch (_) {} }
+          if (s.mode && s.mode !== mode) setMode(s.mode);
+          renderProjectUI(); updateUndo();
+          // 대화 내역 복원(요약 말풍선만 — 원문 그대로 다시 그릴 필요는 없다).
+          renderRestoredChat();
+        } finally { ssRestoring = false; }
+      }
+      // 복구된 대화를 가볍게 다시 렌더(체크포인트는 현재 버전만 표시).
+      function renderRestoredChat() {
+        const m = $("msgs"); if (!m) return;
+        m.innerHTML = "";
+        chatTurns.forEach((t) => {
+          if (t.role === "user") addMsg("user", esc(t.content || ""));
+          else addMsg("ai", esc(t.content || ""));
+        });
+        if (projectHasFiles() && curVer >= 0) {
+          addMsg("ai", `↩ 이전 작업을 복구했어요. <span class="ck cur" data-ver="${curVer}">✓ 버전 ${curVer + 1}</span> 이어서 수정하거나 게시하세요.`);
+          bindCheckpoints(); markCurrentCheckpoint();
+        }
+      }
+      function showRestoreBar(s) {
+        const meta = $("restoreMeta"); const bar = $("restoreBar");
+        if (!bar) return;
+        const when = s && s.ts ? new Date(s.ts) : null;
+        const nFiles = s && s.project && s.project.files ? Object.keys(s.project.files).length : 0;
+        const label = (s.title ? `"${s.title}" · ` : "") + (nFiles ? `파일 ${nFiles}개` : "대화 기록") + (when ? ` · ${when.getMonth() + 1}/${when.getDate()} ${String(when.getHours()).padStart(2, "0")}:${String(when.getMinutes()).padStart(2, "0")}` : "");
+        if (meta) meta.textContent = label;
+        bar.hidden = false;
+        $("restoreYes").onclick = () => { bar.hidden = true; ssDisabled = false; ssApply(s); };
+        $("restoreNo").onclick = () => { bar.hidden = true; ssDisabled = false; ssClear(); ssDirty = false; };
+      }
+
+      // ── 파일 트리 + ZIP ──
+      function langForFile(path) {
+        const e = (String(path).split(".").pop() || "").toLowerCase();
+        return ({ html: "html", htm: "html", css: "css", js: "javascript", mjs: "javascript", jsx: "javascript", ts: "typescript", tsx: "typescript", json: "json", py: "python", vue: "html", md: "markdown" })[e] || "plaintext";
+      }
+      function renderFileTree() {
+        const ft = $("fileTree"); if (!ft) return;
+        const names = Object.keys(project.files);
+        ft.innerHTML = names.map((n) => `<button class="fbtn${n === project.active ? " on" : ""}" data-f="${esc(n)}">${esc(n)}${n === project.entry ? ' <span class="app-runtime-entry">▶</span>' : ""}</button>`).join("") +
+          '<button class="fbtn" id="addFileBtn" title="새 파일 추가">＋</button>';
+        ft.querySelectorAll("[data-f]").forEach((b) => b.onclick = () => selectFile(b.dataset.f));
+        const af = $("addFileBtn"); if (af) af.onclick = () => {
+          const name = prompt("새 파일 이름 (예: utils.js, styles.css)", ""); if (!name) return;
+          if (project.files[name] == null) { project.files[name] = ""; project.active = name; renderProjectUI(); showTab("code"); }
+        };
+      }
+      function selectFile(path) {
+        if (project.files[path] == null) return;
+        project.active = path;
+        if (editor) { editor.setValue(project.files[path]); if (monaco) monaco.editor.setModelLanguage(editor.getModel(), langForFile(path)); }
+        renderFileTree();
+      }
+      function syncMonaco() {
+        if (editor && project.files[project.active] != null && editor.getValue() !== project.files[project.active]) {
+          editor.setValue(project.files[project.active]);
+          if (monaco) monaco.editor.setModelLanguage(editor.getModel(), langForFile(project.active));
+        }
+      }
+      async function downloadZip() {
+        try { await window.QuiloAssets.jszip(); }
+        catch (e) { alert("ZIP 라이브러리를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."); return; }
+        const zip = new JSZip();
+        Object.keys(project.files).forEach((p) => zip.file(p, project.files[p]));
+        const blob = await zip.generateAsync({ type: "blob" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = (defaultTitle || "project").replace(/[^\w가-힣.-]+/g, "_").slice(0, 40) + ".zip";
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+      }
+
+      // ── 빌드(채팅 전송) ──
+      function updateSendUI() {
+        $("sendBtn").disabled = busy; $("imgBtn").disabled = busy;
+        // 빠른수정 칩: 비활성일 때 왜 못 쓰는지 title 힌트로 안내(먼저 결과물이 있어야 함).
+        $("chips").querySelectorAll("button").forEach((b) => {
+          const off = busy || !currentHtml;
+          b.disabled = off;
+          if (off) b.title = busy ? "작업이 끝나면 사용할 수 있어요." : "먼저 무언가 만들면, 이 칩으로 한 번에 수정할 수 있어요.";
+          else b.title = (b.textContent || "").trim() + " — 현재 결과물에 적용";
+        });
+      }
+      function addUserMsg(prompt) {
+        const files = attached.length
+          ? `<div class="app-runtime-attachment-note">📎 ${attached.map((a) => esc(a.name)).join(", ")}</div>`
+          : "";
+        addMsg("user", esc(prompt) + files);
+      }
+
+      async function send(textOverride) {
+        if (busy) return;
+        const prompt = (textOverride != null ? textOverride : $("prompt").value).trim();
+        if (!prompt && !attached.length) return;
+        if (mode === "image") return genImagePost(prompt);
+        if (mode === "app") return buildApp(prompt);
+        if (mode === "design") return buildApp(prompt, false, true);
+        return autoRoute(prompt);
+      }
+
+      // 이미지 첨부를 서버 URL 로 올려(앱에 <img> 삽입용) 반환.
+      async function uploadImageAttachments() {
+        const urls = [];
+        for (const a of attached) {
+          if (!a.isImage || !a.file) continue;
+          if (a.serverUrl) { urls.push(a.serverUrl); continue; }
+          try {
+            const dataUrl = await new Promise((res) => { const rd = new FileReader(); rd.onload = () => res(rd.result); rd.readAsDataURL(a.file); });
+            const j = await api("/api/artifacts/upload", { method: "POST", body: JSON.stringify({ dataUrl }) });
+            a.serverUrl = j.url; urls.push(j.url);
+          } catch (_) {}
+        }
+        return urls;
+      }
+
+      // 🧩 앱 만들기 / 🎨 디자인(designMode) — 둘 다 멀티파일 프로젝트 빌드 경로 공유.
+      async function buildApp(prompt, skipUser, designMode) {
+        if (!prompt) return;
+        if (!skipUser) { addUserMsg(prompt); $("prompt").value = ""; autoGrow(); }
+        busy = true; updateSendUI();
+        const thinking = addMsg("ai", `<span class="spin"></span> ${designMode ? "디자인 만드는 중… (30~90초)" : "만드는 중… (20~60초)"}`, true);
+        try {
+          const imgUrls = await uploadImageAttachments();
+          // 멀티파일 프로젝트 모드: 현재 프로젝트 파일을 함께 보내고 전체를 다시 받는다.
+          const body = { prompt, model: $("model").value, summary: true, project: true };
+          if (designMode) body.design = true;
+          if (projectHasFiles()) body.projectFiles = Object.keys(project.files).map((p) => ({ path: p, content: project.files[p] }));
+          if (imgUrls.length) body.images = imgUrls;
+          if (chatTurns.length) body.history = chatTurns.slice(-8);
+          const j = await api("/api/artifacts/build", { method: "POST", body: JSON.stringify(body) });
+          chatTurns.push({ role: "user", content: prompt }, { role: "assistant", content: j.summary || "(완성)" });
+          // 프로젝트(files) 우선, 구버전 호환으로 html 단일파일도 처리.
+          if (j.files && j.files.length) applyProject({ files: j.files, entry: j.entry });
+          else if (j.html) setHtml(j.html);
+          const vi = pushVersion(j.summary, prompt);
+          aiSuccess(thinking, j.summary, vi, j.model, j.auto);
+          refreshBalance(j.newBalance);
+          if (!defaultTitle) defaultTitle = prompt.slice(0, 30);
+          attached = []; renderThumbs(); syncAttachStatus();
+          $("msgs").scrollTop = $("msgs").scrollHeight;
+        } catch (e) {
+          busy = false; updateSendUI();
+          showErrorBubble(thinking, e, "생성 실패", () => buildApp(prompt, true, designMode));
+        } finally { busy = false; updateSendUI(); }
+      }
+
+      // 명백한 '만들기' 요청을 결정적으로 분류(LLM 라우터 변동성 회피). 동사가 있어야 발동(오탐 방지).
+      function quickBuildIntent(msg) {
+        const m = String(msg || "");
+        if (!/(만들어|만들죠|만드는|만들 ?수|제작|짜\s?줘|짜\s?주|개발해|개발 ?좀|코딩해|구현해|\bbuild\b|\bcreate\b|\bmake\b)/i.test(m)) return null;
+        if (/(슬라이드|덱|deck|프레젠테이션|발표\s?자료|프로토타입|prototype|목업|mock\s?up|와이어프레임|wireframe|시안)/i.test(m)) return "design";
+        return "app";
+      }
+
+      // 🤖 자동: 의도 라우팅 → 대화 / 문서생성 / 앱 / 디자인 / 이미지 / 되묻기
+      async function autoRoute(prompt) {
+        addUserMsg(prompt); $("prompt").value = ""; autoGrow();
+        // 결정적 가드: 첨부 파일이 없고 명백한 '만들어줘' 류 요청이면 라우터를 거치지 않고 바로 빌드.
+        if (!attached.length) {
+          const q = quickBuildIntent(prompt);
+          if (q) return buildApp(prompt, true, q === "design");
+        }
+        busy = true; updateSendUI();
+        const thinking = addMsg("ai", `<span class="spin"></span> 무엇을 할지 보는 중…`, true);
+        let route;
+        try {
+          route = await api("/api/studio/route", { method: "POST", body: JSON.stringify({
+            message: prompt,
+            files: attached.map((a) => ({ name: a.name, type: a.file ? a.file.type : "image", sizeKB: a.file ? Math.round(a.file.size / 1024) : 0 })),
+            history: chatTurns.slice(-4),
+          }) });
+        } catch (e) { route = { action: "chat" }; }
+        thinking.remove();
+        busy = false; updateSendUI();
+        if (route.action === "ask") return addMsg("ai", esc(route.ask || "무엇을 만들까요? 조금 더 알려주세요."));
+        if (route.action === "app") return buildApp(prompt, true);
+        if (route.action === "design") return buildApp(prompt, true, true);
+        if (route.action === "image") return genImagePost(prompt, true);
+        if (route.action === "generate" && route.reportType) return runGenerate(route, prompt);
+        return runChat(prompt);
+      }
+
+      // 💬 파일 대화 — /api/filechat 평문 스트림
+      async function runChat(prompt) {
+        busy = true; updateSendUI();
+        const bubble = addMsg("ai", `<span class="spin"></span> 생각 중…`, true);
+        try {
+          const fd = new FormData();
+          fd.append("message", prompt);
+          fd.append("messages", JSON.stringify(chatTurns.slice(-10)));
+          fd.append("model", $("model").value);
+          attached.forEach((a) => { if (a.file) fd.append("files", a.file, a.name); });
+          const resp = await fetch("/api/filechat", { method: "POST", credentials: "same-origin", body: fd });
+          if (!resp.ok || !resp.body) { const j = await resp.json().catch(() => ({})); throw new Error(j.error || "대화 실패"); }
+          bubble.dataset.thinking = "";
+          const reader = resp.body.getReader(); const dec = new TextDecoder(); let acc = "";
+          while (true) { const r = await reader.read(); if (r.done) break; acc += dec.decode(r.value, { stream: true }); bubble.textContent = acc; $("msgs").scrollTop = $("msgs").scrollHeight; }
+          if (!acc) bubble.textContent = "(빈 응답)";
+          chatTurns.push({ role: "user", content: prompt }, { role: "assistant", content: acc });
+          ssSave();
+          attached = []; renderThumbs(); syncAttachStatus();
+          // 안전망: 대화 응답에 완결된 HTML 이 통째로 들어왔으면(잘못 분류된 빌드 요청 등),
+          // 코드 덤프로 끝내지 말고 '미리보기로 열기' 버튼을 띄워 실제 결과물로 변환.
+          const foundHtml = extractHtmlFromText(acc);
+          if (foundHtml) {
+            const bar = document.createElement("div");
+            bar.style.cssText = "margin-top:9px;display:flex;gap:8px;align-items:center;flex-wrap:wrap";
+            const note = document.createElement("span");
+            note.style.cssText = "font-size:11.5px;color:var(--mut)";
+            note.textContent = "만들 수 있는 HTML이 들어 있어요 —";
+            const btn = document.createElement("button");
+            btn.textContent = "▶ 미리보기로 열기";
+            btn.style.cssText = "background:var(--acc);color:#fff;border:0;border-radius:8px;padding:5px 11px;font:inherit;font-size:12px;cursor:pointer";
+            btn.onclick = () => {
+              applyProject({ files: { "index.html": foundHtml }, entry: "index.html" });
+              pushVersion("대화에서 가져온 HTML", prompt);
+              if (!defaultTitle) defaultTitle = prompt.slice(0, 30);
+              showTab("preview"); $("app").classList.add("showstage");
+              btn.disabled = true; btn.textContent = "✓ 미리보기에 열림";
+            };
+            bar.appendChild(note); bar.appendChild(btn);
+            bubble.appendChild(bar);
+          }
+        } catch (e) {
+          busy = false; updateSendUI();
+          showErrorBubble(bubble, e, "대화 실패", () => runChat(prompt));
+        } finally { busy = false; updateSendUI(); }
+      }
+
+      // 대화 텍스트에서 완결된 HTML 추출(코드펜스 또는 raw doctype). 없으면 null.
+      function extractHtmlFromText(t) {
+        const s = String(t || "");
+        let m = s.match(/```html\s*([\s\S]*?)```/i);
+        if (m && /<\/(html|body|main|section|div)>/i.test(m[1])) return m[1].trim();
+        m = s.match(/```\s*([\s\S]*?)```/);
+        if (m && /<!doctype html|<html[\s>]/i.test(m[1])) return m[1].trim();
+        const lo = s.toLowerCase();
+        const a = lo.indexOf("<!doctype html");
+        const b = lo.lastIndexOf("</html>");
+        if (a >= 0 && b > a) return s.slice(a, b + 7).trim();
+        return null;
+      }
+
+      // 📄 문서 생성 — /api/generate(jobId) → SSE 진행 → 다운로드 카드
+      const GEN_DEFAULT_FIELD = { "cap-translate": "cap" };
+      function studioFriendlyProgress(text) {
+        const raw = String(text || "").replace(/^\[\d{2}:\d{2}:\d{2}\]\s*/, "").trim();
+        if (/오류|실패|error|fail/i.test(raw)) return ["확인 필요", "문서를 마치지 못했습니다. 잠시 후 다시 시도해 주세요."];
+        if (/연결|재연결|stream|network/i.test(raw)) return ["연결 확인", "작업 상태를 다시 확인하고 있습니다."];
+        if (/^(?:완료|다운로드 (?:파일 )?준비 완료|파일 준비 완료)[.!…]*$/i.test(raw)) return ["파일 준비", "다운로드 파일을 준비하고 있습니다."];
+        if (/분석|모델|ai|응답|json|파싱|보정|자료|데이터|이미지|업로드|첨부/i.test(raw)) return ["자료 분석", "AI가 첨부 자료를 분석하고 있습니다."];
+        if (/문서.*(?:생성|작성|빌드)|(?:docx|hwpx|pdf|zip).*?(?:생성|빌드|렌더|render|조판)|차트|그래프.*(?:생성|렌더|render)|파일.*(?:빌드|조판)|표.*(?:생성|삽입)|수식.*(?:변환|삽입)/i.test(raw)) return ["문서 생성", "분석 결과를 문서 파일로 정리하고 있습니다."];
+        return ["처리 중", "요청한 문서를 안전하게 만들고 있습니다."];
+      }
+
+      function createStudioGenerationStatus() {
+        const root = document.createElement("section");
+        root.className = "studio-generation-status";
+        root.setAttribute("aria-label", "문서 생성 진행");
+        const head = document.createElement("div");
+        head.className = "studio-generation-status__head";
+        const stage = document.createElement("strong");
+        stage.textContent = "준비";
+        const stop = document.createElement("button");
+        stop.type = "button";
+        stop.className = "studio-generation-status__stop";
+        stop.textContent = "중지";
+        head.append(stage, stop);
+        const message = document.createElement("p");
+        message.className = "studio-generation-status__message";
+        message.setAttribute("role", "status");
+        message.setAttribute("aria-live", "polite");
+        message.textContent = "문서 생성 요청을 준비하고 있습니다.";
+        const elapsed = document.createElement("span");
+        elapsed.className = "studio-generation-status__elapsed";
+        elapsed.textContent = "경과 0:00";
+        root.append(head, message, elapsed);
+        const startedAt = Date.now();
+        const format = () => {
+          const seconds = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+          return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+        };
+        const timer = window.setInterval(() => { elapsed.textContent = `경과 ${format()}`; }, 1000);
+        return {
+          root,
+          stop,
+          update(raw) {
+            const [nextStage, nextMessage] = studioFriendlyProgress(raw);
+            stage.textContent = nextStage;
+            message.textContent = nextMessage;
+          },
+          finish(nextStage, nextMessage, tone) {
+            clearInterval(timer);
+            elapsed.textContent = `경과 ${format()}`;
+            stage.textContent = nextStage;
+            message.textContent = nextMessage;
+            stop.hidden = true;
+            if (tone) root.dataset.tone = tone;
+          },
+        };
+      }
+
+      async function runGenerate(route, prompt) {
+        busy = true; updateSendUI();
+        const bubble = addMsg("ai", `<span class="spin"></span> ${esc(route.reply || "문서 만드는 중…")}`, true);
+        const progress = createStudioGenerationStatus();
+        let jobId = "";
+        let stopRequested = false;
+        try {
+          const fd = new FormData();
+          fd.append("type", route.reportType);
+          fd.append("model", $("model").value);
+          fd.append("copyrightAccepted", "true");
+          fd.append("academicIntegrityAccepted", "true");
+          const roles = route.fileRoles || {};
+          let mapped = 0;
+          attached.forEach((a) => { if (!a.file) return; const field = roles[a.name]; if (field) { fd.append(field, a.file, a.name); mapped++; } });
+          if (mapped === 0) { const def = GEN_DEFAULT_FIELD[route.reportType]; attached.forEach((a) => { if (a.file && def) fd.append(def, a.file, a.name); }); }
+          const start = await fetch("/api/generate", { method: "POST", credentials: "same-origin", body: fd });
+          const sj = await start.json().catch(() => ({}));
+          if (!start.ok) throw new Error(sj.error || "생성 시작 실패");
+          bubble.dataset.thinking = "";
+          bubble.innerHTML = esc(route.reply || "문서를 만들고 있어요…");
+          bubble.appendChild(progress.root);
+          jobId = sj.jobId;
+          progress.stop.addEventListener("click", async () => {
+            if (!jobId || stopRequested) return;
+            stopRequested = true;
+            progress.stop.disabled = true;
+            progress.stop.textContent = "중지 중...";
+            progress.finish("중지 요청", "안전하게 작업을 중지하고 있습니다.", "warning");
+            try { await fetch(`/api/jobs/${jobId}/abort`, { method: "POST", credentials: "same-origin" }); } catch (_) {}
+          });
+          await new Promise((resolve) => {
+            let done = false;
+            const es = new EventSource(`/api/jobs/${jobId}/stream`);
+            es.addEventListener("progress", (e) => { try { progress.update(JSON.parse(e.data)); $("msgs").scrollTop = $("msgs").scrollHeight; } catch (_) {} });
+            es.addEventListener("done", (e) => {
+              if (done) return; done = true; es.close();
+              let d = {}; try { d = JSON.parse(e.data); } catch (_) {}
+              const fn = d.filename || "결과파일";
+              bubble.textContent = "✅ " + (route.reply || "완성했어요!");
+              progress.finish("완료", "문서가 완성되었습니다. 아래에서 파일을 받을 수 있습니다.", "success");
+              bubble.appendChild(progress.root);
+              const downloadRow = document.createElement("div");
+              downloadRow.className = "app-runtime-download-row";
+              const download = document.createElement("a");
+              download.className = "btn app-runtime-download";
+              download.href = `/api/jobs/${jobId}/download`;
+              download.download = fn;
+              download.textContent = `⬇ ${fn} 다운로드`;
+              downloadRow.appendChild(download);
+              bubble.appendChild(downloadRow);
+              chatTurns.push({ role: "user", content: prompt }, { role: "assistant", content: `(${fn} 생성 완료)` });
+              attached = []; renderThumbs(); syncAttachStatus(); $("msgs").scrollTop = $("msgs").scrollHeight; resolve();
+            });
+            es.addEventListener("error", (e) => {
+              if (done) return; done = true; es.close();
+              busy = false; updateSendUI();
+              const fallback = stopRequested ? "문서 생성을 중지했습니다." : "생성 중 오류가 발생했어요. 잠시 후 다시 시도해 주세요.";
+              showErrorBubble(bubble, {}, fallback, () => runGenerate(route, prompt));
+              progress.finish(stopRequested ? "중지됨" : "확인 필요", fallback, stopRequested ? "warning" : "danger");
+              bubble.appendChild(progress.root); resolve();
+            });
+          });
+        } catch (e) {
+          busy = false; updateSendUI();
+          showErrorBubble(bubble, e, "생성 실패", () => runGenerate(route, prompt));
+          progress.finish("확인 필요", "문서 생성을 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.", "danger");
+          bubble.appendChild(progress.root);
+        } finally { busy = false; updateSendUI(); }
+      }
+
+      // ── Monaco (코드 탭) ──
+      let monaco = null, editor = null, monacoLoading = null, codeT = null;
+      const MB = "https://cdn.jsdelivr.net/npm/monaco-editor@0.52.0/min/";
+      function loadMonaco() {
+        if (monacoLoading) return monacoLoading;
+        monacoLoading = window.QuiloAssets.monacoLoader().then(() => new Promise((resolve, reject) => {
+          window.MonacoEnvironment = { getWorkerUrl: () => "data:text/javascript;charset=utf-8," + encodeURIComponent("self.MonacoEnvironment={baseUrl:'" + MB + "'};importScripts('" + MB + "vs/base/worker/workerMain.js');") };
+          try { require.config({ paths: { vs: MB + "vs" } }); require(["vs/editor/editor.main"], () => resolve(window.monaco)); }
+          catch (e) { reject(e); }
+        }));
+        return monacoLoading;
+      }
+      async function openCode() {
+        $("stage").classList.add("codeon");
+        $("fileTree").hidden = false;
+        renderFileTree();
+        const active = project.active || project.entry;
+        const code = project.files[active] != null ? project.files[active] : "";
+        if (!editor) {
+          $("monacoHost").innerHTML = '<div class="placeholder">에디터 로딩 중…</div>';
+          try {
+            monaco = await loadMonaco();
+            $("monacoHost").innerHTML = "";
+            editor = monaco.editor.create($("monacoHost"), {
+              value: code, language: langForFile(active), theme: "vs-dark", automaticLayout: true,
+              fontSize: 13, minimap: { enabled: false }, wordWrap: "on", scrollBeyondLastLine: false, tabSize: 2,
+            });
+            // 편집 → 활성 파일 갱신 + 미리보기 재번들(디바운스).
+            editor.onDidChangeModelContent(() => { clearTimeout(codeT); codeT = setTimeout(() => {
+              if (project.files[project.active] == null) project.active = project.entry;
+              project.files[project.active] = editor.getValue();
+              currentHtml = bundleProject(); renderPreview();
+              $("openPublish").disabled = !projectHasFiles();
+              ssMark();
+            }, 500); });
+          } catch (e) { $("monacoHost").innerHTML = '<div class="placeholder">에디터 로드 실패: ' + esc(e.message || e) + "</div>"; }
+        } else if (editor.getValue() !== code) {
+          editor.setValue(code);
+          if (monaco) monaco.editor.setModelLanguage(editor.getModel(), langForFile(active));
+        }
+      }
+      function showTab(which) {
+        const code = which === "code";
+        $("tabs").querySelectorAll("[data-tab]").forEach((b) => { const on = b.dataset.tab === which; b.classList.toggle("on", on); b.setAttribute("aria-selected", on ? "true" : "false"); });
+        if (code) openCode();
+        else { $("stage").classList.remove("codeon"); $("fileTree").hidden = true; renderPreview(); }
+      }
+
+      // ── 파일 첨부 (PDF·이미지·데이터·.cap 등 무엇이든) ──
+      function renderThumbs() {
+        $("thumbs").innerHTML = attached.map((a, i) =>
+          a.isImage
+            ? `<span class="t"><img src="${esc(a.url || "")}" alt=""/><button class="rm" data-rm="${i}">×</button></span>`
+            : `<span class="t app-runtime-file-pill"><span class="app-runtime-file-name">📄 ${esc(a.name)}</span><button class="rm app-runtime-remove" data-rm="${i}">×</button></span>`
+        ).join("");
+        $("thumbs").querySelectorAll("[data-rm]").forEach((b) => b.onclick = () => {
+          const a = attached[+b.dataset.rm];
+          if (a && a.url && a.file) { try { URL.revokeObjectURL(a.url); } catch (_) {} }
+          attached.splice(+b.dataset.rm, 1); renderThumbs(); syncAttachStatus();
+        });
+      }
+      // 첨부 카운터(N/8) 안내를 instatus 에 갱신. dropped 가 있으면 'N개 제외'도 덧붙인다.
+      function syncAttachStatus(dropped) {
+        if (attached.length) {
+          let s = `${attached.length}/${MAX_ATTACH}개 첨부됨 — 메시지와 함께 보내집니다.`;
+          if (dropped) s += ` (최대 ${MAX_ATTACH}개라 ${dropped}개 제외)`;
+          $("instatus").textContent = s;
+        } else {
+          $("instatus").textContent = dropped ? `최대 ${MAX_ATTACH}개까지 첨부할 수 있어요 (${dropped}개 제외).` : "";
+        }
+      }
+      function addFiles(fileList) {
+        let dropped = 0;
+        Array.from(fileList || []).forEach((f) => {
+          if (attached.length >= MAX_ATTACH) { dropped++; return; }
+          const isImage = /^image\//.test(f.type) || /\.(png|jpe?g|gif|webp)$/i.test(f.name);
+          attached.push({ file: f, name: f.name, isImage, url: isImage ? URL.createObjectURL(f) : null });
+        });
+        renderThumbs();
+        syncAttachStatus(dropped);
+      }
+
+      // ── 게시 ──
+      function openPublish() {
+        if (!currentHtml) return;
+        $("pTitle").value = $("pTitle").value || defaultTitle || "";
+        $("pCat").innerHTML = CATS.map((c) => `<option>${c}</option>`).join("");
+        if (mode === "image") $("pCat").value = "이미지";
+        $("pubStatus").innerHTML = ""; $("pubModal").classList.add("on");
+        setTimeout(() => { try { $("pTitle").focus(); } catch (_) {} }, 0);
+      }
+      async function doPublish() {
+        if (!currentHtml) return;
+        $("pDo").disabled = true; $("pubStatus").innerHTML = `<span class="spin"></span> 게시 중…`;
+        try {
+          const slug = $("pSlug").value.trim();
+          const j = await api("/api/artifacts", { method: "POST", body: JSON.stringify({
+            title: $("pTitle").value.trim(), slug, html: currentHtml, isPublic: $("pPublic").checked,
+            category: $("pCat").value, forkedFrom, overwrite: slug && slug === lastSlug,
+          }) });
+          lastSlug = j.slug; forkedFrom = null;
+          ssDirty = false; ssSave(); // 게시 성공 = 이 상태는 더 이상 미게시 변경 아님
+          const full = location.origin + j.url;
+          $("pSlug").value = j.slug;
+          $("pubStatus").innerHTML = `✅ 게시됨 → <a href="${j.url}" target="_blank">${esc(full)}</a>` + (j.persistent ? "" : " <span class='app-runtime-pending'>(임시저장)</span>");
+        } catch (e) { $("pubStatus").innerHTML = "⚠ " + esc(e.message); }
+        finally { $("pDo").disabled = false; }
+      }
+
+      // ── 입력 UX ──
+      function autoGrow() { const t = $("prompt"); t.style.height = "auto"; t.style.height = Math.min(160, t.scrollHeight) + "px"; }
+
+      // ── 초기화 ──
+      async function loadParamArtifact() {
+        const q = new URLSearchParams(location.search);
+        const edit = q.get("edit"), remix = q.get("remix"), from = q.get("from");
+        // 바이브 코딩 생성기에서 넘어온 설계 → 입력창에 빌드 지시문 프리필(자동 전송하지 않음).
+        // 명시적 진입(vibe/edit/remix)은 새 작업 의도이므로 끊긴 세션 자동복구와 충돌하지 않게 정리.
+        if (from === "vibe") {
+          ssClear();
+          renderEmpty();
+          let h = null;
+          try { h = JSON.parse(sessionStorage.getItem("quilo_vibe_handoff") || "null"); } catch {}
+          try { sessionStorage.removeItem("quilo_vibe_handoff"); } catch {}
+          if (h && h.prompt) {
+            if (h.title) { defaultTitle = h.title; $("pTitle").value = h.title; }
+            $("prompt").value = h.prompt; autoGrow(); $("prompt").focus();
+            addMsg("ai", "✨ <b>바이브 코딩 생성기</b>에서 설계를 가져왔어요. 입력창 내용을 검토·수정한 뒤 <b>전송(Enter)</b>하면 바로 만들어 드릴게요.");
+          } else {
+            addMsg("ai", "✨ 바이브 코딩 생성기에서 넘어왔어요. 무엇을 만들지 입력해 주세요.");
+          }
+          return;
+        }
+        if (edit || remix) ssClear();
+        try {
+          if (edit) {
+            const j = await api("/api/artifacts/" + encodeURIComponent(edit) + "/raw");
+            lastSlug = j.slug; defaultTitle = j.title || ""; $("pTitle").value = j.title || ""; $("pSlug").value = j.slug || ""; $("pPublic").checked = !!j.is_public;
+            setHtml(j.html); pushVersion("불러온 작품", "(편집)");
+            addMsg("ai", `📂 <b>${esc(j.title || j.slug)}</b> 를 불러왔어요. 고치고 싶은 점을 말해주세요.`);
+            bindCheckpoints(); markCurrentCheckpoint();
+          } else if (remix) {
+            const j = await api("/api/artifacts/" + encodeURIComponent(remix) + "/remix");
+            defaultTitle = j.title || ""; forkedFrom = j.forkedFrom || remix;
+            setHtml(j.html); pushVersion("리믹스 원본", "(리믹스)");
+            addMsg("ai", `🔀 <b>${esc(j.title || remix)}</b> 를 리믹스로 불러왔어요. 마음대로 바꿔서 새 작품으로 게시하세요.`);
+            bindCheckpoints(); markCurrentCheckpoint();
+          } else {
+            // 파라미터 없는 일반 진입: 저장된 작업이 있으면 자동 적용 대신 복구 배너로 물어본다.
+            const saved = ssRead();
+            if (ssHasWork(saved)) { ssDisabled = true; renderEmpty(); showRestoreBar(saved); return; }
+            renderEmpty(); return;
+          }
+        } catch (e) { renderEmpty(); addMsg("ai", "⚠ 불러오기 실패: " + esc(e.message)); }
+      }
+
+      async function init() {
+        const access = await window.QuiloEntitlement.require({
+          feature: "create",
+          gate: "#gate",
+          content: "#app",
+          forbiddenTitle: "Quilo Studio는 Pro 권한이 필요합니다",
+          forbiddenMessage: "갤러리는 누구나 볼 수 있으며, 제작은 Pro·Max 또는 create 기능 권한이 있는 계정에서 사용할 수 있습니다."
+        });
+        if (!access.allowed) return;
+        me = access.me || null;
+        canCreate = true;
+        // 모델 목록(앱 빌드 + 이미지 생성)
+        try { appModels = await api("/api/artifacts/models"); } catch {}
+        try { const im = await api("/api/artifacts/image-models"); if (im && im.models && im.models.length) imageModels = im; } catch {}
+        populateModels(false);
+        refreshBalance();
+        // 칩
+        $("chips").innerHTML = CHIPS.map((c) => `<button disabled>${esc(c)}</button>`).join("");
+        $("chips").querySelectorAll("button").forEach((b) => b.onclick = () => { if (!currentHtml || busy) return; send(b.textContent.replace(/^\S+\s/, "")); });
+        renderPreview();
+        await loadParamArtifact();
+        updateSendUI();
+      }
+
+      // 이벤트 바인딩
+      $("sendBtn").onclick = () => send();
+      $("prompt").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
+      $("prompt").addEventListener("input", autoGrow);
+      $("imgBtn").onclick = () => $("imgFile").click();
+      $("imgFile").onchange = () => { addFiles($("imgFile").files); $("imgFile").value = ""; };
+      $("modeseg").querySelectorAll("[data-mode]").forEach((b) => b.onclick = () => setMode(b.dataset.mode));
+      $("tabs").querySelectorAll("[data-tab]").forEach((b) => b.onclick = () => showTab(b.dataset.tab));
+      $("devseg").querySelectorAll("[data-dev]").forEach((b) => b.onclick = () => { $("devseg").querySelectorAll("button").forEach((x) => { const on = x === b; x.classList.toggle("on", on); x.setAttribute("aria-pressed", on ? "true" : "false"); }); $("pvhost").classList.toggle("mobile", b.dataset.dev === "mobile"); });
+      $("refresh").onclick = renderPreview;
+      $("dlZip").onclick = downloadZip;
+      $("undoBtn").onclick = () => gotoVersion(curVer - 1);
+      function openSandboxedPopout() {
+        if (!currentHtml) return;
+        const w = window.open("", "_blank");
+        if (!w) return;
+        w.document.open();
+        w.document.write(`<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Quilo Preview</title><style>html,body{margin:0;width:100%;height:100%;background:#fff}iframe{display:block;width:100%;height:100%;border:0}</style></head><body><iframe id="pv" sandbox="allow-scripts allow-forms allow-popups allow-modals"></iframe></body></html>`);
+        w.document.close();
+        const previewFrame = w.document.getElementById("pv");
+        if (previewFrame) previewFrame.srcdoc = currentHtml;
+      }
+      $("popout").onclick = openSandboxedPopout;
+      $("toStage").onclick = () => $("app").classList.add("showstage");
+      $("openPublish").onclick = openPublish;
+      $("pCancel").onclick = () => $("pubModal").classList.remove("on");
+      $("pDo").onclick = doPublish;
+      $("pubModal").onclick = (e) => { if (e.target === $("pubModal")) $("pubModal").classList.remove("on"); };
+      document.addEventListener("keydown", (e) => { if (e.key === "Escape" && $("pubModal").classList.contains("on")) $("pubModal").classList.remove("on"); });
+
+      // 미게시 변경이 있으면 떠나기 전 경고(브라우저 표준 확인 창). 생성·게시 흐름은 그대로.
+      window.addEventListener("beforeunload", (e) => {
+        try { ssWrite(); } catch (_) {}
+        if (ssDirty && projectHasFiles()) { e.preventDefault(); e.returnValue = ""; return ""; }
+      });
+      // 안전망: 탭 숨김 시점에도 즉시 저장(디바운스 대기 중 손실 방지).
+      document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") { try { ssWrite(); } catch (_) {} } });
+
+      init();
+    </script>
+  </body>
+</html>

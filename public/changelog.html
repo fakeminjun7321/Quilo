@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="canonical" href="https://quilolab.com/changelog.html" />
+    <meta name="description" content="Quilo의 새 기능, 개선 사항, 오류 수정 내역을 날짜별로 확인합니다." />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#ffffff" />
+    <title>업데이트 — Quilo</title>
+    <script>
+      (function () {
+        try {
+          var theme = localStorage.getItem("theme");
+          if (!theme) theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          document.documentElement.setAttribute("data-theme", theme);
+        } catch (_) {}
+      })();
+    </script>
+    <link rel="stylesheet" href="/ui/foundation.css" />
+    <link rel="stylesheet" href="/ui/shell.css" />
+    <link rel="stylesheet" href="/ui/pages.css" />
+    <link rel="stylesheet" href="/ui/changelog.css" />
+  </head>
+  <body class="q-shell-page changelog-page">
+    <a class="ui-skip-link" href="#main-content">본문으로 건너뛰기</a>
+    <header class="ui-site-header" data-ui-shell></header>
+
+    <main class="changelog-main" id="main-content">
+      <aside class="release-sidebar" aria-label="업데이트 탐색">
+        <div class="release-sidebar__intro">
+          <h1>업데이트</h1>
+          <p>새로 추가한 기능과 고친 문제를 배포 날짜 순서로 정리했습니다. 실제 사용에 영향을 주는 내용과 운영 변경도 함께 기록합니다.</p>
+        </div>
+
+        <label class="release-search" for="releaseSearch">
+          <span class="ui-sr-only">업데이트 검색</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="10.5" cy="10.5" r="6.5"></circle>
+            <path d="m16 16 4 4"></path>
+          </svg>
+          <input id="releaseSearch" type="search" autocomplete="off" placeholder="업데이트 검색" />
+        </label>
+
+        <section class="release-filters" aria-labelledby="filterTitle">
+          <h2 id="filterTitle">필터</h2>
+          <div role="group" aria-label="업데이트 종류">
+            <button type="button" class="is-active" data-release-filter="all" aria-pressed="true">전체</button>
+            <button type="button" data-release-filter="feature" aria-pressed="false">새 기능</button>
+            <button type="button" data-release-filter="improvement" aria-pressed="false">개선</button>
+            <button type="button" data-release-filter="fix" aria-pressed="false">수정</button>
+          </div>
+        </section>
+
+        <section class="deployment-summary" aria-labelledby="deploymentTitle">
+          <h2 id="deploymentTitle">현재 배포</h2>
+          <dl>
+            <div><dt>버전</dt><dd id="currentReleaseSide">확인 중</dd></div>
+            <div><dt>커밋</dt><dd><code id="currentCommit">확인 중</code></dd></div>
+            <div><dt>브랜치</dt><dd id="currentBranch">확인 중</dd></div>
+          </dl>
+        </section>
+
+        <nav class="release-index" aria-labelledby="releaseIndexTitle">
+          <h2 id="releaseIndexTitle">릴리스</h2>
+          <ol id="releaseIndex">
+            <li class="is-loading">목록을 불러오는 중입니다.</li>
+          </ol>
+        </nav>
+      </aside>
+
+      <div class="release-content">
+        <header class="release-content__head">
+          <div>
+            <span>현재 배포 버전</span>
+            <strong id="currentRelease">확인 중</strong>
+            <time id="currentReleaseDate"></time>
+          </div>
+          <div class="release-content__actions">
+            <a href="/status.html">
+              서비스 상태 확인
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h5v5M19 5l-8 8M19 14v5H5V5h5" /></svg>
+            </a>
+            <button type="button" id="toggleAllReleases" aria-expanded="false">모두 펼치기</button>
+          </div>
+        </header>
+
+        <div class="release-results" aria-live="polite">
+          <p id="releaseResultCount">업데이트를 불러오는 중입니다.</p>
+        </div>
+
+        <section class="release-timeline" id="releaseTimeline" aria-label="업데이트 내역" aria-busy="true">
+          <article class="release-loading" aria-label="업데이트를 불러오는 중입니다">
+            <span></span><span></span><span></span><span></span>
+          </article>
+        </section>
+      </div>
+    </main>
+
+    <footer class="ui-site-footer"></footer>
+    <script src="/ui/shell.js"></script>
+    <script src="/ui/changelog.js"></script>
+  </body>
+</html>

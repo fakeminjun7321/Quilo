@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://quilolab.com/schemas/agent-harness-state.schema.json",
+  "title": "Quilo agent harness checkpoint",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "runId",
+    "tool",
+    "objective",
+    "acceptanceCriteria",
+    "allowedPaths",
+    "baseRevision",
+    "dirtyBaseline",
+    "iteration",
+    "hypothesis",
+    "changedFiles",
+    "commands",
+    "openRisks",
+    "blockers",
+    "status",
+    "nextAction",
+    "ruleReview",
+    "promotedRules",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "version": { "const": 2 },
+    "runId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{1,79}$" },
+    "tool": { "enum": ["codex", "claude-code", "other"] },
+    "objective": { "type": "string", "minLength": 1 },
+    "acceptanceCriteria": { "type": "array", "items": { "type": "string" } },
+    "allowedPaths": { "type": "array", "items": { "type": "string" } },
+    "baseRevision": { "type": "string", "minLength": 7 },
+    "dirtyBaseline": { "type": "array", "items": { "type": "string" } },
+    "iteration": { "type": "integer", "minimum": 0 },
+    "hypothesis": { "type": "string" },
+    "changedFiles": { "type": "array", "items": { "type": "string" } },
+    "commands": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["command", "exitCode", "durationMs", "ranAt"],
+        "properties": {
+          "command": { "type": "string" },
+          "exitCode": { "type": "integer" },
+          "durationMs": { "type": "integer", "minimum": 0 },
+          "ranAt": { "type": "string" }
+        }
+      }
+    },
+    "openRisks": { "type": "array", "items": { "type": "string" } },
+    "blockers": { "type": "array", "items": { "type": "string" } },
+    "status": { "enum": ["in_progress", "complete", "blocked", "budget_stopped", "abandoned"] },
+    "nextAction": { "type": "string" },
+    "ruleReview": { "type": "string" },
+    "promotedRules": { "type": "array", "items": { "type": "string" } },
+    "notes": { "type": "array", "items": { "type": "string" } },
+    "createdAt": { "type": "string" },
+    "updatedAt": { "type": "string" }
+  }
+}

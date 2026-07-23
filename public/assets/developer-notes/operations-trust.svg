@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-labelledby="title desc">
+  <title id="title">운영과 신뢰성</title>
+  <desc id="desc">권한, 기록, 상태 확인이 겹겹이 서비스를 보호하는 모습</desc>
+  <defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#0a1630"/><stop offset="1" stop-color="#223c72"/></linearGradient></defs>
+  <rect width="1200" height="675" rx="34" fill="url(#bg)"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M600 79 891 190v179c0 112-88 185-291 235-203-50-291-123-291-235V190z" fill="#fff" fill-opacity=".07" stroke="#a8c7ff" stroke-width="5"/>
+    <path d="M600 133 826 219v137c0 78-61 135-226 179-165-44-226-101-226-179V219z" fill="#fff" fill-opacity=".08" stroke="#79a9ff" stroke-width="4"/>
+    <circle cx="600" cy="332" r="114" fill="#0759ed" stroke="#fff" stroke-opacity=".35" stroke-width="5"/>
+    <path d="m546 335 35 35 78-88" stroke="#fff" stroke-width="17"/>
+  </g>
+  <g fill="#d9e8ff"><circle cx="179" cy="234" r="28"/><rect x="122" y="279" width="114" height="84" rx="31"/><circle cx="1021" cy="234" r="28"/><rect x="964" y="279" width="114" height="84" rx="31"/></g>
+  <g fill="none" stroke="#8eb7ff" stroke-width="4" stroke-dasharray="9 11"><path d="M236 320h128M836 320h128"/></g>
+</svg>

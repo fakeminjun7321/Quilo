@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="canonical" href="https://quilolab.com/tools/image-ocr.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>이미지 OCR — Quilo</title>
+    <meta name="description" content="사진과 스크린샷의 한글·영문·표·수식을 고품질 4중 교차 검증 OCR로 읽고 수능형 보기와 병합 표를 복원해 Word·한글·HTML·TXT로 내보냅니다." />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("theme");
+          if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          document.documentElement.setAttribute("data-theme", t);
+        } catch (e) {}
+      })();
+    </script>
+    <link rel="stylesheet" href="/ui/foundation.css" />
+    <link rel="stylesheet" href="/ui/shell.css" />
+    <link rel="stylesheet" href="/ui/pages.css" />
+    <link rel="stylesheet" href="/ui/tool-shell.css" />
+    <link rel="stylesheet" href="/ui/image-ocr.css" />
+  </head>
+  <body class="landing q-shell-page ui-page">
+    <a class="ui-skip-link" href="#main-content">본문으로 건너뛰기</a>
+    <header class="ui-site-header" data-ui-shell></header>
+
+    <main class="landing-shell" id="main-content">
+      <section class="section">
+        <div class="tool-page-head">
+          <h1>이미지 OCR</h1>
+          <p>원본·고대비·컬러 필기·이진화본을 교차 검증해 일치하는 결과를 고르고, 수능형 &lt;보기&gt;·병합 표·수식·그림을 복원한 Word·한글·HTML 또는 TXT로 내보냅니다.</p>
+        </div>
+
+        <section class="tool-card ocr-input-card" aria-labelledby="ocrUploadTitle">
+          <div class="ocr-card-head">
+            <div>
+              <h2 id="ocrUploadTitle">이미지 선택</h2>
+              <p>PNG · JPG · WEBP · GIF · TIFF · BMP · AVIF, 최대 20MB</p>
+            </div>
+            <span class="ocr-pro-badge">Pro</span>
+          </div>
+
+          <div class="ocr-drop" id="ocrDrop" role="button" tabindex="0" aria-label="OCR 이미지 선택">
+            <div class="ocr-drop-copy">
+              <strong>이미지를 끌어놓거나 눌러서 선택</strong>
+              <span>문서가 화면을 가득 채우고 글자가 선명할수록 정확합니다.</span>
+            </div>
+            <img id="ocrImagePreview" alt="선택한 OCR 이미지" hidden />
+          </div>
+          <input id="ocrFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/tiff,image/bmp,image/avif,.tif,.tiff,.bmp,.avif" hidden />
+
+          <div class="ocr-file-meta" id="ocrFileMeta" hidden></div>
+          <div class="ocr-quality-default" aria-label="기본 판독 품질">
+            <strong>고품질 판독이 기본입니다.</strong>
+            <span>4중 교차 검증 · HTML 병합 표 · 수능형 &lt;보기&gt; · 수식·그림 구조 복원</span>
+          </div>
+
+          <p class="ocr-privacy">선택한 이미지는 OCR 처리를 위해 Quilo 서버와 설정된 Mistral Document AI로 암호화 전송됩니다. 본인이 권한을 가진 이미지만 사용하세요.</p>
+          <button class="ocr-submit" id="ocrRun" type="button" disabled>이미지 읽기</button>
+          <p class="ocr-status" id="ocrStatus" aria-live="polite"></p>
+        </section>
+
+        <section class="tool-result ocr-result" id="ocrResult" hidden aria-labelledby="ocrResultTitle">
+          <div class="ocr-result-head">
+            <div>
+              <h2 id="ocrResultTitle">OCR 결과</h2>
+              <p id="ocrResultMeta"></p>
+            </div>
+            <span id="ocrConfidence" class="ocr-confidence"></span>
+          </div>
+          <div class="ocr-quality" id="ocrQuality" aria-live="polite"></div>
+          <section class="ocr-layout-preview-section" aria-labelledby="ocrLayoutPreviewTitle">
+            <div class="ocr-preview-head">
+              <div>
+                <h3 id="ocrLayoutPreviewTitle">편집 요소 복원 미리보기</h3>
+                <p>원본 전체 이미지를 붙이지 않고, 감지한 좌표에 텍스트·수식·표·그림 크롭을 각각 배치한 결과입니다.</p>
+              </div>
+              <span id="ocrLayoutBadge">분석 중</span>
+            </div>
+            <div class="ocr-layout-preview" id="ocrLayoutPreview"></div>
+          </section>
+          <label class="ocr-edit-label" for="ocrText">추출된 Markdown <span>내보내기 전에 직접 고칠 수 있습니다.</span></label>
+          <textarea id="ocrText" aria-label="추출된 Markdown"></textarea>
+          <p class="ocr-export-note">DOCX·HWPX·HTML에는 원본 전체 스캔을 넣지 않습니다. 글자는 편집 가능한 문단, 수식은 문서 수식, 표는 실제 셀, 그림만 원본 좌표에서 잘라낸 별도 이미지로 복원합니다.</p>
+          <div class="ocr-result-actions">
+            <button id="ocrCopy" type="button">Markdown 복사</button>
+            <button id="ocrDownloadMd" type="button">.md 저장</button>
+            <button type="button" data-ocr-export="txt">TXT 내보내기</button>
+            <button type="button" data-ocr-export="html">HTML 내보내기</button>
+            <button type="button" class="ocr-export-primary" data-ocr-export="docx">Word (.docx)</button>
+            <button type="button" class="ocr-export-primary" data-ocr-export="hwpx">한글 (.hwpx)</button>
+            <button id="ocrDownloadJson" type="button">구조 JSON 저장</button>
+          </div>
+          <p class="ocr-status" id="ocrExportStatus" aria-live="polite"></p>
+          <details class="ocr-blocks">
+            <summary>구조 블록 확인</summary>
+            <div id="ocrBlocks"></div>
+          </details>
+        </section>
+      </section>
+    </main>
+
+    <footer class="ui-site-footer">
+      <div class="ui-site-footer__inner">
+        <nav class="ui-site-footer__links" aria-label="푸터 메뉴"><a href="/terms.html">이용약관</a><a href="/privacy.html">개인정보처리방침</a><a href="/guide.html">이용 가이드</a><a href="/support.html">고객센터</a></nav>
+        <div class="ui-site-footer__copy">© 2026 Quilo · <span data-site-version>버전 확인 중...</span></div>
+      </div>
+    </footer>
+    <script src="/ui/shell.js"></script>
+    <script src="/ui/tool-shell.js"></script>
+    <script>
+      (function () {
+        var input = document.getElementById("ocrFile");
+        var drop = document.getElementById("ocrDrop");
+        var preview = document.getElementById("ocrImagePreview");
+        var meta = document.getElementById("ocrFileMeta");
+        var run = document.getElementById("ocrRun");
+        var status = document.getElementById("ocrStatus");
+        var result = document.getElementById("ocrResult");
+        var text = document.getElementById("ocrText");
+        var resultMeta = document.getElementById("ocrResultMeta");
+        var confidence = document.getElementById("ocrConfidence");
+        var quality = document.getElementById("ocrQuality");
+        var exportStatus = document.getElementById("ocrExportStatus");
+        var blocks = document.getElementById("ocrBlocks");
+        var layoutPreview = document.getElementById("ocrLayoutPreview");
+        var layoutBadge = document.getElementById("ocrLayoutBadge");
+        var selected = null;
+        var lastResult = null;
+        var previewUrl = "";
+
+        function formatBytes(bytes) {
+          if (bytes >= 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + "MB";
+          return Math.max(1, Math.round(bytes / 1024)) + "KB";
+        }
+
+        function choose(file) {
+          if (!file) return;
+          if (!file.type.startsWith("image/") && !/\.(png|jpe?g|webp|gif|tiff?|bmp|avif)$/i.test(file.name)) {
+            status.textContent = "지원하는 이미지 파일을 선택하세요.";
+            return;
+          }
+          if (file.size > 20 * 1024 * 1024) {
+            status.textContent = "이미지는 20MB 이하만 지원합니다.";
+            return;
+          }
+          selected = file;
+          run.disabled = false;
+          status.textContent = "";
+          result.hidden = true;
+          exportStatus.textContent = "";
+          meta.hidden = false;
+          meta.textContent = file.name + " · " + formatBytes(file.size);
+          if (previewUrl) URL.revokeObjectURL(previewUrl);
+          previewUrl = URL.createObjectURL(file);
+          preview.src = previewUrl;
+          preview.hidden = false;
+          drop.classList.add("has-image");
+        }
+
+        drop.addEventListener("click", function () { input.click(); });
+        drop.addEventListener("keydown", function (event) {
+          if (event.key === "Enter" || event.key === " ") { event.preventDefault(); input.click(); }
+        });
+        input.addEventListener("change", function () { choose(input.files && input.files[0]); });
+        ["dragenter", "dragover"].forEach(function (name) {
+          drop.addEventListener(name, function (event) { event.preventDefault(); drop.classList.add("is-dragging"); });
+        });
+        ["dragleave", "drop"].forEach(function (name) {
+          drop.addEventListener(name, function (event) { event.preventDefault(); drop.classList.remove("is-dragging"); });
+        });
+        drop.addEventListener("drop", function (event) { choose(event.dataTransfer && event.dataTransfer.files[0]); });
+
+        function renderBlocks(data) {
+          var counts = {};
+          (data.pages || []).forEach(function (page) {
+            (page.blocks || []).forEach(function (block) {
+              var type = String(block.type || "text");
+              counts[type] = (counts[type] || 0) + 1;
+            });
+            if ((page.images || []).length) counts.image = (counts.image || 0) + page.images.length;
+            if ((page.tables || []).length) counts.table = (counts.table || 0) + page.tables.length;
+          });
+          blocks.replaceChildren();
+          var keys = Object.keys(counts).sort();
+          if (!keys.length) {
+            blocks.textContent = "추출된 구조 블록이 없습니다.";
+            return;
+          }
+          var list = document.createElement("ul");
+          keys.forEach(function (key) {
+            var item = document.createElement("li");
+            item.textContent = key + " · " + counts[key] + "개";
+            list.appendChild(item);
+          });
+          blocks.appendChild(list);
+        }
+
+        function bounded(value, min, max) {
+          return Math.max(min, Math.min(max, value));
+        }
+
+        function previewBox(block, page, index) {
+          var width = Number(page.dimensions && page.dimensions.width) || preview.naturalWidth || 1;
+          var height = Number(page.dimensions && page.dimensions.height) || preview.naturalHeight || 1;
+          var coords = [block.topLeftX, block.topLeftY, block.bottomRightX, block.bottomRightY].map(Number);
+          if (!coords.every(Number.isFinite) || coords[2] <= coords[0] || coords[3] <= coords[1]) {
+            return { x: 0.04, y: bounded(index * 0.055 + 0.03, 0, 0.94), width: 0.92, height: 0.045 };
+          }
+          if (Math.max.apply(null, coords.map(Math.abs)) > 1.01) {
+            coords[0] /= width; coords[2] /= width; coords[1] /= height; coords[3] /= height;
+          }
+          return {
+            x: bounded(coords[0], 0, 1),
+            y: bounded(coords[1], 0, 1),
+            width: bounded(coords[2] - coords[0], 0.01, 1),
+            height: bounded(coords[3] - coords[1], 0.01, 1),
+          };
+        }
+
+        function appendSafeTable(target, source) {
+          var parsed = new DOMParser().parseFromString(String(source || ""), "text/html");
+          var inputTable = parsed.querySelector("table");
+          if (!inputTable) { target.textContent = String(source || "표").replace(/<[^>]+>/g, " "); return; }
+          var table = document.createElement("table");
+          inputTable.querySelectorAll("tr").forEach(function (inputRow) {
+            var row = document.createElement("tr");
+            inputRow.querySelectorAll(":scope > th, :scope > td").forEach(function (inputCell) {
+              var cell = document.createElement(inputCell.tagName.toLowerCase());
+              cell.textContent = inputCell.textContent || "";
+              var colspan = bounded(Number(inputCell.getAttribute("colspan")) || 1, 1, 100);
+              var rowspan = bounded(Number(inputCell.getAttribute("rowspan")) || 1, 1, 100);
+              if (colspan > 1) cell.colSpan = colspan;
+              if (rowspan > 1) cell.rowSpan = rowspan;
+              row.appendChild(cell);
+            });
+            table.appendChild(row);
+          });
+          target.appendChild(table);
+        }
+
+        function cropPreviewImage(image, page) {
+          if (!preview.naturalWidth || !preview.naturalHeight) return "";
+          var pageWidth = Number(page.dimensions && page.dimensions.width) || preview.naturalWidth;
+          var pageHeight = Number(page.dimensions && page.dimensions.height) || preview.naturalHeight;
+          var box = previewBox(image, page, 0);
+          var sx = Math.floor(box.x * preview.naturalWidth);
+          var sy = Math.floor(box.y * preview.naturalHeight);
+          var sw = Math.max(1, Math.ceil(box.width * preview.naturalWidth));
+          var sh = Math.max(1, Math.ceil(box.height * preview.naturalHeight));
+          if (!pageWidth || !pageHeight || sx >= preview.naturalWidth || sy >= preview.naturalHeight) return "";
+          sw = Math.min(sw, preview.naturalWidth - sx); sh = Math.min(sh, preview.naturalHeight - sy);
+          var canvas = document.createElement("canvas");
+          var scale = Math.min(1, 900 / Math.max(sw, sh));
+          canvas.width = Math.max(1, Math.round(sw * scale)); canvas.height = Math.max(1, Math.round(sh * scale));
+          canvas.getContext("2d").drawImage(preview, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+          return canvas.toDataURL("image/png");
+        }
+
+        function previewMathText(value) {
+          return String(value || "")
+            .replace(/^\{\{EQN?(?:-LATEX)?:\s*([\s\S]*?)\}\}$/i, "$1")
+            .replace(/\\sqrt\{([^{}]+)\}/g, "√($1)")
+            .replace(/\^\{([^{}]+)\}/g, "^($1)")
+            .replace(/_\{([^{}]+)\}/g, "_($1)")
+            .replace(/\\(times|cdot|leq|geq|approx|pi)\b/g, function (_match, name) {
+              return ({ times: "×", cdot: "·", leq: "≤", geq: "≥", approx: "≈", pi: "π" })[name] || name;
+            });
+        }
+
+        function appendPreviewEquation(target, value) {
+          var source = String(value || "").replace(/^\{\{EQN?(?:-LATEX)?:\s*([\s\S]*?)\}\}$/i, "$1");
+          var fraction = source.match(/^\\(?:d|t)?frac\{([^{}]+)\}\{([^{}]+)\}$/);
+          if (!fraction) { target.textContent = previewMathText(source); return; }
+          var box = document.createElement("span"); box.className = "ocr-preview-fraction";
+          var numerator = document.createElement("span"); numerator.textContent = previewMathText(fraction[1]);
+          var denominator = document.createElement("span"); denominator.textContent = previewMathText(fraction[2]);
+          box.append(numerator, denominator); target.appendChild(box);
+        }
+
+        function renderLayoutPreview(data) {
+          layoutPreview.replaceChildren();
+          var pages = data.pages || [];
+          var totalBlocks = 0;
+          var twoColumnPages = 0;
+          pages.forEach(function (page, pageIndex) {
+            var pageWidth = Number(page.dimensions && page.dimensions.width) || preview.naturalWidth || 1;
+            var pageHeight = Number(page.dimensions && page.dimensions.height) || preview.naturalHeight || 1;
+            var pageEl = document.createElement("div");
+            pageEl.className = "ocr-layout-page";
+            pageEl.style.aspectRatio = pageWidth + " / " + pageHeight;
+            var pageBlocks = (page.blocks || []).slice();
+            var referenced = new Set(pageBlocks.map(function (block) { return String(block.imageId || ""); }).filter(Boolean));
+            (page.images || []).forEach(function (image) {
+              if (!referenced.has(String(image.id || ""))) pageBlocks.push(Object.assign({ type: "image", imageId: image.id, content: image.annotation || "" }, image));
+            });
+            var left = 0; var right = 0;
+            pageBlocks.forEach(function (block, index) {
+              var box = previewBox(block, page, index);
+              var center = box.x + box.width / 2;
+              if (box.width <= .62 && center < .47) left += 1;
+              if (box.width <= .62 && center > .53) right += 1;
+              var item = document.createElement(block.type === "title" ? "h4" : "div");
+              item.className = "ocr-layout-item is-" + String(block.type || "text").replace(/[^a-z0-9_-]/gi, "");
+              item.style.left = (box.x * 100).toFixed(3) + "%";
+              item.style.top = (box.y * 100).toFixed(3) + "%";
+              item.style.width = (box.width * 100).toFixed(3) + "%";
+              item.style.minHeight = (box.height * 100).toFixed(3) + "%";
+              var lineCount = Math.max(1, String(block.content || "").split(/\n+/).filter(Boolean).length);
+              item.style.setProperty("--ocr-font", bounded(box.height * 100 / lineCount / 1.3, .85, 3.2).toFixed(3) + "cqw");
+              if (block.type === "table") {
+                var table = (page.tables || []).find(function (entry) { return String(entry.id) === String(block.tableId); });
+                appendSafeTable(item, table && table.content || block.content);
+              } else if (block.type === "image" || block.type === "signature") {
+                var imageMeta = (page.images || []).find(function (entry) { return String(entry.id) === String(block.imageId); }) || block;
+                var src = cropPreviewImage(imageMeta, page);
+                if (src) { var imageEl = document.createElement("img"); imageEl.src = src; imageEl.alt = block.content || "감지 그림"; item.appendChild(imageEl); }
+              } else if (block.type === "equation") {
+                appendPreviewEquation(item, block.content);
+              } else {
+                item.textContent = String(block.content || "").replace(/^\s*#{1,6}\s*/, "");
+              }
+              pageEl.appendChild(item);
+            });
+            if (!pageBlocks.length) {
+              var fallback = document.createElement("pre"); fallback.textContent = page.markdown || data.text || ""; pageEl.appendChild(fallback);
+            }
+            if (left >= 2 && right >= 2) twoColumnPages += 1;
+            totalBlocks += pageBlocks.length;
+            layoutPreview.appendChild(pageEl);
+            if (pageIndex < pages.length - 1) { var divider = document.createElement("hr"); layoutPreview.appendChild(divider); }
+          });
+          layoutBadge.textContent = totalBlocks + "개 요소" + (twoColumnPages ? " · 2단 " + twoColumnPages + "쪽" : "");
+        }
+
+        run.addEventListener("click", async function () {
+          if (!selected || run.disabled) return;
+          run.disabled = true;
+          run.textContent = "읽는 중…";
+          status.textContent = "고해상도 전처리와 구조 분석을 진행하고 있습니다.";
+          try {
+            var form = new FormData();
+            form.append("image", selected);
+            form.append("includeBlocks", "true");
+            var response = await fetch("/api/tools/images/ocr", { method: "POST", body: form });
+            var data = await response.json().catch(function () { return {}; });
+            if (!response.ok) {
+              if (response.status === 401) throw new Error("로그인이 필요합니다.");
+              if (response.status === 403) throw new Error("이미지 OCR은 Pro 회원 기능입니다.");
+              var diagnostic = [data.code, data.requestId].filter(Boolean).join(" · ");
+              throw new Error((data.error || "이미지 OCR에 실패했습니다.") + (diagnostic ? " (" + diagnostic + ")" : ""));
+            }
+            lastResult = data;
+            text.value = data.text || "";
+            var passes = data.source && data.source.passes || 1;
+            var selectedVariant = data.quality && data.quality.selectedVariant || "standard";
+            var variantLabel = selectedVariant === "contrast" ? "고대비 보정본" : selectedVariant === "handwriting" ? "컬러 필기 보존본" : selectedVariant === "binary" ? "흑백 이진화본" : "원본 선명화본";
+            resultMeta.textContent = (data.model || "OCR") + " · " + passes + "회 비교 · " + variantLabel + " 선택";
+            var avg = data.confidence && data.confidence.average;
+            var verified = data.quality && data.quality.verifiedConfidence;
+            confidence.textContent = Number.isFinite(verified) ? "검증 신뢰도 " + Math.round(verified * 100) + "%" : Number.isFinite(avg) ? "신뢰도 " + Math.round(avg * 100) + "%" : "판독 완료";
+            confidence.dataset.tone = data.quality && data.quality.reviewRequired ? "warn" : "good";
+            var minimum = data.confidence && data.confidence.minimum;
+            var agreement = data.quality && data.quality.agreement;
+            var layoutConfidence = data.quality && data.quality.layoutConfidence;
+            var lowWords = data.confidence && data.confidence.lowConfidenceWords;
+            var imageCount = (data.pages || []).reduce(function (sum, page) { return sum + (page.images || []).length; }, 0);
+            quality.replaceChildren();
+            [
+              ["검증 신뢰도", Number.isFinite(verified) ? Math.round(verified * 100) + "%" : "—"],
+              ["평균 신뢰도", Number.isFinite(avg) ? Math.round(avg * 100) + "%" : "—"],
+              ["최저 신뢰도", Number.isFinite(minimum) ? Math.round(minimum * 100) + "%" : "—"],
+              ["판독 일치도", Number.isFinite(agreement) ? Math.round(agreement * 100) + "%" : "—"],
+              ["레이아웃 신뢰도", Number.isFinite(layoutConfidence) ? Math.round(layoutConfidence * 100) + "%" : "—"],
+              ["확인 권장 단어", Number.isFinite(lowWords) ? lowWords + "개" : "—"],
+              ["감지된 그림", imageCount + "개"],
+            ].forEach(function (entry) {
+              var item = document.createElement("div");
+              var label = document.createElement("span");
+              var value = document.createElement("strong");
+              label.textContent = entry[0]; value.textContent = entry[1]; item.append(label, value); quality.appendChild(item);
+            });
+            renderBlocks(data);
+            renderLayoutPreview(data);
+            result.hidden = false;
+            status.textContent = data.source && data.source.enhancedRetryWarning
+              ? "완료 — 보정본 재판독은 건너뛰었지만 첫 판독 결과를 보존했습니다."
+              : data.quality && data.quality.reviewRequired
+                ? "완료 — 낮은 신뢰도 또는 판독 차이가 있는 부분을 확인한 뒤 내보내세요."
+                : "완료 — 4중 교차 검증 결과가 안정적입니다. 원하는 문서 형식으로 내보낼 수 있습니다.";
+            result.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          } catch (error) {
+            status.textContent = "오류: " + (error.message || error);
+          } finally {
+            run.disabled = false;
+            run.textContent = "이미지 읽기";
+          }
+        });
+
+        document.getElementById("ocrCopy").addEventListener("click", async function () {
+          if (!lastResult) return;
+          try { await navigator.clipboard.writeText(text.value || ""); this.textContent = "복사됨 ✓"; }
+          catch (_) { text.select(); document.execCommand("copy"); this.textContent = "복사됨 ✓"; }
+          var button = this;
+          setTimeout(function () { button.textContent = "Markdown 복사"; }, 1400);
+        });
+
+        function download(name, type, content) {
+          var url = URL.createObjectURL(new Blob([content], { type: type }));
+          var link = document.createElement("a");
+          link.href = url; link.download = name; document.body.appendChild(link); link.click(); link.remove();
+          setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+        }
+        document.getElementById("ocrDownloadMd").addEventListener("click", function () {
+          if (!lastResult) return;
+          download((selected.name.replace(/\.[^.]+$/, "") || "ocr") + ".md", "text/markdown;charset=utf-8", text.value || "");
+        });
+        document.getElementById("ocrDownloadJson").addEventListener("click", function () {
+          if (!lastResult) return;
+          download((selected.name.replace(/\.[^.]+$/, "") || "ocr") + ".ocr.json", "application/json;charset=utf-8", JSON.stringify(lastResult, null, 2));
+        });
+
+        function filenameFor(format) {
+          return (selected.name.replace(/\.[^.]+$/, "") || "ocr") + "_OCR." + format;
+        }
+
+        function minimalExportResult() {
+          return {
+            text: text.value || "",
+            sourceText: lastResult && lastResult.text || "",
+            confidence: lastResult && lastResult.confidence || {},
+            quality: lastResult && lastResult.quality || {},
+            pages: (lastResult && lastResult.pages || []).map(function (page) {
+              return {
+                page: page.page,
+                markdown: page.markdown || "",
+                dimensions: page.dimensions || null,
+                images: page.images || [],
+                tables: page.tables || [],
+                blocks: page.blocks || [],
+              };
+            }),
+          };
+        }
+
+        async function exportDocument(format, button) {
+          if (!lastResult || !selected || button.disabled) return;
+          var originalLabel = button.textContent;
+          button.disabled = true;
+          button.textContent = "생성 중…";
+          exportStatus.textContent = format === "hwpx" ? "한글 문서를 생성하고 이미지를 패키지에 삽입하고 있습니다." : "원본 이미지와 OCR 텍스트를 문서로 조립하고 있습니다.";
+          try {
+            var form = new FormData();
+            form.append("image", selected);
+            form.append("format", format);
+            form.append("result", JSON.stringify(minimalExportResult()));
+            var response = await fetch("/api/tools/images/ocr/export", { method: "POST", body: form });
+            if (!response.ok) {
+              var errorData = await response.json().catch(function () { return {}; });
+              throw new Error(errorData.error || "문서 내보내기에 실패했습니다.");
+            }
+            if (response.headers.get("X-Quilo-Postflight") !== "passed") {
+              throw new Error("생성 파일의 내부 무결성 검증이 완료되지 않았습니다. 다운로드하지 않았습니다.");
+            }
+            var blob = await response.blob();
+            var url = URL.createObjectURL(blob);
+            var link = document.createElement("a");
+            link.href = url; link.download = filenameFor(format); document.body.appendChild(link); link.click(); link.remove();
+            setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+            var detected = Number(response.headers.get("X-Quilo-Detected-Images") || 0);
+            var layoutBlocks = Number(response.headers.get("X-Quilo-Layout-Blocks") || 0);
+            exportStatus.textContent = format === "txt"
+              ? "완료 — 파일 내부 검증 통과 · TXT는 편집 가능한 텍스트만 저장했습니다."
+              : "완료 — 파일 내부 검증 통과 · 편집 요소 " + layoutBlocks + "개 복원 · 원본 전체 스캔 제외" + (detected ? " · 그림 크롭 " + detected + "개 포함" : "") + ".";
+          } catch (error) {
+            exportStatus.textContent = "오류: " + (error.message || error);
+          } finally {
+            button.disabled = false;
+            button.textContent = originalLabel;
+          }
+        }
+
+        document.querySelectorAll("[data-ocr-export]").forEach(function (button) {
+          button.addEventListener("click", function () { exportDocument(button.dataset.ocrExport, button); });
+        });
+        window.addEventListener("beforeunload", function () { if (previewUrl) URL.revokeObjectURL(previewUrl); });
+      })();
+    </script>
+  </body>
+</html>

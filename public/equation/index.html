@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="canonical" href="https://quilolab.com/equation/index.html" />
+    <title>한글 수식 변환기 — 공개본 안내</title>
+    <meta
+      name="description"
+      content="Quilo 공개 저장소에서 제외된 한글 수식 변환 컴포넌트의 라이선스 안내"
+    />
+    <link rel="stylesheet" href="/ui/foundation.css" />
+    <link rel="stylesheet" href="/ui/shell.css" />
+    <link rel="stylesheet" href="/ui/pages.css" />
+    <link rel="stylesheet" href="/ui/tool-shell.css" />
+  </head>
+  <body class="q-shell-page ui-page">
+    <a class="ui-skip-link" href="#main-content">본문으로 건너뛰기</a>
+    <header class="ui-site-header" data-ui-shell></header>
+    <main class="wrap" id="main-content">
+      <header>
+        <h1>한글 수식 변환기</h1>
+        <p>이 컴포넌트의 구현은 현재 Quilo 오픈소스 배포본에 포함되지 않습니다.</p>
+      </header>
+      <section class="card" aria-labelledby="license-boundary-title">
+        <h2 id="license-boundary-title">왜 제외되었나요?</h2>
+        <p>
+          기존 브라우저 변환기는 비영리 사용 조건이 붙은 제3자 코드를 포함합니다.
+          이 조건은 OSI 오픈소스 정의와 맞지 않아, 재라이선스 허락을 받거나 독립 구현으로
+          교체하기 전까지 공개 소스에서 분리했습니다.
+        </p>
+        <p>
+          서버의 HWPX 생성 경로는 공개된 자체 변환기로 폴백할 수 있습니다. 공개본에서
+          누락된 권리 제한 파일을 복원하지 말아 주세요.
+        </p>
+        <p>
+          독립 구현, 테스트 코퍼스 설계 또는 라이선스 검토를 도와주실 분은
+          <a href="https://github.com/fakeminjun7321/Quilo/issues">GitHub Issues</a>에서
+          의견을 남겨 주세요.
+        </p>
+      </section>
+    </main>
+    <footer class="ui-site-footer">
+      <div class="ui-site-footer__inner">
+        <nav class="ui-site-footer__links" aria-label="푸터 메뉴">
+          <a href="/">Quilo</a>
+          <a href="https://github.com/fakeminjun7321/Quilo">GitHub</a>
+        </nav>
+        <div class="ui-site-footer__copy">© 2026 Quilo contributors</div>
+      </div>
+    </footer>
+    <script src="/ui/tool-shell.js"></script>
+    <script type="module" src="/ui/shell.js"></script>
+  </body>
+</html>

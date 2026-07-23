@@ -1,0 +1,20 @@
+{
+  "$doc": "독서활동 기록지(type=reading-log, hwpx 전용) 콘텐츠 스키마 — 미니 형식은 lib/content-schema.js 상단 주석 참고. AI 원본 JSON(문자열 섹션)과 generate.js 후처리 결과(문단 배열) 모두 통과하도록 type 을 string|array union 으로. required 는 generate.js 재시도 조건(세 서술 항목 전부 빈 응답)만 미러링. book_title 은 없으면 입력 도서명으로 폴백되므로 warn.",
+  "required": [
+    {
+      "path": "",
+      "anyOf": ["selection_reason", "content_summary", "reflection"],
+      "detail": "선택 이유·내용 요약·느낀 점이 모두 비어 있음 (빈 독서록)"
+    }
+  ],
+  "warn": [
+    { "path": "book_title", "type": "string", "minLen": 1 },
+    { "path": "author", "type": "string", "minLen": 1, "optional": true },
+    { "path": "publisher", "type": "string", "optional": true },
+    { "path": "selection_reason", "type": "string|array", "nonEmpty": true },
+    { "path": "content_summary", "type": "string|array", "nonEmpty": true },
+    { "path": "reflection", "type": "string|array", "nonEmpty": true }
+  ],
+  "forbidMarkers": true,
+  "metrics": ["selection_reason", "content_summary", "reflection"]
+}

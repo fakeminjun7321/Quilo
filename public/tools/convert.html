@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="canonical" href="https://quilolab.com/tools/convert.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>파일 변환기 — 보고서 도구</title>
+    <meta name="description" content="표(Excel↔CSV↔TSV), 이미지·PDF 변환, PDF 병합·분할·추출·삭제·정렬·회전·페이지번호·워터마크·여백자르기·압축, LaTeX 수식 변환을 브라우저 안에서 처리하는 파일 변환기." />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("theme");
+          if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          document.documentElement.setAttribute("data-theme", t);
+        } catch (e) {}
+      })();
+    </script>
+
+    <link rel="stylesheet" href="/ui/foundation.css" />
+    <link rel="stylesheet" href="/ui/shell.css" />
+    <link rel="stylesheet" href="/ui/pages.css" />
+    <link rel="stylesheet" href="/ui/tool-shell.css" />
+  </head>
+  <body class="landing q-shell-page ui-page">
+    <div class="landing-bg" aria-hidden="true"></div>
+    <a class="ui-skip-link" href="#main-content">본문으로 건너뛰기</a>
+    <header class="ui-site-header" data-ui-shell></header>
+
+    <main class="landing-shell" id="main-content">
+      <section class="section ui-inline-tools-convert-1">
+        <div class="tool-page-head">
+          <h1>파일 변환기</h1>
+          <p>표·이미지·PDF·수식을 한 곳에서 변환합니다. 파일·이미지·PDF는 브라우저 안에서, 수식 변환은 우리 서버에서 처리합니다.</p>
+        </div>
+
+        <div class="quick-jump" id="convertShortcuts" aria-label="자주 쓰는 변환">
+          <button type="button" data-jump-tab="file" data-jump-mode="table">표 변환</button>
+          <button type="button" data-jump-tab="file" data-jump-mode="img2pdf">이미지 → PDF</button>
+          <button type="button" data-jump-tab="image">이미지 압축</button>
+          <button type="button" data-jump-tab="pdf">PDF 병합·분할</button>
+          <button type="button" data-jump-tab="equation">LaTeX → 한글 수식</button>
+        </div>
+
+        <div class="conv-tabs" id="convTabs" role="tablist" aria-label="변환 도구 종류">
+          <button class="on" type="button" id="convTab-file" role="tab" data-tab="file" aria-controls="convPanel-file" aria-selected="true" tabindex="0">파일 · 표 변환</button>
+          <button type="button" id="convTab-image" role="tab" data-tab="image" aria-controls="convPanel-image" aria-selected="false" tabindex="-1">이미지 변환 · 압축</button>
+          <button type="button" id="convTab-pdf" role="tab" data-tab="pdf" aria-controls="convPanel-pdf" aria-selected="false" tabindex="-1">PDF 도구</button>
+          <button type="button" id="convTab-equation" role="tab" data-tab="equation" aria-controls="convPanel-equation" aria-selected="false" tabindex="-1">수식 변환 (LaTeX→한글)</button>
+          <button type="button" id="convTab-docx2hwpx" role="tab" data-tab="docx2hwpx" aria-controls="convPanel-docx2hwpx" aria-selected="false" tabindex="-1">Word → 한글 (DOCX→HWPX)</button>
+        </div>
+
+        <div class="conv-panel on" id="convPanel-file" role="tabpanel" aria-labelledby="convTab-file" data-panel="file">
+        <div class="tool-card">
+          <div class="mode-tabs" id="modeTabs">
+            <button data-m="table" class="on">표 (Excel ↔ CSV ↔ TSV)</button>
+            <button data-m="img2pdf">이미지 → PDF</button>
+            <button data-m="pdf2img">PDF → 이미지</button>
+            <button data-m="imgfmt">이미지 형식 변환</button>
+          </div>
+
+          <!-- 표 -->
+          <div class="panel on" data-p="table">
+            <div class="drop-z" data-pick="tb"><div class="big">엑셀/CSV 파일을 끌어다 놓기</div><div class="sub">.xlsx · .xls · .csv · .tsv</div></div>
+            <input type="file" data-in="tb" accept=".xlsx,.xls,.csv,.tsv,.txt" hidden />
+            <div class="tool-row ui-inline-tools-convert-2" data-show="tb">
+              <label class="tool-label">출력 형식<select class="tool-input" id="tbFmt"><option value="xlsx">Excel (.xlsx)</option><option value="csv">CSV (.csv)</option><option value="tsv">TSV (.tsv)</option></select></label>
+              <label class="tool-label ui-inline-tools-convert-3" id="tbSheetWrap">내보낼 시트<select class="tool-input" id="tbSheet"></select></label>
+            </div>
+            <a class="btn-lg btn-primary ui-inline-tools-convert-4" data-dl="tb" download>↓ 변환해서 내려받기</a>
+          </div>
+
+          <!-- 이미지 → PDF -->
+          <div class="panel" data-p="img2pdf">
+            <div class="drop-z" data-pick="ip"><div class="big">이미지들을 끌어다 놓기</div><div class="sub">JPG · PNG · WebP · 여러 장 (순서대로 페이지가 됩니다)</div></div>
+            <input type="file" data-in="ip" accept="image/*" multiple hidden />
+            <ul id="ipList" class="ui-inline-tools-convert-5" ></ul>
+            <div class="actions ui-inline-tools-convert-6" data-show="ip"><button class="btn-primary" id="ipGo">PDF로 만들기</button></div>
+            <a class="btn-lg btn-primary ui-inline-tools-convert-7" data-dl="ip" download>↓ PDF 내려받기</a>
+          </div>
+
+          <!-- PDF → 이미지 -->
+          <div class="panel" data-p="pdf2img">
+            <div class="drop-z" data-pick="pi"><div class="big">PDF 파일을 끌어다 놓기</div><div class="sub">각 페이지를 PNG로 (여러 페이지면 ZIP)</div></div>
+            <input type="file" data-in="pi" accept="application/pdf,.pdf" hidden />
+            <label class="tool-label ui-inline-tools-convert-8" data-show="pi">해상도 배율: <span id="piScaleV">2×</span><input type="range" id="piScale" min="1" max="4" step="0.5" value="2" class="ui-inline-tools-convert-9" /></label>
+            <div class="actions ui-inline-tools-convert-10" data-show="pi"><button class="btn-primary" id="piGo">이미지로 변환</button></div>
+            <a class="btn-lg btn-primary ui-inline-tools-convert-11" data-dl="pi" download>↓ 내려받기</a>
+          </div>
+
+          <!-- 이미지 형식 -->
+          <div class="panel" data-p="imgfmt">
+            <div class="drop-z" data-pick="if"><div class="big">이미지를 끌어다 놓기</div><div class="sub">JPG · PNG · WebP</div></div>
+            <input type="file" data-in="if" accept="image/*" hidden />
+            <div class="tool-row ui-inline-tools-convert-12" data-show="if">
+              <label class="tool-label">출력 형식<select class="tool-input" id="ifFmt"><option value="image/png">PNG</option><option value="image/jpeg">JPG</option><option value="image/webp">WebP</option></select></label>
+              <label class="tool-label">품질(JPG·WebP): <span id="ifQv">0.9</span><input type="range" id="ifQ" min="0.3" max="1" step="0.05" value="0.9" class="ui-inline-tools-convert-13" /></label>
+            </div>
+            <a class="btn-lg btn-primary ui-inline-tools-convert-14" data-dl="if" download>↓ 내려받기</a>
+          </div>
+
+          <p class="hint ui-inline-tools-convert-15" id="cvMsg"></p>
+        </div>
+        </div>
+
+        <div class="conv-panel" id="convPanel-image" role="tabpanel" aria-labelledby="convTab-image" data-panel="image" hidden>
+          <iframe class="conv-frame" data-src="/tools/image.html?embed=1" title="이미지 변환·압축"></iframe>
+        </div>
+
+        <div class="conv-panel" id="convPanel-pdf" role="tabpanel" aria-labelledby="convTab-pdf" data-panel="pdf" hidden>
+          <!-- 도구 카드 그리드 -->
+          <div id="pdfGrid" class="pdf-grid">
+            <button class="pdf-tile" type="button" data-tool="pdf-merge" data-title="PDF 병합">
+              <span class="pdf-tile-ic" aria-hidden="true">🔗</span>
+              <span class="pdf-tile-t">PDF 병합</span>
+              <span class="pdf-tile-d">여러 PDF를 하나로</span>
+            </button>
+            <button class="pdf-tile" type="button" data-tool="pdf-split" data-title="PDF 분할">
+              <span class="pdf-tile-ic" aria-hidden="true">✂️</span>
+              <span class="pdf-tile-t">PDF 분할</span>
+              <span class="pdf-tile-d">N쪽마다 · 범위로 나누기</span>
+            </button>
+            <button class="pdf-tile" type="button" data-tool="pdf-extract" data-title="페이지 추출">
+              <span class="pdf-tile-ic" aria-hidden="true">📄</span>
+              <span class="pdf-tile-t">페이지 추출</span>
+              <span class="pdf-tile-d">원하는 페이지만 새 PDF로</span>
+            </button>
+            <button class="pdf-tile" type="button" data-tool="pdf-remove" data-title="페이지 삭제">
+              <span class="pdf-tile-ic" aria-hidden="true">🗑️</span>
+              <span class="pdf-tile-t">페이지 삭제</span>
+              <span class="pdf-tile-d">특정 페이지를 제거</span>
+            </button>
+            <button class="pdf-tile" type="button" data-tool="pdf-organize" data-title="페이지 정렬">
+              <span class="pdf-tile-ic" aria-hidden="true">🔀</span>
+              <span class="pdf-tile-t">페이지 정렬</span>
+              <span class="pdf-tile-d">순서 변경 · 삭제</span>
+            </button>
+            <button class="pdf-tile" type="button" data-tool="pdf-rotate" data-title="PDF 회전">
+              <span class="pdf-tile-ic" aria-hidden="true">🔄</span>
+              <span class="pdf-tile-t">PDF 회전</span>
+              <span class="pdf-tile-d">90 · 180 · 270도 회전</span>
+            </button>
+            <button class="pdf-tile" type="button" data-tool="pdf-pagenum" data-title="페이지 번호">
+              <span class="pdf-tile-ic" aria-hidden="true">#️⃣</span>
+              <span class="pdf-tile-t">페이지 번호</span>
+              <span class="pdf-tile-d">쪽번호 새기기</span>
+            </button>
+            <button class="pdf-tile" type="button" data-tool="pdf-watermark" data-title="워터마크">
+              <span class="pdf-tile-ic" aria-hidden="true">💧</span>
+              <span class="pdf-tile-t">워터마크</span>
+              <span class="pdf-tile-d">텍스트 워터마크 추가</span>
+            </button>
+            <button class="pdf-tile" type="button" data-tool="pdf-crop" data-title="여백 자르기">
+              <span class="pdf-tile-ic" aria-hidden="true">📐</span>
+              <span class="pdf-tile-t">여백 자르기</span>
+              <span class="pdf-tile-d">상하좌우 여백 잘라내기</span>
+            </button>
+            <button class="pdf-tile" type="button" data-tool="pdf-compress" data-title="PDF 압축">
+              <span class="pdf-tile-ic" aria-hidden="true">🗜️</span>
+              <span class="pdf-tile-t">PDF 압축</span>
+              <span class="pdf-tile-d">용량 줄이기</span>
+            </button>
+          </div>
+          <!-- 선택한 도구 화면 -->
+          <div id="pdfView" class="ui-inline-tools-convert-16" >
+            <div class="pdf-view-head">
+              <button id="pdfBack" class="btn-ghost" type="button">← PDF 도구 목록</button>
+              <h2 id="pdfViewTitle"></h2>
+            </div>
+            <iframe id="pdfFrame" class="conv-frame" title="PDF 도구"></iframe>
+          </div>
+        </div>
+
+        <div class="conv-panel" id="convPanel-equation" role="tabpanel" aria-labelledby="convTab-equation" data-panel="equation" hidden>
+          <iframe class="conv-frame" data-src="/equation/index.html?embed=1" title="수식 변환"></iframe>
+        </div>
+
+        <div class="conv-panel" id="convPanel-docx2hwpx" role="tabpanel" aria-labelledby="convTab-docx2hwpx" data-panel="docx2hwpx" hidden>
+          <div class="tool-card">
+            <h3 class="ui-inline-tools-convert-17" >Word(.docx) → 한글(.hwpx)</h3>
+            <p class="hint ui-inline-tools-convert-18">
+              Word 문서를 한컴오피스에서 바로 열리는 <b>.hwpx</b>로 변환합니다(한컴에서 <b>.hwp</b>로 다시 저장 가능).
+              제목·표·목록·굵게/기울임·이미지는 그대로 옮기되, 정밀한 서식(자간 등)은 일부 달라질 수 있습니다.
+              변환은 우리 서버에서 처리합니다(로그인 필요).
+            </p>
+            <input type="file" id="d2hFile" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" aria-label="변환할 DOCX" />
+            <div class="ui-inline-tools-convert-19" >
+              <button id="d2hBtn" class="btn btn-primary" type="button">한글(.hwpx)로 변환</button>
+            </div>
+            <p id="d2hStatus" class="hint ui-inline-tools-convert-20"></p>
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer class="ui-site-footer">
+      <div class="ui-site-footer__inner">
+        <nav class="ui-site-footer__links" aria-label="푸터 메뉴"><a href="/terms.html">이용약관</a><a href="/privacy.html">개인정보처리방침</a><a href="/refund.html">환불정책</a><a href="/guide.html">이용 가이드</a><a href="/community.html">커뮤니티</a><a href="https://github.com/fakeminjun7321/Quilo" target="_blank" rel="noopener">GitHub</a></nav>
+        <div class="ui-site-footer__copy">© 2026 Quilo · <span data-site-version>버전 확인 중...</span></div>
+      </div>
+    </footer>
+    <script src="/ui/shell.js"></script>
+    <script src="/ui/tool-shell.js"></script>
+    <script>
+      // 상위 탭 전환 + iframe 지연 로드(처음 누를 때만 src 설정)
+      (function () {
+        const tabs = Array.from(document.querySelectorAll("#convTabs button[data-tab]"));
+        const panels = Array.from(document.querySelectorAll(".conv-panel[data-panel]"));
+
+        function activateTab(btn, moveFocus) {
+          if (!btn) return;
+          const selectedName = btn.dataset.tab;
+          tabs.forEach((tab) => {
+            const selected = tab === btn;
+            tab.classList.toggle("on", selected);
+            tab.setAttribute("aria-selected", String(selected));
+            tab.tabIndex = selected ? 0 : -1;
+          });
+          panels.forEach((panel) => {
+            const selected = panel.dataset.panel === selectedName;
+            panel.classList.toggle("on", selected);
+            panel.hidden = !selected;
+          });
+          const frame = document
+            .querySelector(`.conv-panel[data-panel="${selectedName}"]`)
+            ?.querySelector("iframe.conv-frame[data-src]");
+          if (frame && !frame.src && frame.dataset.src) frame.src = frame.dataset.src;
+          if (moveFocus) btn.focus();
+        }
+
+        tabs.forEach((btn) => {
+          btn.addEventListener("click", () => activateTab(btn, false));
+          btn.addEventListener("keydown", (event) => {
+            const current = tabs.indexOf(btn);
+            let next = current;
+            if (event.key === "ArrowRight") next = (current + 1) % tabs.length;
+            else if (event.key === "ArrowLeft") next = (current - 1 + tabs.length) % tabs.length;
+            else if (event.key === "Home") next = 0;
+            else if (event.key === "End") next = tabs.length - 1;
+            else return;
+            event.preventDefault();
+            activateTab(tabs[next], true);
+          });
+        });
+        activateTab(tabs.find((tab) => tab.getAttribute("aria-selected") === "true") || tabs[0], false);
+        document.getElementById("convertShortcuts")?.addEventListener("click", (e) => {
+          const btn = e.target.closest("button[data-jump-tab]");
+          if (!btn) return;
+          document.querySelector(`#convTabs button[data-tab="${btn.dataset.jumpTab}"]`)?.click();
+          if (btn.dataset.jumpMode) {
+            document.querySelector(`#modeTabs button[data-m="${btn.dataset.jumpMode}"]`)?.click();
+          }
+          document.querySelector(".conv-panel.on")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      })();
+    </script>
+    <script>
+      // DOCX → HWPX: 파일을 서버(/api/convert-docx)로 보내 변환 후 .hwpx 다운로드.
+      (function () {
+        const f = document.getElementById("d2hFile");
+        const btn = document.getElementById("d2hBtn");
+        const st = document.getElementById("d2hStatus");
+        if (!f || !btn) return;
+        btn.addEventListener("click", async () => {
+          if (!f.files || !f.files.length) {
+            st.textContent = "DOCX 파일을 선택하세요.";
+            return;
+          }
+          const file = f.files[0];
+          if (!/\.docx$/i.test(file.name)) {
+            st.textContent = ".docx 파일만 지원합니다.";
+            return;
+          }
+          btn.disabled = true;
+          st.textContent = "⏳ 변환 중... (문서가 크면 몇 초 걸립니다)";
+          try {
+            const fd = new FormData();
+            fd.append("docx", file);
+            const r = await fetch("/api/convert-docx", {
+              method: "POST",
+              body: fd,
+            });
+            if (r.status === 401) {
+              st.innerHTML =
+                '로그인이 필요합니다. <a href="/login.html?next=%2Ftools%2Fconvert.html">로그인</a>';
+              return;
+            }
+            if (!r.ok) {
+              let msg = "변환에 실패했습니다.";
+              try {
+                msg = (await r.json()).error || msg;
+              } catch {}
+              st.textContent = "⚠ " + msg;
+              return;
+            }
+            const blob = await r.blob();
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = file.name.replace(/\.docx$/i, ".hwpx");
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+            st.textContent = "✓ 변환 완료 — .hwpx 파일이 다운로드되었습니다.";
+          } catch (e) {
+            st.textContent = "오류: " + (e.message || e);
+          } finally {
+            btn.disabled = false;
+          }
+        });
+      })();
+    </script>
+    <script>
+      // PDF 도구 그리드: 카드 클릭 → 해당 도구를 iframe(embed)로 열기, 뒤로가기로 목록 복귀
+      (function () {
+        const grid = document.getElementById("pdfGrid");
+        const view = document.getElementById("pdfView");
+        const frame = document.getElementById("pdfFrame");
+        const title = document.getElementById("pdfViewTitle");
+        const back = document.getElementById("pdfBack");
+        if (!grid || !view || !frame) return;
+        grid.addEventListener("click", function (e) {
+          const tile = e.target.closest(".pdf-tile[data-tool]");
+          if (!tile) return;
+          const tool = tile.dataset.tool;
+          frame.src = "/tools/" + tool + ".html?embed=1";
+          frame.title = tile.dataset.title || "PDF 도구";
+          title.textContent = tile.dataset.title || "";
+          grid.style.display = "none";
+          view.style.display = "block";
+        });
+        back.addEventListener("click", function () {
+          view.style.display = "none";
+          grid.style.display = "grid";
+          frame.removeAttribute("src"); // 메모리 정리(다시 누르면 새로 로드)
+        });
+      })();
+    </script>
+    <script>
+      (function () {
+        var msg = document.getElementById("cvMsg");
+        var loaded = {};
+        function lazy(url, check) {
+          if (check()) return Promise.resolve();
+          if (loaded[url]) return loaded[url];
+          loaded[url] = new Promise(function (res, rej) { var s = document.createElement("script"); s.src = url; s.onload = res; s.onerror = function () { rej(new Error("라이브러리 로드 실패")); }; document.head.appendChild(s); });
+          return loaded[url];
+        }
+        function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+        function err(e) { msg.innerHTML = '<span class="error">' + esc((e && e.message) || String(e)) + "</span>"; }
+        function busy(t) { msg.textContent = t || ""; }
+        var _dlUrls = {};
+        function dl(sel, url, name) {
+          if (_dlUrls[sel]) { try { URL.revokeObjectURL(_dlUrls[sel]); } catch (e) {} }
+          _dlUrls[sel] = url;
+          var a = document.querySelector('[data-dl="' + sel + '"]'); a.href = url; a.download = name; a.style.display = "inline-flex";
+        }
+        function pick(sel) { return document.querySelector('[data-in="' + sel + '"]'); }
+        function wireDrop(sel, onFiles) {
+          var z = document.querySelector('[data-pick="' + sel + '"]'), inp = pick(sel);
+          z.setAttribute("role", "button");
+          z.setAttribute("tabindex", "0");
+          if (!z.getAttribute("aria-label")) z.setAttribute("aria-label", "파일 선택");
+          z.addEventListener("click", function () { inp.click(); });
+          z.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); inp.click(); } });
+          inp.addEventListener("change", function () { onFiles(inp.files); });
+          ["dragover", "dragenter"].forEach(function (ev) { z.addEventListener(ev, function (e) { e.preventDefault(); z.style.borderColor = "var(--accent)"; }); });
+          ["dragleave", "drop"].forEach(function (ev) { z.addEventListener(ev, function (e) { e.preventDefault(); z.style.borderColor = "var(--border-strong)"; }); });
+          z.addEventListener("drop", function (e) { if (e.dataTransfer && e.dataTransfer.files.length) onFiles(e.dataTransfer.files); });
+        }
+        function show(sel) { document.querySelectorAll('[data-show="' + sel + '"]').forEach(function (e) { e.style.display = e.classList.contains("tool-row") ? "grid" : (e.classList.contains("actions") ? "flex" : "block"); }); }
+
+        // 모드 전환
+        document.getElementById("modeTabs").addEventListener("click", function (e) {
+          var b = e.target.closest("button[data-m]"); if (!b) return;
+          msg.textContent = "";
+          document.querySelectorAll("#modeTabs button").forEach(function (x) { x.classList.toggle("on", x === b); });
+          document.querySelectorAll(".panel").forEach(function (p) { p.classList.toggle("on", p.getAttribute("data-p") === b.getAttribute("data-m")); });
+        });
+
+        // ── 표 변환 (SheetJS) ──
+        var tbWb = null, tbBase = "변환";
+        wireDrop("tb", function (fl) {
+          var f = fl[0]; if (!f) return; tbBase = f.name.replace(/\.[^.]+$/, ""); busy("불러오는 중…");
+          lazy("/tools/vendor/xlsx.mini.min.js", function () { return !!window.XLSX; }).then(function () {
+            var rd = new FileReader();
+            rd.onload = function () { try { tbWb = XLSX.read(new Uint8Array(rd.result), { type: "array" }); document.getElementById("tbSheet").innerHTML = tbWb.SheetNames.map(function (n) { return "<option>" + esc(n) + "</option>"; }).join(""); show("tb"); busy(""); tbBuild(); } catch (x) { err(x); } };
+            rd.readAsArrayBuffer(f);
+          }).catch(err);
+        });
+        function tbBuild() {
+          if (!tbWb) return; var fmt = document.getElementById("tbFmt").value, multi = tbWb.SheetNames.length > 1;
+          document.getElementById("tbSheetWrap").style.display = (fmt !== "xlsx" && multi) ? "grid" : "none";
+          try {
+            var blob, ext;
+            if (fmt === "xlsx") { blob = new Blob([XLSX.write(tbWb, { type: "array", bookType: "xlsx" })], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }); ext = "xlsx"; }
+            else { var ws = tbWb.Sheets[document.getElementById("tbSheet").value || tbWb.SheetNames[0]]; var sep = fmt === "tsv" ? "\t" : ","; var txt = "﻿" + XLSX.utils.sheet_to_csv(ws, { FS: sep }); blob = new Blob([txt], { type: "text/plain;charset=utf-8" }); ext = fmt; }
+            dl("tb", URL.createObjectURL(blob), tbBase + "." + ext);
+          } catch (x) { err(x); }
+        }
+        document.getElementById("tbFmt").addEventListener("change", tbBuild);
+        document.getElementById("tbSheet").addEventListener("change", tbBuild);
+
+        // ── 이미지 → PDF (pdf-lib) ──
+        var ipFiles = [];
+        wireDrop("ip", function (fl) { for (var i = 0; i < fl.length; i++) if (/^image\//.test(fl[i].type) || /\.(jpe?g|png|webp|gif|bmp)$/i.test(fl[i].name)) ipFiles.push(fl[i]); ipRender(); });
+        function ipRender() {
+          document.getElementById("ipList").innerHTML = ipFiles.map(function (f, i) { return '<li class="runtime-small-muted">' + (i + 1) + ". " + esc(f.name) + "</li>"; }).join("");
+          if (ipFiles.length) show("ip");
+        }
+        async function toPngBytes(file) {
+          var img = await new Promise(function (res, rej) { var im = new Image(); im.onload = function () { res(im); }; im.onerror = rej; im.src = URL.createObjectURL(file); });
+          var cv = document.createElement("canvas"); cv.width = img.naturalWidth; cv.height = img.naturalHeight; cv.getContext("2d").drawImage(img, 0, 0);
+          return new Uint8Array(await (await new Promise(function (r) { cv.toBlob(r, "image/png"); })).arrayBuffer());
+        }
+        document.getElementById("ipGo").addEventListener("click", function () {
+          if (!ipFiles.length) return; var btn = this; btn.disabled = true; btn.textContent = "변환 중…"; busy("");
+          lazy("/tools/vendor/pdf-lib.min.js", function () { return !!window.PDFLib; }).then(async function () {
+            try {
+              var doc = await PDFLib.PDFDocument.create();
+              for (var i = 0; i < ipFiles.length; i++) {
+                var f = ipFiles[i], img;
+                if (/jpe?g$/i.test(f.type) || /\.jpe?g$/i.test(f.name)) img = await doc.embedJpg(await f.arrayBuffer());
+                else img = await doc.embedPng(await toPngBytes(f));
+                var pg = doc.addPage([img.width, img.height]); pg.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
+              }
+              dl("ip", URL.createObjectURL(new Blob([await doc.save()], { type: "application/pdf" })), "이미지묶음.pdf");
+            } catch (x) { err(x); } finally { btn.disabled = false; btn.textContent = "PDF로 만들기"; }
+          }).catch(err);
+        });
+
+        // ── PDF → 이미지 (pdf.js + jszip) ──
+        var piFile = null;
+        wireDrop("pi", function (fl) { piFile = fl[0]; if (piFile) show("pi"); });
+        document.getElementById("piScale").addEventListener("input", function () { document.getElementById("piScaleV").textContent = this.value + "×"; });
+        document.getElementById("piGo").addEventListener("click", function () {
+          if (!piFile) return; var btn = this; btn.disabled = true; btn.textContent = "변환 중…"; busy("페이지를 그리는 중… (오래 걸릴 수 있어요)");
+          lazy("/tools/vendor/pdf.min.js", function () { return !!window.pdfjsLib; }).then(async function () {
+            try {
+              pdfjsLib.GlobalWorkerOptions.workerSrc = "/tools/vendor/pdf.worker.min.js";
+              var scale = parseFloat(document.getElementById("piScale").value) || 2;
+              var data = new Uint8Array(await piFile.arrayBuffer());
+              var pdf = await pdfjsLib.getDocument({ data: data }).promise;
+              var base = piFile.name.replace(/\.[^.]+$/, ""), pngs = [];
+              for (var p = 1; p <= pdf.numPages; p++) {
+                var page = await pdf.getPage(p), vp = page.getViewport({ scale: scale });
+                var cv = document.createElement("canvas"); cv.width = vp.width; cv.height = vp.height;
+                await page.render({ canvasContext: cv.getContext("2d"), viewport: vp }).promise;
+                pngs.push(await new Promise(function (r) { cv.toBlob(r, "image/png"); }));
+                busy("페이지 " + p + "/" + pdf.numPages + " …");
+              }
+              busy("");
+              if (pngs.length === 1) { dl("pi", URL.createObjectURL(pngs[0]), base + ".png"); }
+              else {
+                await lazy("/tools/vendor/jszip.min.js", function () { return !!window.JSZip; });
+                var zip = new JSZip(); pngs.forEach(function (b, i) { zip.file(base + "_" + (i + 1) + ".png", b); });
+                dl("pi", URL.createObjectURL(await zip.generateAsync({ type: "blob" })), base + "_이미지.zip");
+              }
+            } catch (x) { err(x); } finally { btn.disabled = false; btn.textContent = "이미지로 변환"; }
+          }).catch(err);
+        });
+
+        // ── 이미지 형식 (canvas) ──
+        var ifImg = null, ifName = "이미지";
+        document.getElementById("ifQ").addEventListener("input", function () { document.getElementById("ifQv").textContent = this.value; ifBuild(); });
+        document.getElementById("ifFmt").addEventListener("change", ifBuild);
+        wireDrop("if", function (fl) {
+          var f = fl[0]; if (!f) return; ifName = f.name.replace(/\.[^.]+$/, "");
+          var im = new Image(); im.onload = function () { ifImg = im; show("if"); ifBuild(); }; im.onerror = function () { err(new Error("이미지를 불러오지 못했습니다.")); }; im.src = URL.createObjectURL(f);
+        });
+        function ifBuild() {
+          if (!ifImg) return; var fmt = document.getElementById("ifFmt").value;
+          var cv = document.createElement("canvas"); cv.width = ifImg.naturalWidth; cv.height = ifImg.naturalHeight; var ctx = cv.getContext("2d");
+          if (fmt === "image/jpeg") { ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, cv.width, cv.height); }
+          ctx.drawImage(ifImg, 0, 0);
+          var ext = fmt === "image/png" ? "png" : fmt === "image/webp" ? "webp" : "jpg";
+          cv.toBlob(function (b) { if (b) dl("if", URL.createObjectURL(b), ifName + "." + ext); }, fmt, parseFloat(document.getElementById("ifQ").value));
+        }
+      })();
+    </script>
+  </body>
+</html>

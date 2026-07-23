@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="canonical" href="https://quilolab.com/tools/image.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>이미지 변환·압축 — 보고서 도구</title>
+    <meta name="description" content="이미지를 JPG·PNG·WebP로 변환하고 크기를 줄이는 브라우저 도구. 업로드 없이 기기 안에서 처리." />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("theme");
+          if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          document.documentElement.setAttribute("data-theme", t);
+          if (new URLSearchParams(location.search).has("embed"))
+            document.documentElement.classList.add("embed");
+        } catch (e) {}
+      })();
+    </script>
+
+    <link rel="stylesheet" href="/ui/foundation.css" />
+    <link rel="stylesheet" href="/ui/shell.css" />
+    <link rel="stylesheet" href="/ui/pages.css" />
+    <link rel="stylesheet" href="/ui/tool-shell.css" />
+  </head>
+  <body class="landing q-shell-page ui-page">
+    <div class="landing-bg" aria-hidden="true"></div>
+    <a class="ui-skip-link" href="#main-content">본문으로 건너뛰기</a>
+    <header class="ui-site-header" data-ui-shell></header>
+
+    <main class="landing-shell" id="main-content">
+      <section class="section ui-inline-tools-image-1">
+        <div class="tool-page-head">
+          <h1>이미지 변환·압축</h1>
+          <p>이미지를 JPG·PNG·WebP로 바꾸고 크기를 줄입니다. 보고서에 넣을 사진 용량 줄일 때. 모든 처리는 브라우저 안에서만 이뤄집니다.</p>
+        </div>
+
+        <div class="tool-card">
+          <div id="imgDrop" role="button" tabindex="0" class="ui-inline-tools-image-2" >
+            <div class="ui-inline-tools-image-3" >이미지를 끌어다 놓기</div>
+            <div class="ui-inline-tools-image-4" >또는 클릭해서 선택 · JPG · PNG · WebP · HEIC 등</div>
+          </div>
+          <input type="file" id="imgFile" accept="image/*" class="ui-inline-tools-image-5" />
+
+          <div class="tool-row">
+            <label class="tool-label">출력 형식
+              <select id="imgFmt" class="tool-input">
+                <option value="image/jpeg">JPG</option>
+                <option value="image/png">PNG</option>
+                <option value="image/webp">WebP</option>
+              </select>
+            </label>
+            <label class="tool-label">최대 너비 (px, 0=원본)
+              <input id="imgW" class="tool-input" type="number" min="0" step="1" value="0" />
+            </label>
+            <label class="tool-label">품질 (JPG·WebP): <span id="imgQv">0.85</span>
+              <input id="imgQ" type="range" min="0.3" max="1" step="0.05" value="0.85" class="ui-inline-tools-image-6" />
+            </label>
+          </div>
+
+          <div id="imgOut" class="tool-result ui-inline-tools-image-7">
+            <div class="stat-grid">
+              <div class="stat-box"><div class="stat-label">원본</div><div class="stat-value sm" id="imgOrig">–</div></div>
+              <div class="stat-box"><div class="stat-label">변환 후</div><div class="stat-value sm" id="imgNew">–</div></div>
+              <div class="stat-box"><div class="stat-label">크기 변화</div><div class="stat-value sm" id="imgDelta">–</div></div>
+            </div>
+            <a id="imgDl" class="btn-lg btn-primary ui-inline-tools-image-8" download>↓ 내려받기</a>
+            <img id="imgPrev" alt="미리보기" class="ui-inline-tools-image-9" />
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer class="ui-site-footer">
+      <div class="ui-site-footer__inner">
+        <nav class="ui-site-footer__links" aria-label="푸터 메뉴"><a href="/terms.html">이용약관</a><a href="/privacy.html">개인정보처리방침</a><a href="/refund.html">환불정책</a><a href="/guide.html">이용 가이드</a><a href="/community.html">커뮤니티</a><a href="https://github.com/fakeminjun7321/Quilo" target="_blank" rel="noopener">GitHub</a></nav>
+        <div class="ui-site-footer__copy">© 2026 Quilo · <span data-site-version>버전 확인 중...</span></div>
+      </div>
+    </footer>
+    <script src="/ui/shell.js"></script>
+    <script src="/ui/tool-shell.js"></script>
+    <script>
+      (function () {
+        var drop = document.getElementById("imgDrop"), file = document.getElementById("imgFile");
+        var fmt = document.getElementById("imgFmt"), wEl = document.getElementById("imgW"), q = document.getElementById("imgQ"), qv = document.getElementById("imgQv");
+        var out = document.getElementById("imgOut"), dl = document.getElementById("imgDl"), prev = document.getElementById("imgPrev");
+        var current = null, origSize = 0, origName = "image", lastUrl = null;
+
+        function fmtSize(b) { return b < 1024 ? b + " B" : b < 1048576 ? (b / 1024).toFixed(1) + " KB" : (b / 1048576).toFixed(2) + " MB"; }
+        function ext(type) { return type === "image/png" ? "png" : type === "image/webp" ? "webp" : "jpg"; }
+
+        function render() {
+          if (!current) return;
+          var maxW = parseInt(wEl.value, 10) || 0;
+          var scale = maxW > 0 && current.naturalWidth > maxW ? maxW / current.naturalWidth : 1;
+          var w = Math.round(current.naturalWidth * scale), h = Math.round(current.naturalHeight * scale);
+          var cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+          var ctx = cv.getContext("2d");
+          if (fmt.value === "image/jpeg") { ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, w, h); }
+          ctx.drawImage(current, 0, 0, w, h);
+          cv.toBlob(function (blob) {
+            if (!blob) return;
+            if (lastUrl) URL.revokeObjectURL(lastUrl);
+            lastUrl = URL.createObjectURL(blob);
+            out.style.display = "grid";
+            document.getElementById("imgOrig").textContent = fmtSize(origSize) + " · " + current.naturalWidth + "×" + current.naturalHeight;
+            document.getElementById("imgNew").textContent = fmtSize(blob.size) + " · " + w + "×" + h;
+            var pct = origSize ? Math.round((1 - blob.size / origSize) * 100) : 0;
+            document.getElementById("imgDelta").textContent = (pct >= 0 ? "−" + pct : "+" + -pct) + "%";
+            prev.src = lastUrl;
+            dl.href = lastUrl;
+            dl.download = origName.replace(/\.[^.]+$/, "") + "." + ext(fmt.value);
+          }, fmt.value, parseFloat(q.value));
+        }
+        function load(f) {
+          if (!f || !/^image\//.test(f.type) && !/\.(jpe?g|png|webp|heic|gif|bmp)$/i.test(f.name)) return;
+          origSize = f.size; origName = f.name;
+          var img = new Image();
+          img.onload = function () { current = img; render(); };
+          img.onerror = function () { alert("이미지를 불러오지 못했습니다. (HEIC 등 일부 형식은 브라우저가 지원하지 않을 수 있어요)"); };
+          img.src = URL.createObjectURL(f);
+        }
+        drop.addEventListener("click", function () { file.click(); });
+        drop.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); file.click(); } });
+        file.addEventListener("change", function () { load(file.files[0]); });
+        ["dragover", "dragenter"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.style.borderColor = "var(--accent)"; }); });
+        ["dragleave", "drop"].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.style.borderColor = "var(--border-strong)"; }); });
+        drop.addEventListener("drop", function (e) { var f = e.dataTransfer && e.dataTransfer.files[0]; if (f) load(f); });
+        [fmt, wEl].forEach(function (el) { el.addEventListener("input", render); el.addEventListener("change", render); });
+        q.addEventListener("input", function () { qv.textContent = q.value; render(); });
+      })();
+    </script>
+  </body>
+</html>

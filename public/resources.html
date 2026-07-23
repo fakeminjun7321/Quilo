@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Quilo 스탭과 관리자가 검토해 공개한 학습·보고서 자료를 찾고 요청하세요.">
+  <title>자료실 — Quilo</title>
+  <link rel="icon" href="/favicon.png">
+  <script>
+    (function () {
+      try {
+        var theme = localStorage.getItem("theme");
+        if (!theme) theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", theme);
+      } catch (_) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="/ui/foundation.css">
+  <link rel="stylesheet" href="/ui/shell.css">
+  <link rel="stylesheet" href="/ui/editorial.css">
+</head>
+<body class="q-shell-page editorial-page" data-editorial-page="resources">
+  <a class="ui-skip-link" href="#mainContent">본문으로 건너뛰기</a>
+  <header class="ui-site-header" data-ui-shell></header>
+
+  <nav class="ed-section-nav" aria-label="에디토리얼 메뉴">
+    <div class="ed-section-nav__inner">
+      <div class="ed-section-nav__links">
+        <a href="/developer-notes.html">개발 노트</a>
+        <a class="is-current" aria-current="page" href="/resources.html">자료실</a>
+        <a href="/changelog.html">업데이트</a>
+      </div>
+      <div class="ed-section-nav__actions">
+        <button class="ed-taxonomy-manage-trigger" type="button" data-manage-taxonomies data-taxonomy-kind="resource" hidden>분류 관리</button>
+        <a class="ed-primary-action" href="/editorial-write.html?kind=resource" data-resource-write hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z"></path><path d="m13.5 6.5 4 4"></path></svg>자료 올리기</a>
+      </div>
+    </div>
+  </nav>
+
+  <main id="mainContent" class="ed-main">
+    <section class="ed-resource-hero ed-container" aria-labelledby="resourceTitle">
+      <div><h1 id="resourceTitle">자료실</h1><p>검토된 학습 자료와 보고서 작성 도구를 한곳에서 찾으세요.</p></div>
+      <button type="button" class="ed-request-link" data-open-request>필요한 자료 요청하기<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg></button>
+    </section>
+
+    <section class="ed-resource-explorer ed-container">
+      <aside class="ed-resource-filter" aria-label="자료 필터">
+        <h2>자료 찾기</h2>
+        <label class="ed-search ed-search--compact"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg><input id="resourceSearch" type="search" placeholder="자료 검색"></label>
+        <fieldset data-resource-categories><legend>분류</legend><label><input type="radio" name="resourceCategory" value="" checked><span>전체 자료</span><b data-count-all>0</b></label><label><input type="radio" name="resourceCategory" value="화학"><span>화학</span><b data-count-category="화학">0</b></label><label><input type="radio" name="resourceCategory" value="물리"><span>물리</span><b data-count-category="물리">0</b></label><label><input type="radio" name="resourceCategory" value="보고서 양식"><span>보고서 양식</span><b data-count-category="보고서 양식">0</b></label><label><input type="radio" name="resourceCategory" value="학습 자료"><span>학습 자료</span><b data-count-category="학습 자료">0</b></label><label><input type="radio" name="resourceCategory" value="도구"><span>도구</span><b data-count-category="도구">0</b></label></fieldset>
+        <fieldset><legend>파일 형식</legend><label><input type="checkbox" data-resource-format value="pdf"><span>PDF</span></label><label><input type="checkbox" data-resource-format value="docx"><span>DOCX</span></label><label><input type="checkbox" data-resource-format value="hwpx"><span>HWPX</span></label><label><input type="checkbox" data-resource-format value="xlsx"><span>Excel</span></label></fieldset>
+      </aside>
+      <section class="ed-resource-results" aria-labelledby="resourceListTitle">
+        <div class="ed-stream-heading"><div><h2 id="resourceListTitle">전체 자료</h2><p id="resourceCount">자료를 불러오는 중입니다.</p></div><label>정렬<select id="resourceSort"><option value="latest">최신순</option><option value="popular">다운로드순</option><option value="title">이름순</option></select></label></div>
+        <div id="resourceStatus" class="ed-inline-status" role="status" aria-live="polite"></div>
+        <div id="resourceList" class="ed-resource-list" aria-live="polite"></div>
+      </section>
+    </section>
+
+    <section class="ed-request-section" id="requestSection" aria-labelledby="requestTitle">
+      <div class="ed-container ed-request-layout">
+        <div class="ed-request-copy"><h2 id="requestTitle">찾는 자료가 없나요?</h2><p>필요한 자료와 사용 목적을 알려주세요. 스탭과 관리자가 확인한 뒤 제작하거나 신뢰할 수 있는 자료를 찾아 공개합니다.</p><ol><li><span>1</span>필요한 자료를 구체적으로 설명</li><li><span>2</span>담당자가 검토하고 상태를 업데이트</li><li><span>3</span>완성된 자료를 자료실에 공개</li></ol></div>
+        <form id="requestForm" class="ed-request-form">
+          <label>요청 제목<input id="requestTitleInput" name="title" type="text" required maxlength="120" placeholder="예: 등가속도 운동 실험 데이터 정리 양식"></label>
+          <label>분류<select id="requestCategory" name="category"><option value="화학">화학</option><option value="물리">물리</option><option value="보고서 양식">보고서 양식</option><option value="학습 자료">학습 자료</option><option value="도구">도구</option><option value="기타">기타</option></select></label>
+          <label>필요한 내용과 사용 목적<textarea id="requestDescription" name="description" required maxlength="1200" rows="6" placeholder="어떤 수업이나 작업에 필요한지, 포함되어야 할 내용을 알려주세요."></textarea></label>
+          <button type="submit" class="ed-primary-action">자료 요청 보내기</button><p id="requestFormStatus" role="status" aria-live="polite"></p>
+        </form>
+      </div>
+      <div class="ed-container"><section id="requestHistory" class="ed-request-history" hidden><div class="ed-stream-heading"><h2 data-request-history-title>내 자료 요청</h2><button type="button" data-refresh-requests>새로고침</button></div><div data-request-list></div></section></div>
+    </section>
+  </main>
+  <footer class="ui-site-footer"></footer>
+  <div id="editorialToast" class="ed-toast" role="status" aria-live="polite" hidden></div>
+  <script src="/ui/shell.js"></script>
+  <script src="/ui/editorial.js" defer></script>
+</body>
+</html>
