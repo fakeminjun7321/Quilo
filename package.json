@@ -49,7 +49,7 @@
     "compression": "^1.8.1",
     "cookie-session": "^2.1.1",
     "docx": "^9.0.2",
-    "dotenv": "^16.4.5",
+    "dotenv": "^17.4.2",
     "express": "^4.21.1",
     "express-session": "^1.18.1",
     "fast-xml-parser": "^5.7.2",
